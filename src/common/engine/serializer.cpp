@@ -1385,7 +1385,7 @@ FSerializer &Serialize(FSerializer &arc, const char *key, FTextureID &value, FTe
 		if (val != nullptr)
 		{
 			if (arc.IsRollback()) {
-				value.SetIndex(val->GetInt64());
+				value.SetIndex(val->GetUint64());
 			} else {
 				if (val->IsArray())
 				{
