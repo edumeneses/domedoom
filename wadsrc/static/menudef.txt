@@ -1998,6 +1998,8 @@ OptionMenu MapColorMenu protected
 	ColorPicker "$MAPCOLORMNU_SECRETSECTORCOLOR",		"am_secretsectorcolor"
 	ColorPicker "$MAPCOLORMNU_UNEXPLOREDSECRETCOLOR",	"am_unexploredsecretcolor"
 	ColorPicker "$MAPCOLORMNU_SPECIALWALLCOLOR",		"am_specialwallcolor"
+	ColorPicker "$MAPCOLORMNU_SECTORFILLCOLOR",			"am_sectorfillcolor"
+	Slider "$MAPCOLORMNU_SECTORFILLALPHA",				"am_sectorfillalpha", 0.0, 1.0, 0.1, 1
 	ColorPicker "$MAPCOLORMNU_PORTAL",					"am_portalcolor"
 }
 
@@ -2029,6 +2031,8 @@ OptionMenu MapColorMenuOverlay protected
 	ColorPicker "$MAPCOLORMNU_SECRETSECTORCOLOR",		"am_ovsecretsectorcolor"
 	ColorPicker "$MAPCOLORMNU_UNEXPLOREDSECRETCOLOR",	"am_ovunexploredsecretcolor"
 	ColorPicker "$MAPCOLORMNU_SPECIALWALLCOLOR",		"am_ovspecialwallcolor"
+	ColorPicker "$MAPCOLORMNU_SECTORFILLCOLOR",			"am_ovsectorfillcolor"
+	Slider "$MAPCOLORMNU_SECTORFILLALPHA",				"am_ovsectorfillalpha", 0.0, 1.0, 0.1, 1
 	ColorPicker "$MAPCOLORMNU_PORTAL",					"am_ovportalcolor"
 }
 

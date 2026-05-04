@@ -78,9 +78,6 @@ static const double M_OLDZOOMOUT = (1 / 1.02);
 static FTextureID marknums[AM_NUMMARKPOINTS]; // numbers used for marking by the automap
 bool automapactive = false;
 
-// use almost black as indicator for an unused color
-static constexpr uint32_t AM_NOCOLOR_RGB = MAKEARGB(255, 1, 0, 0);
-
 //=============================================================================
 //
 // Types
@@ -292,7 +289,8 @@ CVAR (Color, am_thingcolor_monster,	0xfcfcfc,	CVAR_ARCHIVE);
 CVAR (Color, am_thingcolor_ncmonster,	0xfcfcfc,	CVAR_ARCHIVE);
 CVAR (Color, am_thingcolor_item,	0xfcfcfc,	CVAR_ARCHIVE);
 CVAR (Color, am_thingcolor_citem,	0xfcfcfc,	CVAR_ARCHIVE);
-CVAR (Color, am_sectorfillcolor,	0x010000,	CVAR_ARCHIVE);
+CVAR (Color, am_sectorfillcolor,	0x000000,	CVAR_ARCHIVE);
+CVAR (Float, am_sectorfillalpha,	0.0f,		CVAR_ARCHIVE);
 CVAR (Color, am_portalcolor,		0x404040,	CVAR_ARCHIVE);
 
 CVAR (Color, am_ovyourcolor,		0xfce8d8,	CVAR_ARCHIVE);
@@ -315,7 +313,8 @@ CVAR (Color, am_ovthingcolor_monster,	0xe88800,	CVAR_ARCHIVE);
 CVAR (Color, am_ovthingcolor_ncmonster,	0xe88800,	CVAR_ARCHIVE);
 CVAR (Color, am_ovthingcolor_item,		0xe88800,	CVAR_ARCHIVE);
 CVAR (Color, am_ovthingcolor_citem,		0xe88800,	CVAR_ARCHIVE);
-CVAR (Color, am_ovsectorfillcolor,		0x010000,	CVAR_ARCHIVE);
+CVAR (Color, am_ovsectorfillcolor,		0x000000,	CVAR_ARCHIVE);
+CVAR (Float, am_ovsectorfillalpha,		0.0f,		CVAR_ARCHIVE);
 CVAR (Color, am_ovportalcolor,			0x004022,	CVAR_ARCHIVE);
 
 //=============================================================================
@@ -419,23 +418,19 @@ struct AMColorset
 	};
 
 	AMColor c[AM_NUM_COLORS];
+	double fillAlpha;
 	bool displayLocks;
 	bool forcebackground;
 	bool defined;	// only for mod specific colorsets: must be true to be usable
 
-	void initFromCVars(FColorCVarRef **values)
+	void initFromCVars(FColorCVarRef **values, FFloatCVarRef &fill_alpha_cv)
 	{
 		for(int i=0;i<AlmostBackgroundColor; i++)
 		{
 			c[i].FromCVar(*(values[i]->get()));
-
-			// [XA] allow cvar-defined colors to be blank
-			// now, since SectorFillColor uses this.
-			if (c[i].RGB == AM_NOCOLOR_RGB)
-			{
-				c[i].setInvalid();
-			}
 		}
+
+		fillAlpha = *(fill_alpha_cv.get());
 
 		uint32_t ba = *(values[0]);
 
@@ -468,6 +463,8 @@ struct AMColorset
 				c[i].FromRGB(colors[j], colors[j+1], colors[j+2]);
 			}
 		}
+
+		fillAlpha = 0.0f;
 		displayLocks = showlocks;
 		forcebackground = false;
 	}
@@ -710,7 +707,7 @@ static void AM_initColors(bool overlayed)
 		}
 		else
 		{
-			AMColors.initFromCVars(cv_overlay);
+			AMColors.initFromCVars(cv_overlay, am_ovsectorfillalpha);
 		}
 	}
 	else if (am_customcolors && AMMod.defined)
@@ -734,7 +731,7 @@ static void AM_initColors(bool overlayed)
 		{
 		default:
 			/* Use the custom colors in the am_* cvars */
-			AMColors.initFromCVars(cv_standard);
+			AMColors.initFromCVars(cv_standard, am_sectorfillalpha);
 			break;
 
 		case 1:	// Doom
@@ -1350,7 +1347,7 @@ void DAutomap::startDisplay()
 		for (pnum=0;pnum<MAXPLAYERS;pnum++)
 			if (playeringame[pnum])
 				break;
-	assert(pnum >= 0 && pnum < MAXPLAYERS);
+	assert(pnum < MAXPLAYERS);
 	m_x = players[pnum].camera->X() - m_w/2;
 	m_y = players[pnum].camera->Y() - m_h/2;
 	changeWindowLoc();
@@ -2066,8 +2063,9 @@ void DAutomap::drawSubsectors()
 	int floorlight;
 	double scalex, scaley;
 	double originx, originy;
+	double alpha;
 	FColormap colormap;
-	PalEntry flatcolor;
+	//PalEntry flatcolor;
 	mpoint_t originpt;
 
 	auto lm = getRealLightmode(Level, false);
@@ -2115,8 +2113,10 @@ void DAutomap::drawSubsectors()
 		FTextureID maptex;
 
 		// Textured mode
-		if (am_textured)
+		if (am_textured && !viewactive)
 		{
+			alpha = 1.0;
+
 			// For lighting and texture determination
 			sector_t *sec = AM_FakeFlat(players[consoleplayer].camera, sub->render_sector, &tempsec);
 			floorlight = sec->GetFloorLight();
@@ -2128,7 +2128,7 @@ void DAutomap::drawSubsectors()
 			colormap = sec->Colormap;
 
 			maptex = sec->GetTexture(sector_t::floor);
-			flatcolor = sec->SpecialColors[sector_t::floor];
+			//flatcolor = sec->SpecialColors[sector_t::floor];
 
 			scalex = sec->GetXScale(sector_t::floor);
 			scaley = sec->GetYScale(sector_t::floor);
@@ -2181,7 +2181,7 @@ void DAutomap::drawSubsectors()
 						floorplane = rover->top.plane;
 						sector_t *model = rover->top.model;
 						int selector = (rover->flags & FF_INVERTPLANES) ? sector_t::floor : sector_t::ceiling;
-						flatcolor = model->SpecialColors[selector];
+						//flatcolor = model->SpecialColors[selector];
 						rotation = -model->GetAngle(selector);
 						scalex = model->GetXScale(selector);
 						scaley = model->GetYScale(selector);
@@ -2236,8 +2236,8 @@ void DAutomap::drawSubsectors()
 			// [XA] Use sector fill color if defined (and not drawing a texture)
 			maptex = TexMan.GetWhiteTexture();
 			colormap.LightColor = PalEntry(AMColors[AMColors.SectorFillColor].RGB);
-			flatcolor = PalEntry(0, 0, 0); // unused??
 			floorlight = 255;
+			alpha = AMColors.fillAlpha;
 			rotation = nullAngle;
 			scalex = 1.0;
 			scaley = 1.0;
@@ -2294,7 +2294,7 @@ void DAutomap::drawSubsectors()
 				scale / scaley,
 				rotation,
 				colormap,
-				flatcolor,
+				alpha,
 				fadelevel,
 				indices.data(), indices.size());
 		}
@@ -3402,7 +3402,7 @@ void DAutomap::Drawer (int bottom)
 	}
 	activateNewScale();
 
-	if ((am_textured || AMColors.isValid(AMColors.SectorFillColor)) && !viewactive)
+	if ((am_textured && !viewactive) || (AMColors.isValid(AMColors.SectorFillColor) && AMColors.fillAlpha > 0.0))
 		drawSubsectors();
 
 	if (am_showgrid)
