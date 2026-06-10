@@ -64,6 +64,9 @@ public:
 
 	void Draw2D() override;
 	void PostProcessScene(bool swscene, int fixedcm, float flash, const std::function<void()> &afterBloomDrawEndScene2D) override;
+	void CompositeCubemapFaces(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* crossTex) override;
+	void ReadCubemapCrossPixels(class FCanvasTexture* crossTex, uint8_t* buf, int w, int h) override;
+	int  ExportCubemapCrossAsDmaBuf(class FCanvasTexture* crossTex, int* outStride) override;
 
 	bool HWGammaActive = false;			// Are we using hardware or software gamma?
 	std::unique_ptr<FGLDebug> mDebug;	// Debug API

@@ -265,6 +265,27 @@ public:
 	virtual void RenderTextureView(FCanvasTexture* tex, std::function<void(IntRect&)> renderFunc) {}
 	virtual void SetActiveRenderTarget() {}
 
+	// Blit 6 pre-rendered FCanvasTexture faces into a horizontal-cross layout
+	// inside crossTex (4*faceSize wide, 3*faceSize tall). faces[6] must use the
+	// same order as CubeFaceIndex in hw_cubemaprenderer.h.
+	// Default no-op; overridden by the OpenGL backend.
+	virtual void CompositeCubemapFaces(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* crossTex) {}
+
+	// Read the composited cross texture into a CPU buffer using double-PBO
+	// async readback (1-frame latency, no GPU stall after the first call).
+	// buf must hold w*h*4 bytes. GL bottom-up row order is preserved — caller
+	// is responsible for flipping if needed (PipeWireOutput::PushFrame does it).
+	// Default no-op; overridden by the OpenGL backend.
+	virtual void ReadCubemapCrossPixels(class FCanvasTexture* crossTex, uint8_t* buf, int w, int h) {}
+
+	// Export the cross texture as a DMA-BUF fd via EGL (zero-copy path).
+	// Returns a valid fd (>= 0) and writes bytes-per-row to *outStride on
+	// success, or -1 if EGL / the MESA_image_dma_buf_export extension is not
+	// available.  The fd is owned by the caller; the cross texture's GL id
+	// must remain valid for the fd's lifetime.
+	// Default returns -1; overridden by the OpenGL backend.
+	virtual int ExportCubemapCrossAsDmaBuf(class FCanvasTexture* crossTex, int* outStride) { return -1; }
+
 	// Screen wiping
 	virtual FTexture *WipeStartScreen();
 	virtual FTexture *WipeEndScreen();

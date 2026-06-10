@@ -51,9 +51,12 @@
 #include "hwrenderer/scene/hw_clipper.h"
 #include "hwrenderer/scene/hw_portal.h"
 #include "hw_vrmodes.h"
+#include "hw_cubemaprenderer.h"
 
 EXTERN_CVAR(Bool, cl_capfps)
 extern bool NoInterpolateView;
+
+CVAR(Bool, r_cubemap, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 static SWSceneDrawer *swdrawer;
 
@@ -104,7 +107,7 @@ void CollectLights(FLevelLocals* Level)
 //
 //-----------------------------------------------------------------------------
 
-sector_t* RenderViewpoint(FRenderViewpoint& mainvp, AActor* camera, IntRect* bounds, float fov, float ratio, float fovratio, bool mainview, bool toscreen)
+sector_t* RenderViewpoint(FRenderViewpoint& mainvp, AActor* camera, IntRect* bounds, float fov, float ratio, float fovratio, bool mainview, bool toscreen, bool drawPSprites)
 {
 	auto& RenderState = *screen->RenderState();
 
@@ -173,7 +176,7 @@ sector_t* RenderViewpoint(FRenderViewpoint& mainvp, AActor* camera, IntRect* bou
 		vp.Pos += eye.GetViewShift(vp.HWAngles.Yaw.Degrees());
 		di->SetupView(RenderState, vp.Pos.X, vp.Pos.Y, vp.Pos.Z, false, false);
 
-		di->ProcessScene(toscreen);
+		di->ProcessScene(toscreen || drawPSprites);
 
 		if (mainview)
 		{
@@ -188,6 +191,13 @@ sector_t* RenderViewpoint(FRenderViewpoint& mainvp, AActor* camera, IntRect* bou
 
 			screen->PostProcessScene(false, cm, flash, [&]() { di->DrawEndScene2D(mainvp.sector, RenderState); });
 			PostProcess.Unclock();
+		}
+		else if (drawPSprites)
+		{
+			// Cubemap front face: draw weapon sprites directly onto the face texture.
+			// Skip full post-processing (bloom/tonemap) — ossia score handles that.
+			di->DrawEndScene2D(mainvp.sector, RenderState);
+			RenderState.EnableDepthTest(true); // DrawEndScene2D leaves depth test disabled
 		}
 		// Reset colormap so 2D drawing isn't affected
 		RenderState.SetSpecialColormap(CM_DEFAULT, 1);
@@ -405,7 +415,20 @@ sector_t* RenderView(player_t* player)
 
 		screen->ImageTransitionScene(true); // Only relevant for Vulkan.
 
-		retsec = RenderViewpoint(r_viewpoint, player->camera, NULL, r_viewpoint.FieldOfView.Degrees(), ratio, fovratio, true, true);
+		if (r_cubemap)
+		{
+			// Render all 6 cubemap faces to offscreen textures.
+			gCubemapRenderer.RenderFacesToTextures(player);
+			// Render front face to screen at 90° FOV so the game remains
+			// visible for testing. In the final PipeWire-only path this
+			// screen render will be replaced by a direct blit from the
+			// front-face texture.
+			retsec = RenderViewpoint(r_viewpoint, player->camera, NULL, 90.f, 1.f, 1.f, true, true);
+		}
+		else
+		{
+			retsec = RenderViewpoint(r_viewpoint, player->camera, NULL, r_viewpoint.FieldOfView.Degrees(), ratio, fovratio, true, true);
+		}
 	}
 	All.Unclock();
 	return retsec;

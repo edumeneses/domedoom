@@ -57,6 +57,8 @@
 #include "gl_postprocessstate.h"
 #include "v_draw.h"
 #include "printf.h"
+#include <cstring>
+#include <cstdio>
 #include "gl_hwtexture.h"
 
 #include "flatvertices.h"
@@ -240,7 +242,281 @@ void OpenGLFrameBuffer::RenderTextureView(FCanvasTexture* tex, std::function<voi
 
 //===========================================================================
 //
-// 
+// CompositeCubemapFaces
+//
+// Blits 6 pre-rendered face textures into a horizontal strip inside crossTex
+// using glBlitFramebuffer (pure GPU blit, no CPU readback).
+//
+// Output layout (6144 × 1024):
+//   [RIGHT][LEFT][UP][DOWN][FRONT][BACK]
+//   col:  0     1    2    3     4     5
+//
+// Single row → no FB row inversion needed.
+//
+//===========================================================================
+
+void OpenGLFrameBuffer::CompositeCubemapFaces(FCanvasTexture** faces, int N, FCanvasTexture* crossTex)
+{
+	// Lazily create the two helper FBOs (read + draw). They persist for the
+	// lifetime of the GL context and are harmless to leave allocated.
+	static GLuint sReadFBO = 0, sDrawFBO = 0;
+	if (!sReadFBO)
+	{
+		glGenFramebuffers(1, &sReadFBO);
+		glGenFramebuffers(1, &sDrawFBO);
+	}
+
+	// Ensure the cross GPU texture exists at the right dimensions.
+	auto* crossHW = static_cast<FHardwareTexture*>(crossTex->GetHardwareTexture(0, 0));
+	crossHW->BindOrCreate(crossTex, 0, 0, 0, 0);
+	FHardwareTexture::Unbind(0);
+
+	// Attach cross texture to the draw FBO.
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, sDrawFBO);
+	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+	                       GL_TEXTURE_2D, crossHW->GetTextureHandle(), 0);
+
+	// Horizontal strip layout: [RIGHT][LEFT][UP][DOWN][FRONT][BACK]
+	//   col:                      0      1    2    3      4     5
+	// Indexed by CubeFaceIndex (FRONT=0, LEFT=1, RIGHT=2, BACK=3, UP=4, DOWN=5).
+	// Single row → all fbY = 0.
+	static constexpr int kFBX[] = { 4, 1, 0, 5, 2, 3 }; // col per face
+	static constexpr int kFBY[] = { 0, 0, 0, 0, 0, 0 }; // all on row 0
+
+	for (int i = 0; i < 6; i++)
+	{
+		auto* faceHW = static_cast<FHardwareTexture*>(faces[i]->GetHardwareTexture(0, 0));
+		GLuint faceTex = faceHW->GetTextureHandle();
+		if (!faceTex) continue;
+
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, sReadFBO);
+		glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+		                       GL_TEXTURE_2D, faceTex, 0);
+
+		const int dx = kFBX[i] * N;
+		const int dy = kFBY[i] * N;
+		glBlitFramebuffer(0, 0, N, N,
+		                  dx, dy, dx + N, dy + N,
+		                  GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	}
+
+	crossTex->SetUpdated(true);
+
+	// Restore to default so we don't leave dangling FBO state.
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+//===========================================================================
+//
+// ReadCubemapCrossPixels
+//
+// Async GPU→CPU readback using double-PBO (Pixel Buffer Objects).
+//
+// Frame N   : issue glGetTexImage into PBO[ping]  (non-blocking, queued on GPU)
+// Frame N   : map  PBO[pong] and memcpy into buf  (pong was filled in frame N-1)
+// Frame N+1 : swap ping/pong and repeat
+//
+// First call returns without filling buf (pong not yet populated). The caller
+// (CubemapRenderer) skips PipeWire push on the first frame; subsequent frames
+// arrive with 1-frame latency and zero GPU stall.
+//
+// Row order: GL stores textures bottom-up; we preserve that order here.
+// PipeWireOutput::PushFrame() performs the top-down flip for consumers.
+//
+//===========================================================================
+
+void OpenGLFrameBuffer::ReadCubemapCrossPixels(FCanvasTexture* crossTex,
+                                               uint8_t* buf, int w, int h)
+{
+	static GLuint sPBOs[2]    = {};
+	static int    sPing       = 0;
+	static bool   sFirstCall  = true;
+
+	const size_t pixelBytes = (size_t)w * h * 4;
+
+	// Lazy PBO creation.
+	if (!sPBOs[0])
+	{
+		glGenBuffers(2, sPBOs);
+		for (int i = 0; i < 2; i++)
+		{
+			glBindBuffer(GL_PIXEL_PACK_BUFFER, sPBOs[i]);
+			glBufferData(GL_PIXEL_PACK_BUFFER, (GLsizeiptr)pixelBytes,
+			             nullptr, GL_STREAM_READ);
+		}
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+	}
+
+	auto* crossHW = static_cast<FHardwareTexture*>(crossTex->GetHardwareTexture(0, 0));
+	GLuint texId  = crossHW->GetTextureHandle();
+	if (!texId) return;
+
+	const int pong = 1 - sPing;
+
+	// Issue async read from cross texture into the ping PBO.
+	// With GL_PIXEL_PACK_BUFFER bound, the pointer argument is treated as a
+	// byte offset into the PBO — 0 means "write at the start of the buffer".
+	glBindBuffer(GL_PIXEL_PACK_BUFFER, sPBOs[sPing]);
+	{
+		GLint prevTex = 0;
+		glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
+		glBindTexture(GL_TEXTURE_2D, texId);
+		glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+		              reinterpret_cast<void*>(0));
+		glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
+	}
+
+	// Map the pong PBO (filled in the previous frame) and copy out.
+	if (!sFirstCall)
+	{
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, sPBOs[pong]);
+		void* ptr = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+		if (ptr)
+		{
+			std::memcpy(buf, ptr, pixelBytes);
+			glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+		}
+	}
+
+	glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+	sPing      = pong;
+	sFirstCall = false;
+}
+
+//===========================================================================
+//
+// ExportCubemapCrossAsDmaBuf
+//
+// Exports the cross texture as a DMA-BUF fd for zero-copy PipeWire delivery.
+//
+// Requires:
+//   • An active EGL context  (eglGetCurrentDisplay() returns non-null)
+//   • EGL_KHR_image_base      (eglCreateImageKHR / eglDestroyImageKHR)
+//   • EGL_KHR_gl_texture_2D_image (EGL_GL_TEXTURE_2D_KHR target)
+//   • EGL_MESA_image_dma_buf_export
+//
+// All function pointers are resolved at runtime via eglGetProcAddress so that
+// the build has no compile-time or link-time dependency on specific EGL
+// extension headers.
+//
+// Returns a valid file descriptor (>= 0) on success; the caller owns it and
+// must not close it while the PipeWire stream is active.  Returns -1 if any
+// requirement is not met (GLX context, missing extension, export failure).
+//
+//===========================================================================
+
+#include <dlfcn.h>
+
+int OpenGLFrameBuffer::ExportCubemapCrossAsDmaBuf(FCanvasTexture* crossTex,
+                                                   int* outStride)
+{
+	// EGL opaque types — we avoid including EGL headers to keep the build
+	// portable between EGL and GLX configurations.
+	using EGLDisplay    = void*;
+	using EGLContext    = void*;
+	using EGLImageKHR   = void*;
+	using EGLClientBuffer = void*;
+	using EGLenum       = unsigned int;
+	using EGLBoolean    = unsigned int;
+	using EGLint        = int;
+	using EGLuint64KHR  = uint64_t;
+
+	constexpr EGLDisplay EGL_NO_DISPLAY_  = nullptr;
+	constexpr EGLContext EGL_NO_CONTEXT_  = nullptr;
+	constexpr EGLenum    EGL_GL_TEXTURE_2D_KHR_ = 0x30B1u;
+
+	// Runtime-resolve core EGL functions via dlsym (no link-time dependency).
+	using FnGetDisplay = EGLDisplay (*)();
+	using FnGetContext = EGLContext (*)();
+	using FnGetProc    = void* (*)(const char*);
+
+	auto getDisplayFn = (FnGetDisplay)dlsym(RTLD_DEFAULT, "eglGetCurrentDisplay");
+	auto getContextFn = (EGLContext (*)())dlsym(RTLD_DEFAULT, "eglGetCurrentContext");
+	auto getProcFn    = (FnGetProc)dlsym(RTLD_DEFAULT, "eglGetProcAddress");
+
+	if (!getDisplayFn || !getContextFn || !getProcFn) return -1;
+
+	EGLDisplay dpy = getDisplayFn();
+	EGLContext  ctx = getContextFn();
+	if (dpy == EGL_NO_DISPLAY_ || ctx == EGL_NO_CONTEXT_) return -1;
+
+	// Resolve extension entry points.
+	using FnCreateImage  = EGLImageKHR (*)(EGLDisplay, EGLContext, EGLenum,
+	                                       EGLClientBuffer, const EGLint*);
+	using FnDestroyImage = EGLBoolean  (*)(EGLDisplay, EGLImageKHR);
+	using FnDmaBufQuery  = EGLBoolean  (*)(EGLDisplay, EGLImageKHR,
+	                                       int*, int*, EGLuint64KHR*);
+	using FnDmaBufExport = EGLBoolean  (*)(EGLDisplay, EGLImageKHR,
+	                                       int*, EGLint*, EGLint*);
+
+	auto createImage  = (FnCreateImage) getProcFn("eglCreateImageKHR");
+	auto destroyImage = (FnDestroyImage)getProcFn("eglDestroyImageKHR");
+	auto dmaBufQuery  = (FnDmaBufQuery) getProcFn("eglExportDMABUFImageQueryMESA");
+	auto dmaBufExport = (FnDmaBufExport)getProcFn("eglExportDMABUFImageMESA");
+
+	if (!createImage || !destroyImage || !dmaBufQuery || !dmaBufExport)
+	{
+		fprintf(stderr, "[cubedoom/egl] DMA-BUF export extensions not available"
+		                " — falling back to CPU readback\n");
+		return -1;
+	}
+
+	// Ensure the cross texture has a backing GL id.
+	auto* crossHW = static_cast<FHardwareTexture*>(crossTex->GetHardwareTexture(0, 0));
+	GLuint texId  = crossHW->GetTextureHandle();
+	if (!texId)
+	{
+		fprintf(stderr, "[cubedoom/egl] cross texture has no GL id yet\n");
+		return -1;
+	}
+
+	// Wrap the GL texture in an EGLImage.
+	EGLImageKHR img = createImage(dpy, ctx, EGL_GL_TEXTURE_2D_KHR_,
+	                              reinterpret_cast<EGLClientBuffer>(
+	                                  static_cast<uintptr_t>(texId)),
+	                              nullptr);
+	if (!img)
+	{
+		fprintf(stderr, "[cubedoom/egl] eglCreateImageKHR failed\n");
+		return -1;
+	}
+
+	// Query plane count: we only handle single-plane (RGBA) textures.
+	int fourcc = 0, nplanes = 0;
+	EGLuint64KHR modifier = 0;
+	if (!dmaBufQuery(dpy, img, &fourcc, &nplanes, &modifier) || nplanes != 1)
+	{
+		fprintf(stderr, "[cubedoom/egl] DMA-BUF query failed or nplanes=%d\n", nplanes);
+		destroyImage(dpy, img);
+		return -1;
+	}
+
+	// Export the DRM buffer fd, stride, and offset.
+	int  fd     = -1;
+	int  stride =  0;
+	int  offset =  0;
+	if (!dmaBufExport(dpy, img, &fd, &stride, &offset))
+	{
+		fprintf(stderr, "[cubedoom/egl] eglExportDMABUFImageMESA failed\n");
+		destroyImage(dpy, img);
+		return -1;
+	}
+
+	// Destroy the EGLImage wrapper — the DRM bo and the fd remain valid as
+	// long as the GL texture exists (which is the whole game session).
+	destroyImage(dpy, img);
+
+	fprintf(stderr, "[cubedoom/egl] exported cross texture as DMA-BUF"
+	                " fd=%d stride=%d offset=%d fourcc=0x%x\n",
+	        fd, stride, offset, (unsigned)fourcc);
+
+	*outStride = stride;
+	return fd;
+}
+
+//===========================================================================
+//
+//
 //
 //===========================================================================
 

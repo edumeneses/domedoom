@@ -91,6 +91,17 @@ else()
 		option( NO_GTK "Disable GTK+ dialogs (Not applicable to Windows)" )
 		option( DYN_GTK "Load GTK+ at runtime instead of compile time" ON )
 
+		# PipeWire video output for fulldome pipeline.
+		pkg_check_modules( PIPEWIRE libpipewire-0.3 )
+		if( PIPEWIRE_FOUND )
+			set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} ${PIPEWIRE_LIBRARIES} )
+			include_directories( SYSTEM ${PIPEWIRE_INCLUDE_DIRS} )
+			link_directories( ${PIPEWIRE_LIBRARY_DIRS} )
+			add_definitions( -DHAVE_PIPEWIRE=1 )
+		else()
+			message( WARNING "libpipewire-0.3 not found — fulldome PipeWire output disabled" )
+		endif()
+
 		# Use GTK+ for the IWAD picker, if available.
 		if( NOT NO_GTK )
 			pkg_check_modules( GTK3 gtk+-3.0 )
@@ -706,6 +717,8 @@ set( FASTMATH_SOURCES
 	common/textures/hires/xbr/xbrz.cpp
 	common/textures/hires/xbr/xbrz_old.cpp
 	common/rendering/gl_load/gl_load.c
+	rendering/hwrenderer/hw_cubemaprenderer.cpp
+	rendering/hwrenderer/pw_output.cpp
 	rendering/hwrenderer/hw_dynlightdata.cpp
 	rendering/hwrenderer/scene/hw_bsp.cpp
 	rendering/hwrenderer/scene/hw_fakeflat.cpp
