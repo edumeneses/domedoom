@@ -103,20 +103,11 @@ else()
 		endif()
 
 		# Sh4lt shared-memory transport for fulldome pipeline.
-		# Looks for the pre-built static library from the ossia score tree.
-		find_path( SH4LT_INCLUDE_DIR sh4lt/writer.hpp
-			PATHS /media/Storage/score/3rdparty/sh4lt
-			DOC "sh4lt include directory" )
-		find_library( SH4LT_LIBRARY sh4lt
-			PATHS /media/Storage/score/build-developer
-			DOC "sh4lt static library" )
-		if( SH4LT_INCLUDE_DIR AND SH4LT_LIBRARY )
-			set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} ${SH4LT_LIBRARY} )
-			include_directories( SYSTEM ${SH4LT_INCLUDE_DIR} )
+		# Built in-tree from the submodule at 3rdparty/sh4lt.
+		include( ${CMAKE_SOURCE_DIR}/cmake/Sh4ltVendor.cmake )
+		if( HAVE_SH4LT_VENDOR )
+			set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} sh4lt_vendor )
 			add_definitions( -DHAVE_SH4LT=1 )
-			message( STATUS "sh4lt found: ${SH4LT_LIBRARY}" )
-		else()
-			message( WARNING "sh4lt not found — Sh4lt output disabled" )
 		endif()
 
 		# Use GTK+ for the IWAD picker, if available.

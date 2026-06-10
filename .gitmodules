@@ -1,0 +1,3 @@
+[submodule "3rdparty/sh4lt"]
+	path = 3rdparty/sh4lt
+	url = https://gitlab.com/sh4lt/sh4lt.git
