@@ -120,6 +120,9 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
+          # linuxdeploy resolves NEEDED libs via ldd-style search, not AppDir
+          # subdirs, so expose the staged zmusic dirs on the loader path.
+          export LD_LIBRARY_PATH="$(pwd)/AppDir/usr/lib:$(pwd)/AppDir/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
           linuxdeploy \
             --appdir AppDir \
             --executable AppDir/usr/bin/cubedoom \
