@@ -83,6 +83,7 @@ jobs:
     - name: Git describe
       id: ghd
       uses: proudust/gh-describe@v2
+      continue-on-error: true
 
     - name: Configure
       shell: bash

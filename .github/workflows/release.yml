@@ -6,7 +6,7 @@ name: Release AppImage
 on:
   push:
     branches: [master]
-    tags:    ['v*']
+    tags: ['v*']
   pull_request:
     branches: [master]
 
@@ -16,158 +16,140 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-    # ── Checkout ────────────────────────────────────────────────────────────
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive   # pulls 3rdparty/sh4lt
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    # ── Version string ───────────────────────────────────────────────────────
-    - name: Derive version string
-      id: ver
-      run: |
-        if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-          VERSION="${GITHUB_REF#refs/tags/v}"
-        else
-          VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
-        fi
-        echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-        echo "CubeDoom version: ${VERSION}"
+      - name: Derive version string
+        id: ver
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-    # ── System dependencies ─────────────────────────────────────────────────
-    - name: Install build dependencies
-      run: |
-        sudo apt-get update -qq
-        sudo apt-get install -y --no-install-recommends \
-          cmake ninja-build \
-          libsdl2-dev \
-          libopenal-dev \
-          zlib1g-dev \
-          libbz2-dev \
-          libjpeg-dev \
-          libgl-dev \
-          libvulkan-dev \
-          libpipewire-0.3-dev \
-          libwebp-dev \
-          libvpx-dev \
-          nasm \
-          wget \
-          file \
-          imagemagick
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build \
+            libsdl2-dev \
+            libopenal-dev \
+            zlib1g-dev \
+            libbz2-dev \
+            libjpeg-dev \
+            libgl-dev \
+            libvulkan-dev \
+            libpipewire-0.3-dev \
+            libwebp-dev \
+            libvpx-dev \
+            nasm \
+            wget \
+            file \
+            imagemagick
 
-    # ── Configure ───────────────────────────────────────────────────────────
-    - name: Configure
-      run: |
-        cmake -B build -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DZDOOM_EXE_NAME=cubedoom \
-          -DPK3_QUIET_ZIPDIR=ON \
-          -DCMAKE_INSTALL_PREFIX=/usr
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DZDOOM_EXE_NAME=cubedoom \
+            -DPK3_QUIET_ZIPDIR=ON \
+            -DCMAKE_INSTALL_PREFIX=/usr
 
-    # ── Build ────────────────────────────────────────────────────────────────
-    - name: Build
-      run: cmake --build build --parallel
+      - name: Build
+        run: cmake --build build --parallel
 
-    # ── Stage install ────────────────────────────────────────────────────────
-    - name: Install into AppDir
-      run: DESTDIR="$(pwd)/AppDir" cmake --install build
+      - name: Install into AppDir
+        run: DESTDIR="$(pwd)/AppDir" cmake --install build
 
-    # ── AppDir fixups ────────────────────────────────────────────────────────
-    - name: Prepare AppDir metadata
-      run: |
-        APPDIR="$(pwd)/AppDir"
+      - name: Prepare AppDir metadata
+        run: |
+          APPDIR="$(pwd)/AppDir"
+          mkdir -p "${APPDIR}/usr/share/applications"
+          mkdir -p "${APPDIR}/usr/share/icons/hicolor/256x256/apps"
 
-        # .desktop file (no leading whitespace — cat with explicit redirection)
-        mkdir -p "${APPDIR}/usr/share/applications"
-        cat > "${APPDIR}/usr/share/applications/cubedoom.desktop" <<'DESKTOP'
-[Desktop Entry]
-Name=CubeDoom
-Comment=Doom engine — Fulldome Edition
-Exec=cubedoom
-Icon=cubedoom
-Type=Application
-Categories=Game;
-DESKTOP
+          printf '%s\n' \
+            '[Desktop Entry]' \
+            'Name=CubeDoom' \
+            'Comment=Doom engine - Fulldome Edition' \
+            'Exec=cubedoom' \
+            'Icon=cubedoom' \
+            'Type=Application' \
+            'Categories=Game;' \
+            > "${APPDIR}/usr/share/applications/cubedoom.desktop"
 
-        # Icon: convert the GZDoom SVG that cmake installs to a 256x256 PNG
-        ICON_SRC="${APPDIR}/usr/share/icons/hicolor/scalable/apps/org.zdoom.GZDoom.svg"
-        ICON_DST="${APPDIR}/usr/share/icons/hicolor/256x256/apps/cubedoom.png"
-        mkdir -p "$(dirname "${ICON_DST}")"
-        if [ -f "${ICON_SRC}" ]; then
-          convert -background none -resize 256x256 "${ICON_SRC}" "${ICON_DST}"
-        else
-          # Fallback: generate a minimal black 256x256 PNG with Python
-          python3 - <<'PY'
-import struct, zlib
-def chunk(tag, data):
-    c = struct.pack('>I', zlib.crc32(tag + data) & 0xffffffff)
-    return struct.pack('>I', len(data)) + tag + data + c
-w, h = 256, 256
-ihdr = struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)
-raw  = b''.join(b'\x00' + b'\x10\x10\x10' * w for _ in range(h))
-png  = (b'\x89PNG\r\n\x1a\n'
-        + chunk(b'IHDR', ihdr)
-        + chunk(b'IDAT', zlib.compress(raw))
-        + chunk(b'IEND', b''))
-open('AppDir/usr/share/icons/hicolor/256x256/apps/cubedoom.png', 'wb').write(png)
-PY
-        fi
+          ICON_SRC="${APPDIR}/usr/share/icons/hicolor/scalable/apps/org.zdoom.GZDoom.svg"
+          ICON_DST="${APPDIR}/usr/share/icons/hicolor/256x256/apps/cubedoom.png"
+          if [ -f "${ICON_SRC}" ]; then
+            convert -background none -resize 256x256 "${ICON_SRC}" "${ICON_DST}"
+          else
+            python3 -c "
+          import struct, zlib
+          def chunk(tag, data):
+              crc = struct.pack('>I', zlib.crc32(tag + data) & 0xffffffff)
+              return struct.pack('>I', len(data)) + tag + data + crc
+          w, h = 256, 256
+          ihdr = struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)
+          raw = b''.join(b'\x00' + b'\x18\x18\x18' * w for _ in range(h))
+          png = (b'\x89PNG\r\n\x1a\n'
+                 + chunk(b'IHDR', ihdr)
+                 + chunk(b'IDAT', zlib.compress(raw))
+                 + chunk(b'IEND', b''))
+          open('${ICON_DST}', 'wb').write(png)
+          "
+          fi
 
-    # ── linuxdeploy ──────────────────────────────────────────────────────────
-    - name: Download and extract linuxdeploy
-      run: |
-        wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-        chmod +x linuxdeploy-x86_64.AppImage
-        # Extract to run without FUSE (GitHub runners use overlayfs)
-        ./linuxdeploy-x86_64.AppImage --appimage-extract
-        echo "$(pwd)/squashfs-root/usr/bin" >> "$GITHUB_PATH"
+      - name: Download and extract linuxdeploy
+        run: |
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
+          ./linuxdeploy-x86_64.AppImage --appimage-extract
+          echo "$(pwd)/squashfs-root/usr/bin" >> "$GITHUB_PATH"
 
-    - name: Create AppImage
-      env:
-        VERSION: ${{ steps.ver.outputs.version }}
-        APPIMAGE_EXTRACT_AND_RUN: "1"
-        OUTPUT: cubedoom-${{ steps.ver.outputs.version }}-x86_64.AppImage
-      run: |
-        linuxdeploy \
-          --appdir AppDir \
-          --executable AppDir/usr/bin/cubedoom \
-          --desktop-file AppDir/usr/share/applications/cubedoom.desktop \
-          --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/cubedoom.png \
-          --exclude-library "libpipewire*" \
-          --exclude-library "libspa-*" \
-          --output appimage
+      - name: Create AppImage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          linuxdeploy \
+            --appdir AppDir \
+            --executable AppDir/usr/bin/cubedoom \
+            --desktop-file AppDir/usr/share/applications/cubedoom.desktop \
+            --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/cubedoom.png \
+            --exclude-library "libpipewire*" \
+            --exclude-library "libspa-*" \
+            --output appimage
+          mv CubeDoom*.AppImage "cubedoom-${VERSION}-x86_64.AppImage" 2>/dev/null \
+            || mv *.AppImage "cubedoom-${VERSION}-x86_64.AppImage"
 
-        # linuxdeploy names the output from the .desktop Name= field
-        mv CubeDoom*.AppImage "${OUTPUT}" 2>/dev/null \
-          || mv *.AppImage "${OUTPUT}"
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: CubeDoom-${{ steps.ver.outputs.version }}-x86_64
+          path: cubedoom-*.AppImage
+          if-no-files-found: error
 
-    # ── Upload artifact ───────────────────────────────────────────────────────
-    - name: Upload AppImage
-      uses: actions/upload-artifact@v4
-      with:
-        name: CubeDoom-${{ steps.ver.outputs.version }}-x86_64
-        path: cubedoom-*.AppImage
-        if-no-files-found: error
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: cubedoom-*.AppImage
+          name: CubeDoom ${{ steps.ver.outputs.version }}
+          body: |
+            ## CubeDoom ${{ steps.ver.outputs.version }} - Fulldome Edition
 
-    # ── GitHub Release (tag pushes only) ──────────────────────────────────────
-    - name: Publish GitHub Release
-      if: startsWith(github.ref, 'refs/tags/v')
-      uses: softprops/action-gh-release@v2
-      with:
-        files: cubedoom-*.AppImage
-        name: CubeDoom ${{ steps.ver.outputs.version }}
-        body: |
-          ## CubeDoom ${{ steps.ver.outputs.version }} — Fulldome Edition
+            ### Requirements
+            - Linux x86_64
+            - PipeWire (Ubuntu 24.04 ships it by default)
+            - A Doom IWAD (DOOM.WAD, DOOM2.WAD, etc.)
 
-          ### Requirements
-          - Linux x86_64
-          - PipeWire *(Ubuntu 24.04 ships it by default)*
-          - A Doom IWAD (`DOOM.WAD`, `DOOM2.WAD`, etc.)
+            ### Usage
+            ```
+            chmod +x cubedoom-*.AppImage
+            ./cubedoom-*.AppImage -iwad /path/to/doom.wad
+            ```
 
-          ### Usage
-          ```bash
-          chmod +x cubedoom-*.AppImage
-          ./cubedoom-*.AppImage -iwad /path/to/doom.wad
-          ```
-
-          ### Fulldome output
-          Enable cubemap rendering: **Options → Fulldome Output**
+            ### Fulldome output
+            Enable cubemap rendering: Options -> Fulldome Output
