@@ -417,22 +417,6 @@ static FSoundID S_AddSound (const char *logicalname, int lumpnum, FScanner *sc)
 {
 	FSoundID sfxid = soundEngine->FindSoundNoHash (logicalname);
 
-	if (!sfxid.isvalid())
-	{
-		if (sc)
-		{
-			DPrintf(DMSG_WARNING, PRINT_NONOTIFY,
-				TEXTCOLOR_ORANGE "%s - invalid sound at line %d: " TEXTCOLOR_WHITE "%s\n",
-				sc->ScriptName, sc->GetMessageLine(), logicalname);
-		}
-		else
-		{
-			DPrintf(DMSG_WARNING, PRINT_NONOTIFY,
-				TEXTCOLOR_ORANGE "Invalid Sound: " TEXTCOLOR_WHITE "%s\n",
-				logicalname);
-		}
-	}
-
 	if (sfxid.isvalid())
 	{ // If the sound has already been defined, change the old definition
 		auto sfx = soundEngine->GetWritableSfx(sfxid);
@@ -473,6 +457,21 @@ static FSoundID S_AddSound (const char *logicalname, int lumpnum, FScanner *sc)
 	else
 	{ // Otherwise, create a new definition.
 		sfxid = soundEngine->AddSoundLump (logicalname, lumpnum, CurrentPitchMask);
+	}
+
+	if (!soundEngine->isValidSoundId(sfxid))
+	{
+		if (sc)
+		{
+			DPrintf(DMSG_WARNING, PRINT_NONOTIFY,
+			        TEXTCOLOR_ORANGE "%s - invalid sound at line %d: " TEXTCOLOR_WHITE "%s\n", sc->ScriptName,
+			        sc->GetMessageLine(), logicalname);
+		}
+		else
+		{
+			DPrintf(DMSG_WARNING, PRINT_NONOTIFY, TEXTCOLOR_ORANGE "Invalid Sound: " TEXTCOLOR_WHITE "%s\n",
+			        logicalname);
+		}
 	}
 
 	return sfxid;
