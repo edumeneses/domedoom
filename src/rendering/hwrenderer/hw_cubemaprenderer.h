@@ -1,8 +1,10 @@
 #pragma once
 
 #include "pw_output.h"
+#include "sh4lt_output.h"
 #include <vector>
 #include <cstdint>
+#include <string>
 
 struct player_t;
 struct sector_t;
@@ -44,7 +46,9 @@ public:
 
 private:
 	void Init();
-	void InitPipeWire();  // called once after first CompositeCubemapFaces
+	void InitPipeWire();       // called once after first composite (if enabled)
+	void UpdateSh4ltVideo();   // (re)init sh4lt video writer when label changes
+	void UpdateSh4ltAudio();   // install/remove audio tap based on CVAR
 
 	FCanvasTexture*       mFaceTex[CUBE_FACE_COUNT] = {};
 	FCanvasTexture*       mCrossTex                 = nullptr;
@@ -52,9 +56,17 @@ private:
 
 	// PipeWire output — initialised lazily on first frame.
 	PipeWireOutput        mPWOutput;
-	std::vector<uint8_t>  mPixelBuf;   // CPU readback staging buffer (CPU mode)
-	bool                  mPWAttempted = false;  // true after InitPipeWire() called
-	bool                  mPBOFirstFrame = true; // skip first PBO push (pong empty)
+	std::vector<uint8_t>  mPixelBuf;     // CPU readback staging buffer
+	bool                  mPWAttempted   = false;
+	bool                  mPBOFirstFrame = true;
+
+	// Sh4lt video output
+	Sh4ltVideoOutput      mSh4ltVideo;
+	std::string           mSh4ltVideoLabel;   // tracks current label to detect changes
+
+	// Sh4lt audio output (driven via OAL tap)
+	Sh4ltAudioOutput      mSh4ltAudio;
+	bool                  mAudioTapActive = false;
 };
 
 extern CubemapRenderer gCubemapRenderer;

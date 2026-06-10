@@ -51,6 +51,7 @@ const char *GetChannelConfigName(ChannelConfig chan);
 FModule OpenALModule{"OpenAL"};
 
 #include "oalload.h"
+#include "rendering/hwrenderer/cubedoom_audiotap.h"
 
 CUSTOM_CVAR(Int, snd_channels, 128, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)	// number of channels available
 {
@@ -479,6 +480,15 @@ public:
 			{
 				alBufferData(bufid, Format, &Data[0], Data.Size(), SampleRate);
 				alSourceQueueBuffers(Source, 1, &bufid);
+				if (g_oalAudioTap)
+				{
+					int ch = (Format == AL_FORMAT_STEREO8 ||
+					          Format == AL_FORMAT_STEREO16 ||
+					          Format == AL_FORMAT_STEREO_FLOAT32) ? 2 : 1;
+					bool flt = (Format == AL_FORMAT_MONO_FLOAT32 ||
+					            Format == AL_FORMAT_STEREO_FLOAT32);
+					g_oalAudioTap(&Data[0], (size_t)Data.Size(), SampleRate, ch, flt);
+				}
 			}
 		}
 

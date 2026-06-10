@@ -16,8 +16,16 @@
 #include "textures.h"
 #include "vectors.h"
 #include "scene/hw_drawinfo.h"  // RenderViewpoint declaration
+#include "c_cvars.h"
 
 #include <cstdio>
+#include <cstring>
+
+CVAR(Bool,   r_cubemap_pipewire,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool,   r_cubemap_sh4lt,           false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(String, r_cubemap_sh4lt_label,     "cubedoom",     CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool,   r_cubemap_sh4lt_audio,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(String, r_cubemap_sh4lt_audio_label, "cubedoom-audio", CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 // Defined in r_utility.cpp, also extern'd in hw_entrypoint.cpp
 extern bool NoInterpolateView;
@@ -48,6 +56,7 @@ CubemapRenderer gCubemapRenderer;
 
 CubemapRenderer::~CubemapRenderer()
 {
+	UpdateSh4ltAudio();  // removes tap before Sh4ltAudioOutput dtor runs
 	for (int i = 0; i < CUBE_FACE_COUNT; i++)
 	{
 		delete mFaceTex[i];
@@ -55,6 +64,45 @@ CubemapRenderer::~CubemapRenderer()
 	}
 	delete mCrossTex;
 	mCrossTex = nullptr;
+}
+
+// -------------------------------------------------------------------------
+
+void CubemapRenderer::UpdateSh4ltVideo()
+{
+	const bool want = (bool)r_cubemap_sh4lt;
+	const std::string label = *r_cubemap_sh4lt_label;
+
+	if (!want)
+	{
+		mSh4ltVideo.Shutdown();
+		mSh4ltVideoLabel.clear();
+		return;
+	}
+
+	// Re-init when label changes or writer died.
+	if (!mSh4ltVideo.IsRunning() || label != mSh4ltVideoLabel)
+	{
+		mSh4ltVideo.Init(label, CROSS_W, CROSS_H);
+		mSh4ltVideoLabel = label;
+	}
+}
+
+void CubemapRenderer::UpdateSh4ltAudio()
+{
+	const bool want = (bool)r_cubemap_sh4lt_audio;
+
+	if (want && !mAudioTapActive)
+	{
+		Sh4ltInstallAudioTap(&mSh4ltAudio);
+		mAudioTapActive = true;
+	}
+	else if (!want && mAudioTapActive)
+	{
+		Sh4ltRemoveAudioTap();
+		mSh4ltAudio.Shutdown();
+		mAudioTapActive = false;
+	}
 }
 
 // -------------------------------------------------------------------------
@@ -155,28 +203,44 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 	// GPU blit: assemble the 6 face textures into the cross layout.
 	screen->CompositeCubemapFaces(mFaceTex, FACE_SIZE, mCrossTex);
 
-	// First frame after composite: the cross texture now has a GL id.
-	// Attempt to open the PipeWire stream (DMA-BUF or CPU fallback).
-	if (!mPWAttempted)
-		InitPipeWire();
-
-	if (!mPWOutput.IsRunning()) return;
-
-	if (mPWOutput.IsDmaBufMode())
+	// ---- PipeWire output ------------------------------------------------
+	if (r_cubemap_pipewire)
 	{
-		// Zero-copy path: GL commands are already queued on the GPU.
-		// DRM implicit sync ensures the consumer reads after our write
-		// completes, so no glFinish() or mutex is needed.
-		mPWOutput.QueueDmaBufFrame();
+		if (!mPWAttempted)
+			InitPipeWire();
+
+		if (mPWOutput.IsRunning())
+		{
+			if (mPWOutput.IsDmaBufMode())
+			{
+				mPWOutput.QueueDmaBufFrame();
+			}
+			else
+			{
+				screen->ReadCubemapCrossPixels(mCrossTex, mPixelBuf.data(),
+				                               CROSS_W, CROSS_H);
+				if (mPBOFirstFrame) { mPBOFirstFrame = false; }
+				else mPWOutput.PushFrame(mPixelBuf.data(), CROSS_W * 4);
+			}
+		}
 	}
-	else
+	// When CVAR is off we simply skip pushing frames;
+	// the PW stream will idle — no explicit shutdown needed.
+
+	// ---- Sh4lt video output ---------------------------------------------
+	UpdateSh4ltVideo();
+	if (mSh4ltVideo.IsRunning())
 	{
-		// CPU path: async PBO readback (1-frame latency, no GPU stall).
+		// Re-use pixel buffer (already allocated for CPU PW path).
+		// Allocate here if PipeWire CPU path is not active.
+		if (mPixelBuf.empty())
+			mPixelBuf.resize((size_t)CROSS_W * CROSS_H * 4);
+
 		screen->ReadCubemapCrossPixels(mCrossTex, mPixelBuf.data(),
 		                               CROSS_W, CROSS_H);
-		// Skip the first call: the pong PBO is not yet populated.
-		if (mPBOFirstFrame) { mPBOFirstFrame = false; return; }
-
-		mPWOutput.PushFrame(mPixelBuf.data(), CROSS_W * 4);
+		mSh4ltVideo.PushFrame(mPixelBuf.data(), CROSS_W * 4);
 	}
+
+	// ---- Sh4lt audio tap ------------------------------------------------
+	UpdateSh4ltAudio();
 }

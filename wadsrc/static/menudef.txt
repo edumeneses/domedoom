@@ -364,7 +364,36 @@ OptionMenu "OptionsMenu" protected
 	Submenu "$OPTMNU_MISCELLANEOUS",	"MiscOptions"
 	Submenu "$OPTMNU_SYSTEM",			"SystemMenu"
 	StaticText " "
+	Submenu "Fulldome Output",			"FulldomeOutputOptions"
 	Submenu "$OS_TITLE", "os_Menu"
+}
+
+//-------------------------------------------------------------------------------------------
+//
+// Fulldome Output Options (CubeDoom)
+//
+//-------------------------------------------------------------------------------------------
+
+OptionMenu "FulldomeOutputOptions" protected
+{
+	Title "FULLDOME OUTPUT"
+
+	StaticText "Cubemap Rendering", 1
+	Option "Enable cubemap rendering", "r_cubemap", "YesNo"
+
+	StaticText " "
+	StaticText "PipeWire", 1
+	Option "PipeWire video output", "r_cubemap_pipewire", "YesNo"
+
+	StaticText " "
+	StaticText "Sh4lt Video", 1
+	Option "Sh4lt video output", "r_cubemap_sh4lt", "YesNo"
+	TextField "Sh4lt video label", "r_cubemap_sh4lt_label"
+
+	StaticText " "
+	StaticText "Sh4lt Audio", 1
+	Option "Sh4lt audio output", "r_cubemap_sh4lt_audio", "YesNo"
+	TextField "Sh4lt audio label", "r_cubemap_sh4lt_audio_label"
 }
 
 //-------------------------------------------------------------------------------------------

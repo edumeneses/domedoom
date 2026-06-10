@@ -102,6 +102,23 @@ else()
 			message( WARNING "libpipewire-0.3 not found — fulldome PipeWire output disabled" )
 		endif()
 
+		# Sh4lt shared-memory transport for fulldome pipeline.
+		# Looks for the pre-built static library from the ossia score tree.
+		find_path( SH4LT_INCLUDE_DIR sh4lt/writer.hpp
+			PATHS /media/Storage/score/3rdparty/sh4lt
+			DOC "sh4lt include directory" )
+		find_library( SH4LT_LIBRARY sh4lt
+			PATHS /media/Storage/score/build-developer
+			DOC "sh4lt static library" )
+		if( SH4LT_INCLUDE_DIR AND SH4LT_LIBRARY )
+			set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} ${SH4LT_LIBRARY} )
+			include_directories( SYSTEM ${SH4LT_INCLUDE_DIR} )
+			add_definitions( -DHAVE_SH4LT=1 )
+			message( STATUS "sh4lt found: ${SH4LT_LIBRARY}" )
+		else()
+			message( WARNING "sh4lt not found — Sh4lt output disabled" )
+		endif()
+
 		# Use GTK+ for the IWAD picker, if available.
 		if( NOT NO_GTK )
 			pkg_check_modules( GTK3 gtk+-3.0 )
@@ -719,6 +736,7 @@ set( FASTMATH_SOURCES
 	common/rendering/gl_load/gl_load.c
 	rendering/hwrenderer/hw_cubemaprenderer.cpp
 	rendering/hwrenderer/pw_output.cpp
+	rendering/hwrenderer/sh4lt_output.cpp
 	rendering/hwrenderer/hw_dynlightdata.cpp
 	rendering/hwrenderer/scene/hw_bsp.cpp
 	rendering/hwrenderer/scene/hw_fakeflat.cpp
