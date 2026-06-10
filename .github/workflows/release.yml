@@ -62,7 +62,14 @@ jobs:
         run: cmake --build build --parallel
 
       - name: Install into AppDir
-        run: DESTDIR="$(pwd)/AppDir" cmake --install build
+        run: |
+          DESTDIR="$(pwd)/AppDir" cmake --install build
+          # The bundled (non-system) zmusic is built as a shared lib and copied
+          # next to the binary by a POST_BUILD step, but not installed. Stage it
+          # into usr/lib so linuxdeploy can resolve libzmusic.so.1.
+          mkdir -p AppDir/usr/lib
+          find build -maxdepth 3 -name 'libzmusic.so*' -exec cp -av {} AppDir/usr/lib/ \; || true
+          ls -l AppDir/usr/lib/ || true
 
       - name: Prepare AppDir metadata
         run: |
