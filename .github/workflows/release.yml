@@ -48,7 +48,7 @@ jobs:
             nasm \
             wget \
             file \
-            imagemagick
+            librsvg2-bin
 
       - name: Configure
         run: |
@@ -83,7 +83,7 @@ jobs:
           ICON_SRC="${APPDIR}/usr/share/icons/hicolor/scalable/apps/org.zdoom.GZDoom.svg"
           ICON_DST="${APPDIR}/usr/share/icons/hicolor/256x256/apps/cubedoom.png"
           if [ -f "${ICON_SRC}" ]; then
-            convert -background none -resize 256x256 "${ICON_SRC}" "${ICON_DST}"
+            rsvg-convert -w 256 -h 256 "${ICON_SRC}" -o "${ICON_DST}"
           else
             python3 -c "
           import struct, zlib
