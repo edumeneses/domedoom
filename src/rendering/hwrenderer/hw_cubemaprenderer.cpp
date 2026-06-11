@@ -266,7 +266,8 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 		{
 			if (r_cubemap_debug)
 			{
-				static int dbgFrame = 0;
+				static int  dbgFrame = 0;
+				static bool dbgDumped = false;
 				if ((dbgFrame++ % 120) == 0)
 				{
 					const uint8_t* p = mPixelBuf.data();
@@ -282,6 +283,35 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 					        dbgFrame, (int)pwCPU, (int)pwDmaBuf,
 					        (int)mSh4ltVideo.IsRunning(), (int)mNdiVideo.IsRunning(),
 					        nonzero, (unsigned)mx);
+				}
+
+				// One-shot: dump the readback buffer to a viewable PPM so the
+				// render/readback stage can be inspected without any PipeWire/
+				// Sh4lt/NDI receiver. RGBA->RGB, flipped to top-down.
+				if (!dbgDumped)
+				{
+					dbgDumped = true;
+					const char* path = "/tmp/cubedoom-readback.ppm";
+					FILE* f = fopen(path, "wb");
+					if (f)
+					{
+						fprintf(f, "P6\n%d %d\n255\n", CROSS_W, CROSS_H);
+						std::vector<uint8_t> row((size_t)CROSS_W * 3);
+						for (int y = 0; y < CROSS_H; ++y)
+						{
+							const uint8_t* src =
+							    mPixelBuf.data() + (size_t)(CROSS_H - 1 - y) * CROSS_W * 4;
+							for (int x = 0; x < CROSS_W; ++x)
+							{
+								row[x * 3 + 0] = src[x * 4 + 0];
+								row[x * 3 + 1] = src[x * 4 + 1];
+								row[x * 3 + 2] = src[x * 4 + 2];
+							}
+							fwrite(row.data(), 1, row.size(), f);
+						}
+						fclose(f);
+						fprintf(stderr, "[cubedoom/dbg] wrote %s\n", path);
+					}
 				}
 			}
 
