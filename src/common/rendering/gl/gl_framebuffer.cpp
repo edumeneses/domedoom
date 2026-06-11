@@ -65,6 +65,7 @@
 #include "hw_cvars.h"
 
 EXTERN_CVAR (Bool, vid_vsync)
+EXTERN_CVAR(Bool, r_cubemap_debug)
 EXTERN_CVAR(Int, gl_tonemap)
 EXTERN_CVAR(Bool, cl_capfps)
 EXTERN_CVAR(Int, gl_pipeline_depth);
@@ -292,6 +293,23 @@ void OpenGLFrameBuffer::CompositeCubemapFaces(FCanvasTexture** faces, int N, FCa
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, sReadFBO);
 		glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
 		                       GL_TEXTURE_2D, faceTex, 0);
+
+		if (r_cubemap_debug)
+		{
+			static int dbgN = 0;
+			if ((dbgN % 120) == 0)
+			{
+				GLenum st = glCheckFramebufferStatus(GL_READ_FRAMEBUFFER);
+				uint8_t px[4] = {0,0,0,0};
+				glReadPixels(N / 2, N / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+				fprintf(stderr, "[cubedoom/dbg] face %d tex=%u fbo=%s "
+				        "centerRGBA=%u,%u,%u,%u\n",
+				        i, faceTex,
+				        st == GL_FRAMEBUFFER_COMPLETE ? "complete" : "INCOMPLETE",
+				        px[0], px[1], px[2], px[3]);
+			}
+			if (i == 5) ++dbgN;
+		}
 
 		const int dx = kFBX[i] * N;
 		const int dy = kFBY[i] * N;
