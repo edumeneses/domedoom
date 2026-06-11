@@ -89,7 +89,11 @@ void NdiVideoOutput::PushFrame(const uint8_t* pixels, int srcStride)
     NDIlib_video_frame_v2_t frame;
     frame.xres                 = mWidth;
     frame.yres                 = mHeight;
-    frame.FourCC               = NDIlib_FourCC_type_RGBA;
+    // RGBX, not RGBA: the cubemap FBO leaves alpha at 0, and NDI honors the
+    // alpha channel for RGBA frames — receivers (e.g. ossia score) would
+    // composite the whole image as fully transparent and show black. RGBX
+    // tells NDI to ignore alpha and treat every pixel as opaque.
+    frame.FourCC               = NDIlib_FourCC_type_RGBX;
     frame.frame_rate_N         = 60000;
     frame.frame_rate_D         = 1000;
     frame.picture_aspect_ratio = 0.0f;            // square pixels
