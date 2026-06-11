@@ -277,6 +277,17 @@ void OpenGLFrameBuffer::CompositeCubemapFaces(FCanvasTexture** faces, int N, FCa
 	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
 	                       GL_TEXTURE_2D, crossHW->GetTextureHandle(), 0);
 
+	// glBlitFramebuffer is subject to the scissor test. The scene render
+	// (Set3DViewport) leaves the scissor enabled and clamped to a single
+	// face-sized viewport, which would clip every blit but the one landing
+	// in that region — only one cube face would reach the cross. Disable
+	// the scissor for the blits and restore the exact GL state afterwards so
+	// gl_RenderState's cached scissor state stays in sync.
+	const GLboolean savedScissor = glIsEnabled(GL_SCISSOR_TEST);
+	GLint savedScissorBox[4];
+	glGetIntegerv(GL_SCISSOR_BOX, savedScissorBox);
+	glDisable(GL_SCISSOR_TEST);
+
 	// Horizontal strip layout: [RIGHT][LEFT][UP][DOWN][FRONT][BACK]
 	//   col:                      0      1    2    3      4     5
 	// Indexed by CubeFaceIndex (FRONT=0, LEFT=1, RIGHT=2, BACK=3, UP=4, DOWN=5).
@@ -317,6 +328,11 @@ void OpenGLFrameBuffer::CompositeCubemapFaces(FCanvasTexture** faces, int N, FCa
 		                  dx, dy, dx + N, dy + N,
 		                  GL_COLOR_BUFFER_BIT, GL_NEAREST);
 	}
+
+	// Restore the scissor state exactly as it was.
+	glScissor(savedScissorBox[0], savedScissorBox[1],
+	          savedScissorBox[2], savedScissorBox[3]);
+	if (savedScissor) glEnable(GL_SCISSOR_TEST);
 
 	crossTex->SetUpdated(true);
 
