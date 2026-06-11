@@ -26,6 +26,8 @@ CVAR(Bool,   r_cubemap_sh4lt,           false,          CVAR_ARCHIVE | CVAR_GLOB
 CVAR(String, r_cubemap_sh4lt_label,     "cubedoom",     CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_sh4lt_audio,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(String, r_cubemap_sh4lt_audio_label, "cubedoom-audio", CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool,   r_cubemap_ndi,             false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(String, r_cubemap_ndi_label,       "CubeDoom",     CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 // Defined in r_utility.cpp, also extern'd in hw_entrypoint.cpp
 extern bool NoInterpolateView;
@@ -102,6 +104,26 @@ void CubemapRenderer::UpdateSh4ltAudio()
 		Sh4ltRemoveAudioTap();
 		mSh4ltAudio.Shutdown();
 		mAudioTapActive = false;
+	}
+}
+
+void CubemapRenderer::UpdateNdiVideo()
+{
+	const bool want = (bool)r_cubemap_ndi;
+	const std::string label = *r_cubemap_ndi_label;
+
+	if (!want)
+	{
+		mNdiVideo.Shutdown();
+		mNdiVideoLabel.clear();
+		return;
+	}
+
+	// Re-init when label changes or sender died.
+	if (!mNdiVideo.IsRunning() || label != mNdiVideoLabel)
+	{
+		mNdiVideo.Init(label, CROSS_W, CROSS_H);
+		mNdiVideoLabel = label;
 	}
 }
 
@@ -227,9 +249,14 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 	// When CVAR is off we simply skip pushing frames;
 	// the PW stream will idle — no explicit shutdown needed.
 
-	// ---- Sh4lt video output ---------------------------------------------
+	// ---- CPU-readback video outputs (Sh4lt + NDI) -----------------------
+	// Both consume the same RGBA cross image. Read it back once if either
+	// transport is active, then hand the buffer to each.
 	UpdateSh4ltVideo();
-	if (mSh4ltVideo.IsRunning())
+	UpdateNdiVideo();
+
+	const bool needPixels = mSh4ltVideo.IsRunning() || mNdiVideo.IsRunning();
+	if (needPixels)
 	{
 		// Re-use pixel buffer (already allocated for CPU PW path).
 		// Allocate here if PipeWire CPU path is not active.
@@ -238,7 +265,11 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 
 		screen->ReadCubemapCrossPixels(mCrossTex, mPixelBuf.data(),
 		                               CROSS_W, CROSS_H);
-		mSh4ltVideo.PushFrame(mPixelBuf.data(), CROSS_W * 4);
+
+		if (mSh4ltVideo.IsRunning())
+			mSh4ltVideo.PushFrame(mPixelBuf.data(), CROSS_W * 4);
+		if (mNdiVideo.IsRunning())
+			mNdiVideo.PushFrame(mPixelBuf.data(), CROSS_W * 4);
 	}
 
 	// ---- Sh4lt audio tap ------------------------------------------------

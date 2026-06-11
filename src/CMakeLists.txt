@@ -110,6 +110,31 @@ else()
 			add_definitions( -DHAVE_SH4LT=1 )
 		endif()
 
+		# NDI video output for fulldome pipeline.
+		# The NDI SDK is not redistributable as source; detect a locally
+		# installed copy (NDI_SDK_DIR env var, the default install path, or a
+		# system-wide libndi). Disabled gracefully when absent.
+		find_path( NDI_INCLUDE_DIR Processing.NDI.Lib.h
+			HINTS
+				ENV NDI_SDK_DIR
+				"$ENV{HOME}/NDI SDK for Linux"
+			PATH_SUFFIXES include
+			DOC "NDI SDK include directory" )
+		find_library( NDI_LIBRARY NAMES ndi
+			HINTS
+				ENV NDI_SDK_DIR
+				"$ENV{HOME}/NDI SDK for Linux"
+			PATH_SUFFIXES lib lib/x86_64-linux-gnu
+			DOC "NDI runtime library" )
+		if( NDI_INCLUDE_DIR AND NDI_LIBRARY )
+			set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} ${NDI_LIBRARY} )
+			include_directories( SYSTEM ${NDI_INCLUDE_DIR} )
+			add_definitions( -DHAVE_NDI=1 )
+			message( STATUS "NDI found: ${NDI_LIBRARY}" )
+		else()
+			message( WARNING "NDI SDK not found — fulldome NDI output disabled" )
+		endif()
+
 		# Use GTK+ for the IWAD picker, if available.
 		if( NOT NO_GTK )
 			pkg_check_modules( GTK3 gtk+-3.0 )
@@ -728,6 +753,7 @@ set( FASTMATH_SOURCES
 	rendering/hwrenderer/hw_cubemaprenderer.cpp
 	rendering/hwrenderer/pw_output.cpp
 	rendering/hwrenderer/sh4lt_output.cpp
+	rendering/hwrenderer/ndi_output.cpp
 	rendering/hwrenderer/hw_dynlightdata.cpp
 	rendering/hwrenderer/scene/hw_bsp.cpp
 	rendering/hwrenderer/scene/hw_fakeflat.cpp

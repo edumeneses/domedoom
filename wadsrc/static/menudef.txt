@@ -394,6 +394,11 @@ OptionMenu "FulldomeOutputOptions" protected
 	StaticText "Sh4lt Audio", 1
 	Option "Sh4lt audio output", "r_cubemap_sh4lt_audio", "YesNo"
 	TextField "Sh4lt audio label", "r_cubemap_sh4lt_audio_label"
+
+	StaticText " "
+	StaticText "NDI Video", 1
+	Option "NDI video output", "r_cubemap_ndi", "YesNo"
+	TextField "NDI source name", "r_cubemap_ndi_label"
 }
 
 //-------------------------------------------------------------------------------------------
