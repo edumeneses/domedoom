@@ -399,6 +399,7 @@ OptionMenu "FulldomeOutputOptions" protected
 	StaticText "NDI Video", 1
 	Option "NDI video output", "r_cubemap_ndi", "YesNo"
 	TextField "NDI source name", "r_cubemap_ndi_label"
+	StaticText "Output resolution: 6144 x 1024 (6 x 1024 faces)"
 }
 
 //-------------------------------------------------------------------------------------------

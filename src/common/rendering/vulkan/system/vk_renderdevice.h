@@ -93,6 +93,10 @@ public:
 
 	bool RaytracingEnabled();
 
+	// Fulldome cubemap pipeline (Vulkan implementation; OpenGL has its own).
+	void CompositeCubemapFaces(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* crossTex) override;
+	void ReadCubemapCrossPixels(class FCanvasTexture* crossTex, uint8_t* buf, int w, int h) override;
+
 private:
 	void RenderTextureView(FCanvasTexture* tex, std::function<void(IntRect &)> renderFunc) override;
 	void PrintStartupLog();

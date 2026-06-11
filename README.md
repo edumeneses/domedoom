@@ -8,17 +8,17 @@ Satosphère dome at the Société des Arts Technologiques (SAT).
 
 Tracked work for CubeDoom (check the boxes as items land):
 
-- [ ] **Vulkan backend support for the cubemap pipeline.** The cubemap
-  composite + readback + DMA-BUF export (`CompositeCubemapFaces`,
-  `ReadCubemapCrossPixels`, `ExportCubemapCrossAsDmaBuf`) are implemented
-  only in `OpenGLFrameBuffer`; on Vulkan they fall back to the no-op
-  virtual defaults, so all fulldome outputs (PipeWire/Sh4lt/NDI) produce a
-  black frame. Implement the Vulkan equivalents so the dome works on the
-  default (Vulkan) backend without forcing `vid_preferbackend 0`.
-- [ ] **Rename the locally built executable from `gzdoom` to `cubedoom`.**
-  The CI release sets `-DZDOOM_EXE_NAME=cubedoom`, but a plain local build
-  still produces `gzdoom`. Make `cubedoom` the default executable name for
-  local builds too.
+- [x] **Vulkan backend support for the cubemap pipeline.**
+  `CompositeCubemapFaces` and `ReadCubemapCrossPixels` are now implemented
+  for the Vulkan backend (`VulkanRenderDevice`), using `vkCmdBlitImage` to
+  assemble the strip and an image→staging-buffer copy for readback, so
+  PipeWire/Sh4lt/NDI work on the default (Vulkan) backend. Canvas-texture
+  images gained `TRANSFER_SRC|DST` usage to allow this. (DMA-BUF export
+  `ExportCubemapCrossAsDmaBuf` remains OpenGL-only; Vulkan uses the CPU
+  readback path. Zero-copy DMA-BUF export on Vulkan is a future optimization.)
+- [x] **Rename the locally built executable from `gzdoom` to `cubedoom`.**
+  The default `ZDOOM_EXE_NAME` is now `cubedoom`, so local builds produce a
+  `cubedoom` binary (CI already set this explicitly).
 
 ---
 

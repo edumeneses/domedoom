@@ -55,6 +55,7 @@
 #include "vulkan/textures/vk_renderbuffers.h"
 #include "vulkan/textures/vk_samplers.h"
 #include "vulkan/textures/vk_hwtexture.h"
+#include "vulkan/textures/vk_imagetransition.h"
 #include "vulkan/textures/vk_texture.h"
 #include "vulkan/textures/vk_framebuffer.h"
 #include <zvulkan/vulkanswapchain.h>
@@ -431,6 +432,117 @@ void VulkanRenderDevice::CopyScreenToBuffer(int w, int h, uint8_t *data)
 			sindex += 4;
 		}
 	}
+	staging->Unmap();
+}
+
+//===========================================================================
+//
+// CubeDoom fulldome cubemap pipeline (Vulkan)
+//
+// Mirrors the OpenGL implementation in gl_framebuffer.cpp: assemble the six
+// 90-degree face textures into a horizontal strip, then read the strip back
+// to CPU for the PipeWire / Sh4lt / NDI transports.
+//
+//===========================================================================
+
+void VulkanRenderDevice::CompositeCubemapFaces(FCanvasTexture** faces, int N, FCanvasTexture* crossTex)
+{
+	// Horizontal strip layout: [RIGHT][LEFT][UP][DOWN][FRONT][BACK]
+	//   col:                      0      1    2    3      4     5
+	// Indexed by CubeFaceIndex (FRONT=0, LEFT=1, RIGHT=2, BACK=3, UP=4, DOWN=5).
+	static const int kFBX[6] = { 4, 1, 0, 5, 2, 3 };
+
+	auto crossHW = static_cast<VkHardwareTexture*>(crossTex->GetHardwareTexture(0, 0));
+	VkTextureImage* cross = crossHW->GetImage(crossTex, 0, 0);
+
+	mRenderState->EndRenderPass();
+	auto cmd = mCommands->GetDrawCommands();
+
+	// Cross becomes the blit destination.
+	VkImageTransition()
+		.AddImage(cross, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, false)
+		.Execute(cmd);
+
+	for (int i = 0; i < 6; i++)
+	{
+		auto faceHW = static_cast<VkHardwareTexture*>(faces[i]->GetHardwareTexture(0, 0));
+		VkTextureImage* face = faceHW->GetImage(faces[i], 0, 0);
+
+		VkImageTransition()
+			.AddImage(face, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, false)
+			.Execute(cmd);
+
+		const int dx = kFBX[i] * N;
+
+		VkImageBlit blit = {};
+		blit.srcOffsets[0] = { 0, 0, 0 };
+		blit.srcOffsets[1] = { N, N, 1 };
+		blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.srcSubresource.layerCount = 1;
+		blit.dstOffsets[0] = { dx, 0, 0 };
+		blit.dstOffsets[1] = { dx + N, N, 1 };
+		blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.dstSubresource.layerCount = 1;
+
+		cmd->blitImage(face->Image->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		               cross->Image->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		               1, &blit, VK_FILTER_NEAREST);
+
+		// Return the face to its normal sampling layout.
+		VkImageTransition()
+			.AddImage(face, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false)
+			.Execute(cmd);
+	}
+
+	// Leave the cross sampleable; ReadCubemapCrossPixels re-transitions it.
+	VkImageTransition()
+		.AddImage(cross, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false)
+		.Execute(cmd);
+
+	crossTex->SetUpdated(true);
+}
+
+void VulkanRenderDevice::ReadCubemapCrossPixels(FCanvasTexture* crossTex, uint8_t* buf, int w, int h)
+{
+	auto crossHW = static_cast<VkHardwareTexture*>(crossTex->GetHardwareTexture(0, 0));
+	VkTextureImage* cross = crossHW->GetImage(crossTex, 0, 0);
+
+	mRenderState->EndRenderPass();
+	auto cmd = mCommands->GetDrawCommands();
+
+	VkImageTransition()
+		.AddImage(cross, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, false)
+		.Execute(cmd);
+
+	auto staging = BufferBuilder()
+		.Size((size_t)w * h * 4)
+		.Usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_TO_CPU)
+		.DebugName("ReadCubemapCrossPixels")
+		.Create(device.get());
+
+	VkBufferImageCopy region = {};
+	region.imageExtent.width = w;
+	region.imageExtent.height = h;
+	region.imageExtent.depth = 1;
+	region.imageSubresource.layerCount = 1;
+	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	cmd->copyImageToBuffer(cross->Image->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+	                       staging->buffer, 1, &region);
+
+	// Restore the cross to its sampling layout for the next frame.
+	VkImageTransition()
+		.AddImage(cross, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false)
+		.Execute(cmd);
+
+	// Submit and wait so the staging buffer is populated. This stalls the
+	// frame (like CopyScreenToBuffer) — acceptable for the offscreen dome feed.
+	mCommands->WaitForCommands(false);
+
+	// GZDoom renders the scene bottom-up (matching the GL convention), so we
+	// preserve that order here; the transports' PushFrame() does the top-down
+	// flip. No vertical flip on this copy.
+	uint8_t* pixels = (uint8_t*)staging->Map(0, (size_t)w * h * 4);
+	memcpy(buf, pixels, (size_t)w * h * 4);
 	staging->Unmap();
 }
 
