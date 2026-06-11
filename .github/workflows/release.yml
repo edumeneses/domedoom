@@ -14,6 +14,8 @@ jobs:
   build:
     name: Linux x86_64 AppImage
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write   # needed to publish releases
 
     steps:
       - uses: actions/checkout@v4
@@ -159,6 +161,43 @@ jobs:
             ```
             chmod +x cubedoom-*.AppImage
             ./cubedoom-*.AppImage -iwad /path/to/doom.wad
+            ```
+
+            ### Fulldome output
+            Enable cubemap rendering: Options -> Fulldome Output
+
+      # ── Rolling release ───────────────────────────────────────────────────
+      # Every push to master refreshes a single "continuous" prerelease that
+      # always carries the newest AppImage under a stable filename.
+      - name: Stage rolling asset
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: cp "cubedoom-${{ steps.ver.outputs.version }}-x86_64.AppImage" cubedoom-continuous-x86_64.AppImage
+
+      - name: Publish rolling release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: continuous
+          prerelease: true
+          make_latest: false
+          name: CubeDoom (rolling build)
+          files: cubedoom-continuous-x86_64.AppImage
+          body: |
+            ## CubeDoom - rolling build
+
+            Automatic build from the latest commit on `master`
+            (${{ github.sha }}). This prerelease is overwritten on every push;
+            for stable versions see the tagged releases.
+
+            ### Requirements
+            - Linux x86_64
+            - PipeWire (Ubuntu 24.04 ships it by default)
+            - A Doom IWAD (DOOM.WAD, DOOM2.WAD, etc.)
+
+            ### Usage
+            ```
+            chmod +x cubedoom-continuous-x86_64.AppImage
+            ./cubedoom-continuous-x86_64.AppImage -iwad /path/to/doom.wad
             ```
 
             ### Fulldome output
