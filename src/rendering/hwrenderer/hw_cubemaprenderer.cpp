@@ -28,6 +28,7 @@ CVAR(Bool,   r_cubemap_sh4lt_audio,     false,          CVAR_ARCHIVE | CVAR_GLOB
 CVAR(String, r_cubemap_sh4lt_audio_label, "cubedoom-audio", CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_ndi,             false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(String, r_cubemap_ndi_label,       "CubeDoom",     CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool,   r_cubemap_debug,           false,          0)
 
 // Defined in r_utility.cpp, also extern'd in hw_entrypoint.cpp
 extern bool NoInterpolateView;
@@ -225,51 +226,69 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 	// GPU blit: assemble the 6 face textures into the cross layout.
 	screen->CompositeCubemapFaces(mFaceTex, FACE_SIZE, mCrossTex);
 
-	// ---- PipeWire output ------------------------------------------------
-	if (r_cubemap_pipewire)
+	// ---- PipeWire init / DMA-BUF path -----------------------------------
+	if (r_cubemap_pipewire && !mPWAttempted)
+		InitPipeWire();
+
+	const bool pwRunning = r_cubemap_pipewire && mPWOutput.IsRunning();
+	const bool pwDmaBuf  = pwRunning && mPWOutput.IsDmaBufMode();
+	const bool pwCPU     = pwRunning && !mPWOutput.IsDmaBufMode();
+
+	if (pwDmaBuf)
 	{
-		if (!mPWAttempted)
-			InitPipeWire();
-
-		if (mPWOutput.IsRunning())
-		{
-			if (mPWOutput.IsDmaBufMode())
-			{
-				mPWOutput.QueueDmaBufFrame();
-			}
-			else
-			{
-				screen->ReadCubemapCrossPixels(mCrossTex, mPixelBuf.data(),
-				                               CROSS_W, CROSS_H);
-				if (mPBOFirstFrame) { mPBOFirstFrame = false; }
-				else mPWOutput.PushFrame(mPixelBuf.data(), CROSS_W * 4);
-			}
-		}
+		// Zero-copy: GL commands already queued; DRM implicit sync handles
+		// producer/consumer ordering.
+		mPWOutput.QueueDmaBufFrame();
 	}
-	// When CVAR is off we simply skip pushing frames;
-	// the PW stream will idle — no explicit shutdown needed.
 
-	// ---- CPU-readback video outputs (Sh4lt + NDI) -----------------------
-	// Both consume the same RGBA cross image. Read it back once if either
-	// transport is active, then hand the buffer to each.
+	// ---- Shared CPU readback (PipeWire-CPU + Sh4lt + NDI) ---------------
+	// All CPU consumers share ONE readback per frame. The double-PBO in
+	// ReadCubemapCrossPixels keeps static ping/pong state and assumes a
+	// single call per frame, so we must not call it more than once here.
 	UpdateSh4ltVideo();
 	UpdateNdiVideo();
 
-	const bool needPixels = mSh4ltVideo.IsRunning() || mNdiVideo.IsRunning();
+	const bool needPixels = pwCPU || mSh4ltVideo.IsRunning() || mNdiVideo.IsRunning();
 	if (needPixels)
 	{
-		// Re-use pixel buffer (already allocated for CPU PW path).
-		// Allocate here if PipeWire CPU path is not active.
 		if (mPixelBuf.empty())
 			mPixelBuf.resize((size_t)CROSS_W * CROSS_H * 4);
 
 		screen->ReadCubemapCrossPixels(mCrossTex, mPixelBuf.data(),
 		                               CROSS_W, CROSS_H);
 
-		if (mSh4ltVideo.IsRunning())
-			mSh4ltVideo.PushFrame(mPixelBuf.data(), CROSS_W * 4);
-		if (mNdiVideo.IsRunning())
-			mNdiVideo.PushFrame(mPixelBuf.data(), CROSS_W * 4);
+		// First readback returns nothing (pong PBO not yet populated).
+		if (mPBOFirstFrame)
+		{
+			mPBOFirstFrame = false;
+		}
+		else
+		{
+			if (r_cubemap_debug)
+			{
+				static int dbgFrame = 0;
+				if ((dbgFrame++ % 120) == 0)
+				{
+					const uint8_t* p = mPixelBuf.data();
+					const size_t n = (size_t)CROSS_W * CROSS_H * 4;
+					size_t nonzero = 0; uint8_t mx = 0;
+					// Sample every 64th byte to keep this cheap.
+					for (size_t i = 0; i < n; i += 64)
+					{
+						if (p[i]) { ++nonzero; if (p[i] > mx) mx = p[i]; }
+					}
+					fprintf(stderr, "[cubedoom/dbg] frame=%d pwCPU=%d pwDMA=%d "
+					        "sh4lt=%d ndi=%d  buf: nonzero(sampled)=%zu max=%u\n",
+					        dbgFrame, (int)pwCPU, (int)pwDmaBuf,
+					        (int)mSh4ltVideo.IsRunning(), (int)mNdiVideo.IsRunning(),
+					        nonzero, (unsigned)mx);
+				}
+			}
+
+			if (pwCPU)               mPWOutput.PushFrame(mPixelBuf.data(), CROSS_W * 4);
+			if (mSh4ltVideo.IsRunning()) mSh4ltVideo.PushFrame(mPixelBuf.data(), CROSS_W * 4);
+			if (mNdiVideo.IsRunning())   mNdiVideo.PushFrame(mPixelBuf.data(), CROSS_W * 4);
+		}
 	}
 
 	// ---- Sh4lt audio tap ------------------------------------------------
