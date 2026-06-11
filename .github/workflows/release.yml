@@ -89,6 +89,19 @@ jobs:
             'Categories=Game;' \
             > "${APPDIR}/usr/share/applications/cubedoom.desktop"
 
+          # Custom AppRun: the engine's pk3 search uses absolute paths
+          # (/usr/share/games/doom) which, inside an AppImage, point at the
+          # host's /usr rather than the bundled resources. Point DOOMWADDIR
+          # (already part of the engine's search list) at the in-AppDir copy
+          # so gzdoom.pk3 and friends are found. A user-set DOOMWADDIR wins.
+          printf '%s\n' \
+            '#!/bin/sh' \
+            'HERE="$(dirname "$(readlink -f "$0")")"' \
+            'export DOOMWADDIR="${DOOMWADDIR:-$HERE/usr/share/games/doom}"' \
+            'exec "$HERE/usr/bin/cubedoom" "$@"' \
+            > "$(pwd)/AppRun.sh"
+          chmod +x "$(pwd)/AppRun.sh"
+
           ICON_SRC="${APPDIR}/usr/share/icons/hicolor/scalable/apps/org.zdoom.GZDoom.svg"
           ICON_DST="${APPDIR}/usr/share/icons/hicolor/256x256/apps/cubedoom.png"
           if [ -f "${ICON_SRC}" ]; then
@@ -130,6 +143,7 @@ jobs:
             --executable AppDir/usr/bin/cubedoom \
             --desktop-file AppDir/usr/share/applications/cubedoom.desktop \
             --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/cubedoom.png \
+            --custom-apprun "$(pwd)/AppRun.sh" \
             --exclude-library "libpipewire*" \
             --exclude-library "libspa-*" \
             --output appimage
