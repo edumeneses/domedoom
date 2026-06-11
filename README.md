@@ -1,3 +1,27 @@
+# CubeDoom — Fulldome Edition
+
+CubeDoom is a GZDoom fork that renders the scene as a 6-face cubemap and
+streams it to a fulldome planetarium pipeline (PipeWire, Sh4lt, NDI) for the
+Satosphère dome at the Société des Arts Technologiques (SAT).
+
+## TODO
+
+Tracked work for CubeDoom (check the boxes as items land):
+
+- [ ] **Vulkan backend support for the cubemap pipeline.** The cubemap
+  composite + readback + DMA-BUF export (`CompositeCubemapFaces`,
+  `ReadCubemapCrossPixels`, `ExportCubemapCrossAsDmaBuf`) are implemented
+  only in `OpenGLFrameBuffer`; on Vulkan they fall back to the no-op
+  virtual defaults, so all fulldome outputs (PipeWire/Sh4lt/NDI) produce a
+  black frame. Implement the Vulkan equivalents so the dome works on the
+  default (Vulkan) backend without forcing `vid_preferbackend 0`.
+- [ ] **Rename the locally built executable from `gzdoom` to `cubedoom`.**
+  The CI release sets `-DZDOOM_EXE_NAME=cubedoom`, but a plain local build
+  still produces `gzdoom`. Make `cubedoom` the default executable name for
+  local builds too.
+
+---
+
 # Welcome to GZDoom!
 
 [![Continuous Integration](https://github.com/ZDoom/gzdoom/actions/workflows/continuous_integration.yml/badge.svg)](https://github.com/ZDoom/gzdoom/actions/workflows/continuous_integration.yml)
