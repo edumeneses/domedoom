@@ -5,6 +5,8 @@
 #include <mutex>
 #include <atomic>
 
+#ifdef HAVE_PIPEWIRE
+
 #include <pipewire/pipewire.h>
 
 // PipeWire video output stream for CubeDoom fulldome pipeline.
@@ -78,3 +80,20 @@ private:
 
     std::atomic<bool>    mRunning{false};
 };
+
+#else // !HAVE_PIPEWIRE
+
+// No-op stub so CubeDoom builds without libpipewire-0.3-dev. The fulldome
+// PipeWire transport is simply unavailable; Sh4lt output is unaffected.
+class PipeWireOutput
+{
+public:
+    bool InitCPU(int, int)              { return false; }
+    bool InitDmaBuf(int, int, int, int) { return false; }
+    void PushFrame(const uint8_t*, int) {}
+    void QueueDmaBufFrame()             {}
+    bool IsDmaBufMode() const           { return false; }
+    bool IsRunning()    const           { return false; }
+};
+
+#endif // HAVE_PIPEWIRE

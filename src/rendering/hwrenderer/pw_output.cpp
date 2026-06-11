@@ -17,6 +17,8 @@
 
 #include "pw_output.h"
 
+#ifdef HAVE_PIPEWIRE
+
 #include <pipewire/pipewire.h>
 #include <spa/param/video/format-utils.h>
 #include <spa/param/buffers.h>
@@ -284,3 +286,5 @@ PipeWireOutput::~PipeWireOutput()
 {
     Shutdown();
 }
+
+#endif // HAVE_PIPEWIRE
