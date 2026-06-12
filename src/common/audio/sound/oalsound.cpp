@@ -52,6 +52,7 @@ FModule OpenALModule{"OpenAL"};
 
 #include "oalload.h"
 #include "rendering/hwrenderer/cubedoom_audiotap.h"
+#include "rendering/hwrenderer/spatgris_output.h"
 
 CUSTOM_CVAR(Int, snd_channels, 128, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)	// number of channels available
 {
@@ -1502,6 +1503,8 @@ FISoundChannel *OpenALSoundRenderer::StartSound3D(SoundHandle sfx, SoundListener
 	chan->DistanceSqr = dist_sqr;
 	chan->ManualRolloff = manualRolloff;
 
+	SpatGRIS_AllocSource(source, pos.X, pos.Y, pos.Z);
+
 	return chan;
 }
 
@@ -1550,6 +1553,8 @@ void OpenALSoundRenderer::StopChannel(FISoundChannel *chan)
 		ReverbSfx.Delete(i);
 	if((i=SfxGroup.Find(source)) < SfxGroup.Size())
 		SfxGroup.Delete(i);
+
+	SpatGRIS_FreeSource(source);
 
 	if (!(chan->ChanFlags & CHANF_EVICTED))
 		soundEngine->SoundDone(chan);
@@ -1689,6 +1694,8 @@ void OpenALSoundRenderer::UpdateSoundParams3D(SoundListener *listener, FISoundCh
 	}
 	alSource3f(source, AL_VELOCITY, vel[0], vel[1], -vel[2]);
 	getALError();
+
+	SpatGRIS_UpdateSource(source, pos.X, pos.Y, pos.Z);
 }
 
 void OpenALSoundRenderer::UpdateListener(SoundListener *listener)
@@ -1717,6 +1724,9 @@ void OpenALSoundRenderer::UpdateListener(SoundListener *listener)
 	                          listener->velocity.Y,
 	                         -listener->velocity.Z);
 	getALError();
+
+	SpatGRIS_UpdateListener(listener->position.X, listener->position.Y,
+	                         listener->position.Z, listener->angle);
 
 	const ReverbContainer *env = ForcedEnvironment;
 	if(!env)

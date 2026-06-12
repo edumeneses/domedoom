@@ -22,6 +22,73 @@ Tracked work for CubeDoom (check the boxes as items land):
 
 ---
 
+## Fulldome Configuration
+
+All options live in the `r_cubemap_*` namespace and can be set in the console
+or in a startup config file.
+
+### Video / streaming
+
+| CVar | Default | Description |
+|------|---------|-------------|
+| `r_cubemap` | `false` | Enable cubemap rendering pipeline |
+| `r_cubemap_pipewire` | `true` | PipeWire DMA-BUF output |
+| `r_cubemap_sh4lt` | `false` | Sh4lt video output |
+| `r_cubemap_sh4lt_label` | `"cubedoom"` | Sh4lt video stream label |
+| `r_cubemap_sh4lt_audio` | `false` | Sh4lt audio tap output |
+| `r_cubemap_sh4lt_audio_label` | `"cubedoom-audio"` | Sh4lt audio stream label |
+| `r_cubemap_ndi` | `false` | NDI video output |
+| `r_cubemap_ndi_label` | `"CubeDoom"` | NDI source name |
+| `r_cubemap_debug` | `false` | Debug logging |
+
+### SpatGRIS spatial audio
+
+CubeDoom sends per-source 3D positions to [SpatGRIS](https://github.com/GRIS-UdeM/SpatGRIS)
+over OSC UDP so the Satosphère's speaker array can do VBAP spatialization of
+each Doom sound object independently.
+
+| CVar | Default | Description |
+|------|---------|-------------|
+| `r_cubemap_spatgris` | `false` | Enable SpatGRIS object-based audio |
+| `r_cubemap_spatgris_ip` | `"127.0.0.1"` | SpatGRIS host IP address |
+| `r_cubemap_spatgris_port` | `18032` | SpatGRIS OSC UDP port |
+| `r_cubemap_spatgris_stereo` | `false` | Stereo-only mode — disables OSC, uses OpenAL mix |
+| `r_cubemap_spatgris_sources` | `32` | Source pool size (max 128; set before launch) |
+
+**OSC message format** (SpatGRIS dome mode, degrees):
+```
+/spat/serv  "deg"  <source_id>  <azimuth_deg>  <elevation_deg>  <distance>  0.0  0.0
+```
+- `azimuth_deg`: degrees clockwise from front (0 = ahead, 90 = right, −90 = left)
+- `elevation_deg`: degrees above horizon (0 = equator, 90 = zenith)
+- `distance`: normalized `[0, 1]` — 0 = center, 1 = dome edge (= 2048 Doom units)
+
+#### Source ID mapping
+
+Slots are allocated dynamically from a pool of IDs 1–N
+(`r_cubemap_spatgris_sources`). A slot is claimed when a 3D sound starts and
+released when it stops. IDs are reused in FIFO order.
+
+| SpatGRIS ID | Doom sound | Notes |
+|-------------|-----------|-------|
+| 1 | first active 3D sound | reassigned each time a new sound claims an empty slot |
+| 2 | second active 3D sound | |
+| … | … | |
+| N | Nth active 3D sound | N = `r_cubemap_spatgris_sources` (default 32) |
+
+2D sounds (UI, menus, HUD) use `StartSound`, not `StartSound3D`, and are never
+sent to SpatGRIS — they remain in the OpenAL stereo mix.
+
+#### Audio routing
+
+SpatGRIS receives **positions** from CubeDoom via OSC. For **audio**, configure
+OpenAL Soft to use the JACK backend (`snd_aldevice` in the console) and route
+the JACK output ports into SpatGRIS's input channels, or use the Sh4lt audio
+tap for a stereo bed. True per-source JACK audio (one port per active sound) is
+a planned future enhancement.
+
+---
+
 # Welcome to GZDoom!
 
 [![Continuous Integration](https://github.com/ZDoom/gzdoom/actions/workflows/continuous_integration.yml/badge.svg)](https://github.com/ZDoom/gzdoom/actions/workflows/continuous_integration.yml)

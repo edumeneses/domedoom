@@ -753,6 +753,7 @@ set( FASTMATH_SOURCES
 	rendering/hwrenderer/hw_cubemaprenderer.cpp
 	rendering/hwrenderer/pw_output.cpp
 	rendering/hwrenderer/sh4lt_output.cpp
+	rendering/hwrenderer/spatgris_output.cpp
 	rendering/hwrenderer/ndi_output.cpp
 	rendering/hwrenderer/hw_dynlightdata.cpp
 	rendering/hwrenderer/scene/hw_bsp.cpp

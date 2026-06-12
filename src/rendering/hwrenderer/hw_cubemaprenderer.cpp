@@ -30,6 +30,12 @@ CVAR(Bool,   r_cubemap_ndi,             false,          CVAR_ARCHIVE | CVAR_GLOB
 CVAR(String, r_cubemap_ndi_label,       "CubeDoom",     CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_debug,           false,          0)
 
+CVAR(Bool,   r_cubemap_spatgris,        false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(String, r_cubemap_spatgris_ip,     "127.0.0.1",   CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Int,    r_cubemap_spatgris_port,   18032,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool,   r_cubemap_spatgris_stereo, false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Int,    r_cubemap_spatgris_sources,32,             CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+
 // Defined in r_utility.cpp, also extern'd in hw_entrypoint.cpp
 extern bool NoInterpolateView;
 
