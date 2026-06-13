@@ -4,22 +4,72 @@
 
 #include <Processing.NDI.Lib.h>
 
+#include <dlfcn.h>
 #include <cstdio>
 #include <cstring>
+#include <string>
 #include <vector>
 
-// NDIlib_initialize()/NDIlib_destroy() are process-global and reference
-// nothing per-sender. Track a simple use count so multiple senders (or
-// re-inits) don't tear the library down underneath each other.
+// ── Runtime-loaded NDI vtable ─────────────────────────────────────────────
+// dlopen libndi.so.6 on first Init() so the AppImage works on any machine
+// with the NDI runtime installed, without bundling or link-time dependency.
+static void*            gNdiHandle = nullptr;  // (void*)-1 = failed
+static const NDIlib_v6* gNdiLib    = nullptr;
+
+static bool NdiRuntimeLoad()
+{
+    if (gNdiLib)                    return true;
+    if (gNdiHandle == (void*)-1)    return false;
+
+    const char* envDir = getenv("NDI_RUNTIME_DIR_V6");
+    std::string path = envDir ? (std::string(envDir) + NDILIB_LIBRARY_NAME)
+                               : NDILIB_LIBRARY_NAME;
+
+    gNdiHandle = dlopen(path.c_str(), RTLD_LOCAL | RTLD_LAZY);
+    if (!gNdiHandle && envDir)
+        gNdiHandle = dlopen(NDILIB_LIBRARY_NAME, RTLD_LOCAL | RTLD_LAZY);
+
+    if (!gNdiHandle) {
+        fprintf(stderr, "[cubedoom/ndi] dlopen %s failed: %s\n"
+                        "  Install the NDI runtime from http://ndi.link/NDIRedistV6\n",
+                NDILIB_LIBRARY_NAME, dlerror());
+        gNdiHandle = (void*)-1;
+        return false;
+    }
+
+    using pfnLoad = const NDIlib_v6* (*)();
+    auto load_fn = (pfnLoad)dlsym(gNdiHandle, "NDIlib_v6_load");
+    if (!load_fn) {
+        fprintf(stderr, "[cubedoom/ndi] NDIlib_v6_load not found in %s\n",
+                path.c_str());
+        dlclose(gNdiHandle);
+        gNdiHandle = (void*)-1;
+        return false;
+    }
+
+    gNdiLib = load_fn();
+    if (!gNdiLib) {
+        fprintf(stderr, "[cubedoom/ndi] NDIlib_v6_load() returned null\n");
+        dlclose(gNdiHandle);
+        gNdiHandle = (void*)-1;
+        return false;
+    }
+
+    return true;
+}
+
+// ── Init-count guard (process-global) ─────────────────────────────────────
 static int gNdiInitCount = 0;
 
 static bool NdiLibInit()
 {
     if (gNdiInitCount == 0)
     {
-        if (!NDIlib_initialize())
+        if (!NdiRuntimeLoad())
+            return false;
+        if (!gNdiLib->initialize())
         {
-            fprintf(stderr, "[cubedoom/ndi] NDIlib_initialize failed "
+            fprintf(stderr, "[cubedoom/ndi] NDIlib initialize failed "
                             "(unsupported CPU?)\n");
             return false;
         }
@@ -31,7 +81,7 @@ static bool NdiLibInit()
 static void NdiLibShutdown()
 {
     if (gNdiInitCount > 0 && --gNdiInitCount == 0)
-        NDIlib_destroy();
+        gNdiLib->destroy();
 }
 
 struct NdiVideoOutput::Impl {
@@ -50,15 +100,15 @@ bool NdiVideoOutput::Init(const std::string& label, int width, int height)
     impl->flipped.resize((size_t)width * height * 4);
 
     NDIlib_send_create_t desc;
-    desc.p_ndi_name = label.c_str();
-    desc.p_groups   = nullptr;
-    desc.clock_video = true;   // rate-limit sends to the submit rate
+    desc.p_ndi_name  = label.c_str();
+    desc.p_groups    = nullptr;
+    desc.clock_video = true;
     desc.clock_audio = false;
 
-    impl->sender = NDIlib_send_create(&desc);
+    impl->sender = gNdiLib->send_create(&desc);
     if (!impl->sender)
     {
-        fprintf(stderr, "[cubedoom/ndi] NDIlib_send_create failed (label=%s)\n",
+        fprintf(stderr, "[cubedoom/ndi] send_create failed (label=%s)\n",
                 label.c_str());
         delete impl;
         NdiLibShutdown();
@@ -90,13 +140,12 @@ void NdiVideoOutput::PushFrame(const uint8_t* pixels, int srcStride)
     frame.xres                 = mWidth;
     frame.yres                 = mHeight;
     // RGBX, not RGBA: the cubemap FBO leaves alpha at 0, and NDI honors the
-    // alpha channel for RGBA frames — receivers (e.g. ossia score) would
-    // composite the whole image as fully transparent and show black. RGBX
-    // tells NDI to ignore alpha and treat every pixel as opaque.
+    // alpha channel for RGBA frames — receivers would show black. RGBX tells
+    // NDI to ignore alpha and treat every pixel as opaque.
     frame.FourCC               = NDIlib_FourCC_type_RGBX;
     frame.frame_rate_N         = 60000;
     frame.frame_rate_D         = 1000;
-    frame.picture_aspect_ratio = 0.0f;            // square pixels
+    frame.picture_aspect_ratio = 0.0f;
     frame.frame_format_type    = NDIlib_frame_format_type_progressive;
     frame.timecode             = NDIlib_send_timecode_synthesize;
     frame.p_data               = mImpl->flipped.data();
@@ -104,7 +153,7 @@ void NdiVideoOutput::PushFrame(const uint8_t* pixels, int srcStride)
     frame.p_metadata           = nullptr;
     frame.timestamp            = 0;
 
-    NDIlib_send_send_video_v2(mImpl->sender, &frame);
+    gNdiLib->send_send_video_v2(mImpl->sender, &frame);
 }
 
 void NdiVideoOutput::Shutdown()
@@ -114,7 +163,7 @@ void NdiVideoOutput::Shutdown()
     {
         if (mImpl->sender)
         {
-            NDIlib_send_destroy(mImpl->sender);
+            gNdiLib->send_destroy(mImpl->sender);
             NdiLibShutdown();
         }
         delete mImpl;

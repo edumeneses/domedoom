@@ -111,28 +111,21 @@ else()
 		endif()
 
 		# NDI video output for fulldome pipeline.
-		# The NDI SDK is not redistributable as source; detect a locally
-		# installed copy (NDI_SDK_DIR env var, the default install path, or a
-		# system-wide libndi). Disabled gracefully when absent.
+		# We only need the SDK headers at build time; the runtime library is
+		# loaded via dlopen(NDILIB_LIBRARY_NAME) at first use so the AppImage
+		# works on any machine that has the NDI runtime installed.
 		find_path( NDI_INCLUDE_DIR Processing.NDI.Lib.h
 			HINTS
 				ENV NDI_SDK_DIR
 				"$ENV{HOME}/NDI SDK for Linux"
 			PATH_SUFFIXES include
 			DOC "NDI SDK include directory" )
-		find_library( NDI_LIBRARY NAMES ndi
-			HINTS
-				ENV NDI_SDK_DIR
-				"$ENV{HOME}/NDI SDK for Linux"
-			PATH_SUFFIXES lib lib/x86_64-linux-gnu
-			DOC "NDI runtime library" )
-		if( NDI_INCLUDE_DIR AND NDI_LIBRARY )
-			set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} ${NDI_LIBRARY} )
+		if( NDI_INCLUDE_DIR )
 			include_directories( SYSTEM ${NDI_INCLUDE_DIR} )
 			add_definitions( -DHAVE_NDI=1 )
-			message( STATUS "NDI found: ${NDI_LIBRARY}" )
+			message( STATUS "NDI SDK headers found: ${NDI_INCLUDE_DIR} (runtime-loaded via dlopen)" )
 		else()
-			message( WARNING "NDI SDK not found — fulldome NDI output disabled" )
+			message( WARNING "NDI SDK headers not found — fulldome NDI output disabled" )
 		endif()
 
 		# Use GTK+ for the IWAD picker, if available.
