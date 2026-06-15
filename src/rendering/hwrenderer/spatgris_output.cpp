@@ -1,5 +1,8 @@
 #include "spatgris_output.h"
+#include "pw_audio_output.h"
 #include "c_cvars.h"
+
+#include "../../common/audio/sound/oal_sfxcache.h"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -26,6 +29,18 @@ static float        g_lx = 0.f, g_ly = 0.f, g_lz = 0.f, g_la = 0.f;
 static std::unordered_map<uint32_t, int> g_srcMap;
 static bool g_slotFree[128] = {};
 static int  g_numSlots = 0;
+
+// Per-source PipeWire audio output — one mono stream per slot.
+static PipeWireAudioOutput g_pwAudio;
+static bool                g_pwAudioInited = false;
+
+static void EnsurePWAudio()
+{
+    if (g_pwAudioInited) return;
+    g_pwAudioInited = true;
+    if (!g_pwAudio.Init(g_numSlots))
+        fprintf(stderr, "[spatgris] PipeWire per-source audio failed to init\n");
+}
 
 static void InitSlots()
 {
@@ -111,7 +126,7 @@ void SpatGRIS_UpdateListener(float x, float y, float z, float angleRad)
     g_lx = x; g_ly = y; g_lz = z; g_la = angleRad;
 }
 
-void SpatGRIS_AllocSource(uint32_t alSrc, float sx, float sy, float sz)
+void SpatGRIS_AllocSource(uint32_t alSrc, uint32_t alBuf, float sx, float sy, float sz)
 {
     if (!(bool)r_cubemap_spatgris || (bool)r_cubemap_spatgris_stereo) return;
     if (!EnsureSocket()) return;
@@ -125,6 +140,13 @@ void SpatGRIS_AllocSource(uint32_t alSrc, float sx, float sy, float sz)
 
     g_srcMap[alSrc] = id;
     SendPos(id, sx, sy, sz);
+
+    // Start per-source audio stream for this slot.
+    EnsurePWAudio();
+    OALPCMView pcm;
+    if (g_pwAudio.IsRunning() && OAL_GetSFXPCM(alBuf, &pcm))
+        g_pwAudio.AllocSlot(id - 1, pcm.data, pcm.bytes,
+                            pcm.sampleRate, pcm.bits, pcm.channels);
 }
 
 void SpatGRIS_UpdateSource(uint32_t alSrc, float sx, float sy, float sz)
@@ -141,6 +163,11 @@ void SpatGRIS_FreeSource(uint32_t alSrc)
     auto it = g_srcMap.find(alSrc);
     if (it == g_srcMap.end()) return;
     int id = it->second;
-    if (id >= 1 && id <= g_numSlots) g_slotFree[id - 1] = true;
+    if (id >= 1 && id <= g_numSlots)
+    {
+        g_slotFree[id - 1] = true;
+        if (g_pwAudio.IsRunning())
+            g_pwAudio.FreeSlot(id - 1);
+    }
     g_srcMap.erase(it);
 }

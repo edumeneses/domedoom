@@ -53,6 +53,51 @@ FModule OpenALModule{"OpenAL"};
 #include "oalload.h"
 #include "rendering/hwrenderer/cubedoom_audiotap.h"
 #include "rendering/hwrenderer/spatgris_output.h"
+#include "oal_sfxcache.h"
+
+#include <unordered_map>
+#include <vector>
+
+// ---------------------------------------------------------------------------
+// PCM side-cache: keyed by ALuint buffer, used by SpatGRIS PipeWire audio.
+
+struct OALPCMEntry {
+    std::vector<uint8_t> data;
+    int sampleRate;
+    int bits;
+    int channels;
+};
+
+static std::unordered_map<ALuint, OALPCMEntry> sSFXPCMCache;
+
+static void OAL_CacheSFXPCM(ALuint buffer, const uint8_t* data, size_t bytes,
+                              int rate, int bits, int channels)
+{
+    auto& e   = sSFXPCMCache[buffer];
+    e.data.assign(data, data + bytes);
+    e.sampleRate = rate;
+    e.bits       = bits;
+    e.channels   = channels;
+}
+
+static void OAL_EvictSFXPCM(ALuint buffer)
+{
+    sSFXPCMCache.erase(buffer);
+}
+
+bool OAL_GetSFXPCM(uint32_t alBuffer, OALPCMView* out)
+{
+    auto it = sSFXPCMCache.find((ALuint)alBuffer);
+    if (it == sSFXPCMCache.end()) return false;
+    out->data       = it->second.data.data();
+    out->bytes      = it->second.data.size();
+    out->sampleRate = it->second.sampleRate;
+    out->bits       = it->second.bits;
+    out->channels   = it->second.channels;
+    return true;
+}
+
+// ---------------------------------------------------------------------------
 
 CUSTOM_CVAR(Int, snd_channels, 128, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)	// number of channels available
 {
@@ -1088,6 +1133,8 @@ SoundHandle OpenALSoundRenderer::LoadSoundRaw(uint8_t *sfxdata, int length, int 
 		return retval;
 	}
 
+	OAL_CacheSFXPCM(buffer, (const uint8_t*)sfxdata, (size_t)length, frequency, bits, channels);
+
 	if((loopstart > 0 || loopend > 0) && AL.SOFT_loop_points)
 	{
 		if(loopstart < 0)
@@ -1176,6 +1223,11 @@ SoundHandle OpenALSoundRenderer::LoadSound(uint8_t *sfxdata, int length, int def
 		return retval;
 	}
 
+	// Cache PCM for SpatGRIS per-source PipeWire audio (8/16-bit only; skip float32).
+	if (type == SampleType_UInt8 || type == SampleType_Int16)
+		OAL_CacheSFXPCM(buffer, data.data(), data.size(), srate,
+		                 SampleTypeSize(type) * 8, ChannelCount(chans));
+
 	if (!startass) loop_start = Scale(loop_start, srate, 1000);
 	if (!endass && loop_end != ~0u) loop_end = Scale(loop_end, srate, 1000);
 	const uint32_t samples = (uint32_t)data.size() / samplesize;
@@ -1218,6 +1270,7 @@ void OpenALSoundRenderer::UnloadSound(SoundHandle sfx)
 		schan = schan->NextChan;
 	}
 
+	OAL_EvictSFXPCM(buffer);
 	alDeleteBuffers(1, &buffer);
 	getALError();
 }
@@ -1503,7 +1556,7 @@ FISoundChannel *OpenALSoundRenderer::StartSound3D(SoundHandle sfx, SoundListener
 	chan->DistanceSqr = dist_sqr;
 	chan->ManualRolloff = manualRolloff;
 
-	SpatGRIS_AllocSource(source, pos.X, pos.Y, pos.Z);
+	SpatGRIS_AllocSource(source, buffer, pos.X, pos.Y, pos.Z);
 
 	return chan;
 }
