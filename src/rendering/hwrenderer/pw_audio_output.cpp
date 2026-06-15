@@ -1,9 +1,9 @@
 //
-// pw_audio_output.cpp — per-source PipeWire mono audio for SpatGRIS
+// pw_audio_output.cpp — single N-channel PipeWire audio stream for SpatGRIS
 //
-// Each SpatGRIS slot gets its own S16 mono PipeWire stream at 48 kHz.
-// Source PCM is resampled (linear) and stored locally; the pw process
-// callback streams it in real time.  When a slot is idle it sends silence.
+// Creates one "cubedoom [spat]" stream with N mono channels so it appears as
+// a single device in qpwgraph/Helvum with N output ports that can be patched
+// directly into SpatGRIS input channels.
 //
 
 #include "pw_audio_output.h"
@@ -26,233 +26,197 @@
 static bool sPwAudioInitDone = false;
 static void EnsurePwInit()
 {
-    if (!sPwAudioInitDone)
-    {
-        pw_init(nullptr, nullptr);
-        sPwAudioInitDone = true;
-    }
+    if (!sPwAudioInitDone) { pw_init(nullptr, nullptr); sPwAudioInitDone = true; }
 }
 
-// Linear resampler: input is mono S16, output is mono S16 at OUT_RATE.
-static std::vector<int16_t> Resample(const int16_t* in, size_t inCount, int srcRate)
+// Convert raw PCM to mono S16, then linear-resample to OUT_RATE.
+static std::vector<int16_t> ToMonoS16At48k(const void* pcm, size_t bytes,
+                                            int srcRate, int bits, int srcCh)
 {
-    if (srcRate == PipeWireAudioOutput::OUT_RATE)
-        return std::vector<int16_t>(in, in + inCount);
+    const size_t bps    = (size_t)(bits / 8);
+    const size_t total  = bytes / (bps * (size_t)srcCh);
 
-    size_t outCount = (size_t)((double)inCount * PipeWireAudioOutput::OUT_RATE / srcRate + 0.5);
-    std::vector<int16_t> out(outCount);
-    for (size_t i = 0; i < outCount; i++)
+    std::vector<int16_t> mono(total);
+    if (bits == 8)
     {
-        double pos  = (double)i * srcRate / PipeWireAudioOutput::OUT_RATE;
-        size_t idx  = (size_t)pos;
-        double frac = pos - (double)idx;
-        int32_t s0  = (idx     < inCount) ? in[idx]     : 0;
-        int32_t s1  = (idx + 1 < inCount) ? in[idx + 1] : 0;
+        const uint8_t* src = static_cast<const uint8_t*>(pcm);
+        for (size_t i = 0; i < total; i++) {
+            int32_t s = 0;
+            for (int c = 0; c < srcCh; c++)
+                s += (int32_t)(src[i * srcCh + c]) - 128;
+            mono[i] = (int16_t)std::clamp(s * 256 / srcCh, -32768, 32767);
+        }
+    }
+    else
+    {
+        const int16_t* src = static_cast<const int16_t*>(pcm);
+        for (size_t i = 0; i < total; i++) {
+            int32_t s = 0;
+            for (int c = 0; c < srcCh; c++) s += src[i * srcCh + c];
+            mono[i] = (int16_t)(s / srcCh);
+        }
+    }
+
+    if (srcRate == PipeWireAudioOutput::OUT_RATE)
+        return mono;
+
+    const size_t outN = (size_t)((double)total * PipeWireAudioOutput::OUT_RATE / srcRate + 0.5);
+    std::vector<int16_t> out(outN);
+    for (size_t i = 0; i < outN; i++) {
+        double   pos  = (double)i * srcRate / PipeWireAudioOutput::OUT_RATE;
+        size_t   idx  = (size_t)pos;
+        double   frac = pos - (double)idx;
+        int32_t  s0   = (idx     < total) ? mono[idx]     : 0;
+        int32_t  s1   = (idx + 1 < total) ? mono[idx + 1] : 0;
         out[i] = (int16_t)(s0 + (int32_t)((s1 - s0) * frac));
     }
     return out;
 }
 
-// Convert raw PCM bytes to mono S16, then resample.
-static std::vector<int16_t> ToMonoS16At48k(const void* pcm, size_t bytes,
-                                            int srcRate, int bits, int srcChannels)
-{
-    const size_t bytesPerSample = (size_t)(bits / 8);
-    const size_t totalSamples   = bytes / (bytesPerSample * (size_t)srcChannels);
-
-    // Step 1: convert to S16 mono
-    std::vector<int16_t> mono(totalSamples);
-    if (bits == 8)
-    {
-        const uint8_t* src = static_cast<const uint8_t*>(pcm);
-        for (size_t i = 0; i < totalSamples; i++)
-        {
-            int32_t sum = 0;
-            for (int c = 0; c < srcChannels; c++)
-                sum += (int32_t)(src[i * srcChannels + c]) - 128;
-            // 8-bit unsigned → centre at 0, scale to S16 range
-            mono[i] = (int16_t)std::clamp(sum * 256 / srcChannels, -32768, 32767);
-        }
-    }
-    else // 16-bit
-    {
-        const int16_t* src = static_cast<const int16_t*>(pcm);
-        for (size_t i = 0; i < totalSamples; i++)
-        {
-            int32_t sum = 0;
-            for (int c = 0; c < srcChannels; c++)
-                sum += src[i * srcChannels + c];
-            mono[i] = (int16_t)(sum / srcChannels);
-        }
-    }
-
-    // Step 2: resample to 48 kHz
-    return Resample(mono.data(), mono.size(), srcRate);
-}
-
 // ---------------------------------------------------------------------------
 // PW callbacks
 
-void PipeWireAudioOutput::Slot::OnStateChanged(void* /*data*/,
-                                                enum pw_stream_state /*old*/,
-                                                enum pw_stream_state /*state*/,
-                                                const char* /*error*/)
-{
-    // Nothing to do — silence is always streamed regardless of state.
-}
+void PipeWireAudioOutput::OnStateChanged(void* /*data*/,
+                                          enum pw_stream_state /*old*/,
+                                          enum pw_stream_state /*state*/,
+                                          const char* /*error*/) {}
 
-void PipeWireAudioOutput::Slot::OnProcess(void* data)
+void PipeWireAudioOutput::OnProcess(void* data)
 {
-    auto* slot = static_cast<Slot*>(data);
+    auto* self = static_cast<PipeWireAudioOutput*>(data);
 
-    pw_buffer* pwbuf = pw_stream_dequeue_buffer(slot->stream);
+    pw_buffer* pwbuf = pw_stream_dequeue_buffer(self->mStream);
     if (!pwbuf) return;
 
-    spa_buffer* spabuf = pwbuf->buffer;
-    spa_data&   d      = spabuf->datas[0];
-    if (!d.data)
+    spa_data& d = pwbuf->buffer->datas[0];
+    if (!d.data) { pw_stream_queue_buffer(self->mStream, pwbuf); return; }
+
+    const int      N      = self->mNumSlots;
+    const uint32_t frames = d.maxsize / (uint32_t)(N * sizeof(int16_t));
+    int16_t*       dst    = static_cast<int16_t*>(d.data);
+
+    for (int s = 0; s < N; s++)
     {
-        pw_stream_queue_buffer(slot->stream, pwbuf);
-        return;
-    }
+        Slot& slot = self->mSlots[s];
+        std::unique_lock<std::mutex> lock(slot.pcmLock, std::try_to_lock);
 
-    const uint32_t maxSamples = d.maxsize / sizeof(int16_t);
-    int16_t*       dst        = static_cast<int16_t*>(d.data);
+        if (!lock || !slot.active.load(std::memory_order_acquire))
+        {
+            for (uint32_t f = 0; f < frames; f++) dst[f * N + s] = 0;
+            continue;
+        }
 
-    // Try non-blocking lock; on failure output silence (avoids blocking PW thread).
-    std::unique_lock<std::mutex> lock(slot->pcmLock, std::try_to_lock);
-    if (!lock || !slot->active.load(std::memory_order_acquire))
-    {
-        std::memset(dst, 0, maxSamples * sizeof(int16_t));
-    }
-    else
-    {
-        const uint32_t pos       = slot->readPos.load(std::memory_order_relaxed);
-        const uint32_t available = (uint32_t)slot->pcm.size();
-        const uint32_t remaining = (pos < available) ? (available - pos) : 0u;
-        const uint32_t toCopy    = std::min(maxSamples, remaining);
+        const uint32_t pos   = slot.readPos.load(std::memory_order_relaxed);
+        const uint32_t avail = (pos < (uint32_t)slot.pcm.size())
+                               ? (uint32_t)slot.pcm.size() - pos : 0u;
+        const uint32_t n     = std::min(frames, avail);
 
-        if (toCopy > 0)
-            std::memcpy(dst, slot->pcm.data() + pos, toCopy * sizeof(int16_t));
-        if (toCopy < maxSamples)
-            std::memset(dst + toCopy, 0, (maxSamples - toCopy) * sizeof(int16_t));
+        for (uint32_t f = 0; f < n;      f++) dst[f * N + s] = slot.pcm[pos + f];
+        for (uint32_t f = n; f < frames; f++) dst[f * N + s] = 0;
 
-        slot->readPos.fetch_add(toCopy, std::memory_order_relaxed);
+        slot.readPos.store(pos + n, std::memory_order_relaxed);
     }
 
     d.chunk->offset = 0;
-    d.chunk->size   = maxSamples * sizeof(int16_t);
-    d.chunk->stride = sizeof(int16_t);
-    pw_stream_queue_buffer(slot->stream, pwbuf);
+    d.chunk->size   = frames * (uint32_t)(N * sizeof(int16_t));
+    d.chunk->stride = (int32_t)(N * sizeof(int16_t));
+    pw_stream_queue_buffer(self->mStream, pwbuf);
 }
 
 // ---------------------------------------------------------------------------
 // public API
 
-bool PipeWireAudioOutput::Init(int numSlots, const char* namePrefix)
+bool PipeWireAudioOutput::Init(int numSlots)
 {
-    if (mRunning) return true;
+    if (mRunning)  return true;
     if (numSlots < 1 || numSlots > MAX_SLOTS) return false;
 
     EnsurePwInit();
 
-    mLoop = pw_thread_loop_new("cubedoom-audio", nullptr);
-    if (!mLoop)
-    {
+    mLoop = pw_thread_loop_new("cubedoom-spat", nullptr);
+    if (!mLoop) {
         fprintf(stderr, "[cubedoom/pw-audio] pw_thread_loop_new failed\n");
         return false;
     }
 
-    static const pw_stream_events kSlotEvents = {
+    static const pw_stream_events kEvents = {
         .version       = PW_VERSION_STREAM_EVENTS,
-        .state_changed = Slot::OnStateChanged,
-        .process       = Slot::OnProcess,
+        .state_changed = OnStateChanged,
+        .process       = OnProcess,
     };
 
-    mNumSlots = numSlots;
+    mStream = pw_stream_new_simple(
+        pw_thread_loop_get_loop(mLoop),
+        "cubedoom-spat",
+        pw_properties_new(
+            PW_KEY_MEDIA_TYPE,     "Audio",
+            PW_KEY_MEDIA_CATEGORY, "Playback",
+            PW_KEY_MEDIA_ROLE,     "Game",
+            PW_KEY_NODE_NAME,      "cubedoom-spat",
+            PW_KEY_NODE_DESCRIPTION, "CubeDoom [spat]",
+            nullptr),
+        &kEvents, this);
 
-    for (int i = 0; i < numSlots; i++)
-    {
-        mSlots[i].index = i;
-
-        char name[64];
-        std::snprintf(name, sizeof(name), "%s-%02d", namePrefix, i + 1);
-
-        mSlots[i].stream = pw_stream_new_simple(
-            pw_thread_loop_get_loop(mLoop),
-            name,
-            pw_properties_new(
-                PW_KEY_MEDIA_TYPE,     "Audio",
-                PW_KEY_MEDIA_CATEGORY, "Playback",
-                PW_KEY_MEDIA_ROLE,     "Game",
-                PW_KEY_NODE_NAME,      name,
-                nullptr),
-            &kSlotEvents,
-            &mSlots[i]);
-
-        if (!mSlots[i].stream)
-        {
-            fprintf(stderr, "[cubedoom/pw-audio] pw_stream_new_simple failed for slot %d\n", i);
-            Shutdown();
-            return false;
-        }
-
-        // Build audio format + buffer params.
-        uint8_t pbuf[1024];
-        spa_pod_builder b = SPA_POD_BUILDER_INIT(pbuf, sizeof(pbuf));
-
-        spa_audio_info_raw ai = {};
-        ai.format   = SPA_AUDIO_FORMAT_S16;
-        ai.rate     = (uint32_t)OUT_RATE;
-        ai.channels = (uint32_t)OUT_CHANNELS;
-        ai.position[0] = SPA_AUDIO_CHANNEL_MONO;
-
-        const spa_pod* params[2];
-        params[0] = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &ai);
-        params[1] = (spa_pod*)spa_pod_builder_add_object(&b,
-            SPA_TYPE_OBJECT_ParamBuffers, SPA_PARAM_Buffers,
-            SPA_PARAM_BUFFERS_buffers,  SPA_POD_CHOICE_RANGE_Int(2, 1, 32),
-            SPA_PARAM_BUFFERS_blocks,   SPA_POD_Int(1),
-            SPA_PARAM_BUFFERS_size,     SPA_POD_CHOICE_RANGE_Int(4096, 128, 65536),
-            SPA_PARAM_BUFFERS_stride,   SPA_POD_Int((int)sizeof(int16_t)));
-
-        int ret = pw_stream_connect(mSlots[i].stream,
-                                    PW_DIRECTION_OUTPUT,
-                                    PW_ID_ANY,
-                                    (pw_stream_flags)(PW_STREAM_FLAG_DRIVER |
-                                                      PW_STREAM_FLAG_MAP_BUFFERS),
-                                    params, 2);
-        if (ret < 0)
-        {
-            fprintf(stderr, "[cubedoom/pw-audio] pw_stream_connect slot %d: %d\n", i, ret);
-            Shutdown();
-            return false;
-        }
+    if (!mStream) {
+        fprintf(stderr, "[cubedoom/pw-audio] pw_stream_new_simple failed\n");
+        pw_thread_loop_destroy(mLoop);
+        mLoop = nullptr;
+        return false;
     }
 
+    // Build N-channel audio format param.
+    uint8_t pbuf[2048];
+    spa_pod_builder b = SPA_POD_BUILDER_INIT(pbuf, sizeof(pbuf));
+
+    spa_audio_info_raw ai = {};
+    ai.format   = SPA_AUDIO_FORMAT_S16;
+    ai.rate     = (uint32_t)OUT_RATE;
+    ai.channels = (uint32_t)numSlots;
+    for (int i = 0; i < numSlots; i++)
+        ai.position[i] = SPA_AUDIO_CHANNEL_AUX0 + (uint32_t)i;
+
+    const int bufBytes = numSlots * 256 * (int)sizeof(int16_t); // 256-frame default
+    const spa_pod* params[2];
+    params[0] = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &ai);
+    params[1] = (spa_pod*)spa_pod_builder_add_object(&b,
+        SPA_TYPE_OBJECT_ParamBuffers, SPA_PARAM_Buffers,
+        SPA_PARAM_BUFFERS_buffers,  SPA_POD_CHOICE_RANGE_Int(2, 1, 32),
+        SPA_PARAM_BUFFERS_blocks,   SPA_POD_Int(1),
+        SPA_PARAM_BUFFERS_size,     SPA_POD_CHOICE_RANGE_Int(bufBytes, bufBytes / 4, bufBytes * 8),
+        SPA_PARAM_BUFFERS_stride,   SPA_POD_Int(numSlots * (int)sizeof(int16_t)));
+
+    int ret = pw_stream_connect(mStream, PW_DIRECTION_OUTPUT, PW_ID_ANY,
+                                (pw_stream_flags)(PW_STREAM_FLAG_DRIVER |
+                                                  PW_STREAM_FLAG_MAP_BUFFERS),
+                                params, 2);
+    if (ret < 0) {
+        fprintf(stderr, "[cubedoom/pw-audio] pw_stream_connect: %d\n", ret);
+        pw_stream_destroy(mStream);  mStream = nullptr;
+        pw_thread_loop_destroy(mLoop); mLoop = nullptr;
+        return false;
+    }
+
+    mNumSlots = numSlots;
     pw_thread_loop_start(mLoop);
     mRunning = true;
-    fprintf(stderr, "[cubedoom/pw-audio] %d mono streams at %d Hz\n", numSlots, OUT_RATE);
+    fprintf(stderr, "[cubedoom/pw-audio] single %d-ch stream \"CubeDoom [spat]\" at %d Hz\n",
+            numSlots, OUT_RATE);
     return true;
 }
 
 void PipeWireAudioOutput::AllocSlot(int slot, const void* pcm, size_t bytes,
-                                    int srcRate, int bits, int srcChannels)
+                                    int srcRate, int bits, int srcCh)
 {
-    if (slot < 0 || slot >= mNumSlots) return;
-    if (!pcm || bytes == 0) return;
-    if (bits != 8 && bits != 16) return; // float32 not supported
+    if (slot < 0 || slot >= mNumSlots || !pcm || bytes == 0) return;
+    if (bits != 8 && bits != 16) return;
 
-    auto newPCM = ToMonoS16At48k(pcm, bytes, srcRate, bits, srcChannels);
-
+    auto newPCM = ToMonoS16At48k(pcm, bytes, srcRate, bits, srcCh);
     Slot& s = mSlots[slot];
-    {
-        std::lock_guard<std::mutex> lock(s.pcmLock);
-        s.active.store(false, std::memory_order_relaxed);
-        s.pcm = std::move(newPCM);
-        s.readPos.store(0, std::memory_order_relaxed);
-        s.active.store(true, std::memory_order_release);
-    }
+    std::lock_guard<std::mutex> lock(s.pcmLock);
+    s.active.store(false, std::memory_order_relaxed);
+    s.pcm = std::move(newPCM);
+    s.readPos.store(0, std::memory_order_relaxed);
+    s.active.store(true, std::memory_order_release);
 }
 
 void PipeWireAudioOutput::FreeSlot(int slot)
@@ -267,31 +231,13 @@ void PipeWireAudioOutput::FreeSlot(int slot)
 
 void PipeWireAudioOutput::Shutdown()
 {
-    if (mLoop) pw_thread_loop_stop(mLoop);
-
-    for (int i = 0; i < mNumSlots; i++)
-    {
-        if (mSlots[i].stream)
-        {
-            pw_stream_disconnect(mSlots[i].stream);
-            pw_stream_destroy(mSlots[i].stream);
-            mSlots[i].stream = nullptr;
-        }
-    }
-
-    if (mLoop)
-    {
-        pw_thread_loop_destroy(mLoop);
-        mLoop = nullptr;
-    }
-
+    if (mLoop)   pw_thread_loop_stop(mLoop);
+    if (mStream) { pw_stream_disconnect(mStream); pw_stream_destroy(mStream); mStream = nullptr; }
+    if (mLoop)   { pw_thread_loop_destroy(mLoop); mLoop = nullptr; }
     mRunning  = false;
     mNumSlots = 0;
 }
 
-PipeWireAudioOutput::~PipeWireAudioOutput()
-{
-    Shutdown();
-}
+PipeWireAudioOutput::~PipeWireAudioOutput() { Shutdown(); }
 
 #endif // HAVE_PIPEWIRE

@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 #include <cstring>
 #include <cstdio>
 #include <cmath>
@@ -30,23 +31,14 @@ static std::unordered_map<uint32_t, int> g_srcMap;
 static bool g_slotFree[128] = {};
 static int  g_numSlots = 0;
 
-// Per-source PipeWire audio output — one mono stream per slot.
+// Per-source PipeWire audio — single N-channel stream, inited at CVAR enable.
 static PipeWireAudioOutput g_pwAudio;
-static bool                g_pwAudioInited = false;
-
-static void EnsurePWAudio()
-{
-    if (g_pwAudioInited) return;
-    g_pwAudioInited = true;
-    if (!g_pwAudio.Init(g_numSlots))
-        fprintf(stderr, "[spatgris] PipeWire per-source audio failed to init\n");
-}
 
 static void InitSlots()
 {
     g_numSlots = (int)r_cubemap_spatgris_sources;
     if (g_numSlots < 1)   g_numSlots = 1;
-    if (g_numSlots > 128) g_numSlots = 128;
+    if (g_numSlots > 64)  g_numSlots = 64;  // matches PipeWireAudioOutput::MAX_SLOTS
     for (int i = 0; i < g_numSlots; ++i) g_slotFree[i] = true;
     g_srcMap.clear();
 }
@@ -56,9 +48,25 @@ static bool EnsureSocket()
     if (g_sock >= 0) return true;
     g_sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (g_sock < 0) { fprintf(stderr, "[spatgris] socket() failed\n"); return false; }
-    InitSlots();
     fprintf(stderr, "[spatgris] OSC sender ready (%d slots)\n", g_numSlots);
     return true;
+}
+
+void SpatGRIS_InitAudio()
+{
+    if (g_pwAudio.IsRunning()) return;
+    InitSlots();
+    EnsureSocket();
+    if (!g_pwAudio.Init(g_numSlots))
+        fprintf(stderr, "[spatgris] PipeWire per-source audio failed to init\n");
+}
+
+void SpatGRIS_ShutdownAudio()
+{
+    g_pwAudio.Shutdown();
+    if (g_sock >= 0) { close(g_sock); g_sock = -1; }
+    g_srcMap.clear();
+    for (int i = 0; i < g_numSlots; ++i) g_slotFree[i] = true;
 }
 
 static void UpdateDest()
@@ -129,7 +137,7 @@ void SpatGRIS_UpdateListener(float x, float y, float z, float angleRad)
 void SpatGRIS_AllocSource(uint32_t alSrc, uint32_t alBuf, float sx, float sy, float sz)
 {
     if (!(bool)r_cubemap_spatgris || (bool)r_cubemap_spatgris_stereo) return;
-    if (!EnsureSocket()) return;
+    if (g_sock < 0) return;  // not inited — SpatGRIS_InitAudio not called yet
     UpdateDest();
 
     int id = -1;
@@ -141,8 +149,6 @@ void SpatGRIS_AllocSource(uint32_t alSrc, uint32_t alBuf, float sx, float sy, fl
     g_srcMap[alSrc] = id;
     SendPos(id, sx, sy, sz);
 
-    // Start per-source audio stream for this slot.
-    EnsurePWAudio();
     OALPCMView pcm;
     if (g_pwAudio.IsRunning() && OAL_GetSFXPCM(alBuf, &pcm))
         g_pwAudio.AllocSlot(id - 1, pcm.data, pcm.bytes,

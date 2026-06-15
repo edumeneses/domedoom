@@ -18,6 +18,7 @@
 #include "scene/hw_drawinfo.h"  // RenderViewpoint declaration
 #include "c_cvars.h"
 #include "v_draw.h"
+#include "spatgris_output.h"
 
 #include <cstdio>
 #include <cstring>
@@ -31,7 +32,11 @@ CVAR(Bool,   r_cubemap_ndi,             false,          CVAR_ARCHIVE | CVAR_GLOB
 CVAR(String, r_cubemap_ndi_label,       "CubeDoom",     CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_debug,           false,          0)
 
-CVAR(Bool,   r_cubemap_spatgris,        false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CUSTOM_CVAR(Bool, r_cubemap_spatgris, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+{
+    if (self) SpatGRIS_InitAudio();
+    else      SpatGRIS_ShutdownAudio();
+}
 CVAR(String, r_cubemap_spatgris_ip,     "127.0.0.1",   CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Int,    r_cubemap_spatgris_port,   18032,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_spatgris_stereo, false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)

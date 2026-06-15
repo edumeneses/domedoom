@@ -21,13 +21,23 @@ static bool NdiRuntimeLoad()
     if (gNdiLib)                    return true;
     if (gNdiHandle == (void*)-1)    return false;
 
+    // Search order: env-specified dir → plain name (LD_LIBRARY_PATH / ldconfig)
+    // → explicit common install paths (needed when AppImage overrides LD_LIBRARY_PATH).
     const char* envDir = getenv("NDI_RUNTIME_DIR_V6");
-    std::string path = envDir ? (std::string(envDir) + NDILIB_LIBRARY_NAME)
-                               : NDILIB_LIBRARY_NAME;
+    if (envDir) {
+        std::string p = std::string(envDir) + "/" + NDILIB_LIBRARY_NAME;
+        gNdiHandle = dlopen(p.c_str(), RTLD_LOCAL | RTLD_LAZY);
+    }
 
-    gNdiHandle = dlopen(path.c_str(), RTLD_LOCAL | RTLD_LAZY);
-    if (!gNdiHandle && envDir)
-        gNdiHandle = dlopen(NDILIB_LIBRARY_NAME, RTLD_LOCAL | RTLD_LAZY);
+    static const char* kFallbacks[] = {
+        NDILIB_LIBRARY_NAME,           // plain name — works if ldconfig knows it
+        "/usr/local/lib/" NDILIB_LIBRARY_NAME,
+        "/usr/lib/" NDILIB_LIBRARY_NAME,
+        "/usr/lib/x86_64-linux-gnu/" NDILIB_LIBRARY_NAME,
+        nullptr
+    };
+    for (const char** p = kFallbacks; *p && !gNdiHandle; ++p)
+        gNdiHandle = dlopen(*p, RTLD_LOCAL | RTLD_LAZY);
 
     if (!gNdiHandle) {
         fprintf(stderr, "[cubedoom/ndi] dlopen %s failed: %s\n"
@@ -41,7 +51,7 @@ static bool NdiRuntimeLoad()
     auto load_fn = (pfnLoad)dlsym(gNdiHandle, "NDIlib_v6_load");
     if (!load_fn) {
         fprintf(stderr, "[cubedoom/ndi] NDIlib_v6_load not found in %s\n",
-                path.c_str());
+                NDILIB_LIBRARY_NAME);
         dlclose(gNdiHandle);
         gNdiHandle = (void*)-1;
         return false;
