@@ -17,6 +17,7 @@
 #include "vectors.h"
 #include "scene/hw_drawinfo.h"  // RenderViewpoint declaration
 #include "c_cvars.h"
+#include "v_draw.h"
 
 #include <cstdio>
 #include <cstring>
@@ -228,6 +229,27 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 
 	// Restore player camera so the game stays unaffected.
 	camera->Angles = savedAngles;
+}
+
+// -------------------------------------------------------------------------
+
+void CubemapRenderer::BlitHUDToFrontFace(F2DDrawer* drawer)
+{
+	if (!mInitialized || !mFaceTex[CUBE_FRONT] || !drawer) return;
+
+	// Re-bind the front face FBO and overlay the 2D HUD (statusbar, etc.)
+	// on top of the already-rendered 3D scene.  Draw2D scales the drawer's
+	// logical coordinate space (screen resolution) into the face viewport.
+	screen->RenderTextureView(mFaceTex[CUBE_FRONT], [&](IntRect& bounds) {
+		Draw2D(drawer, *screen->RenderState(), 0, 0, bounds.width, bounds.height);
+	});
+}
+
+// -------------------------------------------------------------------------
+
+void CubemapRenderer::CompositeAndStream()
+{
+	if (!mInitialized) return;
 
 	// GPU blit: assemble the 6 face textures into the cross layout.
 	screen->CompositeCubemapFaces(mFaceTex, FACE_SIZE, mCrossTex);

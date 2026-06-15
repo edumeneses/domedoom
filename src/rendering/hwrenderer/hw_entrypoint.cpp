@@ -418,11 +418,8 @@ sector_t* RenderView(player_t* player)
 		if (r_cubemap)
 		{
 			// Render all 6 cubemap faces to offscreen textures.
+			// CompositeAndStream is called later from d_main after HUD is drawn.
 			gCubemapRenderer.RenderFacesToTextures(player);
-			// Render front face to screen at 90° FOV so the game remains
-			// visible for testing. In the final PipeWire-only path this
-			// screen render will be replaced by a direct blit from the
-			// front-face texture.
 			retsec = RenderViewpoint(r_viewpoint, player->camera, NULL, 90.f, 1.f, 1.f, true, true);
 		}
 		else

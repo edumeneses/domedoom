@@ -78,6 +78,7 @@
 #include "hu_stuff.h"
 #include "hw_clock.h"
 #include "hwrenderer/scene/hw_drawinfo.h"
+#include "hwrenderer/hw_cubemaprenderer.h"
 #include "i_interface.h"
 #include "i_sound.h"
 #include "i_soundinternal.h"
@@ -128,6 +129,7 @@
 
 using namespace FileSys;
 
+EXTERN_CVAR(Bool, r_cubemap)
 EXTERN_CVAR(Bool, hud_althud)
 EXTERN_CVAR(Int, vr_mode)
 EXTERN_CVAR(Bool, cl_customizeinvulmap)
@@ -1179,6 +1181,14 @@ void D_Display ()
 		{
 			GSnd->DrawWaveDebug(snd_drawoutput);
 		}
+	}
+
+	if (r_cubemap)
+	{
+		// HUD is now in twod; overlay it onto the front face, then composite
+		// all 6 faces into the cross texture and push to streaming outputs.
+		gCubemapRenderer.BlitHUDToFrontFace(twod);
+		gCubemapRenderer.CompositeAndStream();
 	}
 
 	if (!wipestart || NoWipe < 0 || wipe_type == wipe_None || hud_toggled)

@@ -19,6 +19,15 @@ Tracked work for CubeDoom (check the boxes as items land):
 - [x] **Rename the locally built executable from `gzdoom` to `cubedoom`.**
   The default `ZDOOM_EXE_NAME` is now `cubedoom`, so local builds produce a
   `cubedoom` binary (CI already set this explicitly).
+- [ ] **Fix AppImage build for NDI and OSC/SpatGRIS.**
+  NDI fails at runtime because `libndi.so.6` is not bundled (intentionally —
+  loaded via `dlopen`) but the AppImage may land on a system without the NDI
+  runtime; document the install requirement more prominently or bundle the
+  redistributable `.so`. OSC (SpatGRIS positions) should work in principle
+  (raw UDP, no external library) but needs verification on a clean AppImage
+  host — check whether the `r_cubemap_spatgris` CVAR survives the AppImage
+  startup config path. Reference: ossia score's AppImage CI produces a working
+  OSC + NDI bundle worth diffing against.
 
 ---
 

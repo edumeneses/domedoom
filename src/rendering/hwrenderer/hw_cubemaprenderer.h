@@ -10,6 +10,7 @@
 struct player_t;
 struct sector_t;
 class FCanvasTexture;
+class F2DDrawer;
 
 // Cubemap face order and horizontal-strip layout:
 //  [RIGHT][LEFT][UP][DOWN][FRONT][BACK]
@@ -38,9 +39,17 @@ public:
 
 	~CubemapRenderer();
 
-	// Render all 6 faces offscreen then composite them into the cross texture.
-	// Camera angles are temporarily overridden per face and restored on return.
+	// Render all 6 faces offscreen. Does NOT composite or stream — call
+	// BlitHUDToFrontFace + CompositeAndStream after drawing the HUD.
 	void RenderFacesToTextures(player_t* player);
+
+	// Composite the 6 face textures into the cross layout, then push to all
+	// streaming outputs (PipeWire, Sh4lt, NDI). Call after BlitHUDToFrontFace.
+	void CompositeAndStream();
+
+	// Render the contents of `drawer` (HUD/statusbar) into the front face FBO,
+	// compositing on top of the already-rendered 3D scene.
+	void BlitHUDToFrontFace(F2DDrawer* drawer);
 
 	FCanvasTexture* FaceTex(int i)  { return mFaceTex[i]; }
 	FCanvasTexture* CrossTex()      { return mCrossTex; }
