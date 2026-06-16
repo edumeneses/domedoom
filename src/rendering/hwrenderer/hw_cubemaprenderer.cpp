@@ -255,6 +255,8 @@ void CubemapRenderer::BlitHUDToFrontFace(F2DDrawer* drawer)
 void CubemapRenderer::CompositeAndStream()
 {
 	if (!mInitialized) return;
+	static bool sOnce = false;
+	if (!sOnce) { sOnce = true; fprintf(stderr, "[cubedoom/cubemap] CompositeAndStream first call — ndi=%d\n", (int)r_cubemap_ndi); }
 
 	// GPU blit: assemble the 6 face textures into the cross layout.
 	screen->CompositeCubemapFaces(mFaceTex, FACE_SIZE, mCrossTex);
