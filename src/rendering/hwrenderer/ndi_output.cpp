@@ -7,6 +7,7 @@
 #include <dlfcn.h>
 #include <cstdio>
 #include <cstring>
+#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -21,28 +22,58 @@ static bool NdiRuntimeLoad()
     if (gNdiLib)                    return true;
     if (gNdiHandle == (void*)-1)    return false;
 
-    // Search order: env-specified dir → plain name (LD_LIBRARY_PATH / ldconfig)
-    // → explicit common install paths (needed when AppImage overrides LD_LIBRARY_PATH).
+    // Helper: prepend a directory to LD_LIBRARY_PATH so that NDI's own internal
+    // dlopen() calls (for its deps) find libraries in the same dir.  AppImages
+    // override LD_LIBRARY_PATH; without this, loading /usr/local/lib/libndi.so.6
+    // by absolute path succeeds but NDI's dep loads fail.
+    auto prependLibPath = [](const char* dir) {
+        const char* cur = getenv("LD_LIBRARY_PATH");
+        std::string nv = dir;
+        if (cur && cur[0]) { nv += ':'; nv += cur; }
+        setenv("LD_LIBRARY_PATH", nv.c_str(), 1);
+    };
+
+    // Try NDI_RUNTIME_DIR_V6 env first (user-specified install location).
     const char* envDir = getenv("NDI_RUNTIME_DIR_V6");
     if (envDir) {
+        prependLibPath(envDir);
         std::string p = std::string(envDir) + "/" + NDILIB_LIBRARY_NAME;
         gNdiHandle = dlopen(p.c_str(), RTLD_LOCAL | RTLD_LAZY);
+        if (gNdiHandle)
+            fprintf(stderr, "[cubedoom/ndi] loaded from NDI_RUNTIME_DIR_V6: %s\n", p.c_str());
+        else
+            fprintf(stderr, "[cubedoom/ndi] NDI_RUNTIME_DIR_V6 set but dlopen failed: %s\n", dlerror());
     }
 
-    static const char* kFallbacks[] = {
-        NDILIB_LIBRARY_NAME,           // plain name — works if ldconfig knows it
-        "/usr/local/lib/" NDILIB_LIBRARY_NAME,
-        "/usr/lib/" NDILIB_LIBRARY_NAME,
-        "/usr/lib/x86_64-linux-gnu/" NDILIB_LIBRARY_NAME,
+    // Fallback: common system install paths.  Prepend each dir to LD_LIBRARY_PATH
+    // before the dlopen so NDI's internal deps resolve from the same location.
+    static const char* kFallbackDirs[] = {
+        "/usr/local/lib",
+        "/usr/lib",
+        "/usr/lib/x86_64-linux-gnu",
         nullptr
     };
-    for (const char** p = kFallbacks; *p && !gNdiHandle; ++p)
-        gNdiHandle = dlopen(*p, RTLD_LOCAL | RTLD_LAZY);
+    for (const char** dir = kFallbackDirs; *dir && !gNdiHandle; ++dir) {
+        prependLibPath(*dir);
+        std::string p = std::string(*dir) + "/" + NDILIB_LIBRARY_NAME;
+        gNdiHandle = dlopen(p.c_str(), RTLD_LOCAL | RTLD_LAZY);
+        if (gNdiHandle)
+            fprintf(stderr, "[cubedoom/ndi] loaded from %s\n", p.c_str());
+        else
+            fprintf(stderr, "[cubedoom/ndi] not at %s: %s\n", p.c_str(), dlerror());
+    }
+
+    // Last resort: plain name via ldconfig / remaining LD_LIBRARY_PATH.
+    if (!gNdiHandle) {
+        gNdiHandle = dlopen(NDILIB_LIBRARY_NAME, RTLD_LOCAL | RTLD_LAZY);
+        if (gNdiHandle)
+            fprintf(stderr, "[cubedoom/ndi] loaded via ldconfig: %s\n", NDILIB_LIBRARY_NAME);
+    }
 
     if (!gNdiHandle) {
-        fprintf(stderr, "[cubedoom/ndi] dlopen %s failed: %s\n"
-                        "  Install the NDI runtime from http://ndi.link/NDIRedistV6\n",
-                NDILIB_LIBRARY_NAME, dlerror());
+        fprintf(stderr, "[cubedoom/ndi] could not load %s — "
+                        "install NDI runtime from http://ndi.link/NDIRedistV6\n",
+                NDILIB_LIBRARY_NAME);
         gNdiHandle = (void*)-1;
         return false;
     }
