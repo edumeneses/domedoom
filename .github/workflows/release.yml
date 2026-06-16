@@ -64,7 +64,8 @@ jobs:
         run: |
           wget -q https://downloads.ndi.tv/SDK/NDI_SDK_Linux/Install_NDI_SDK_v6_Linux.tar.gz
           tar -xf Install_NDI_SDK_v6_Linux.tar.gz
-          sh ./Install_NDI_SDK_v6_Linux.sh --noexec --target "$HOME/ndisdk"
+          # The installer prompts for EULA acceptance; pipe 'y' to auto-accept.
+          echo y | sh ./Install_NDI_SDK_v6_Linux.sh --noexec --target "$HOME/ndisdk"
           # Locate the header (layout varies across SDK versions) and point
           # cmake's find_path at its include dir's parent via NDI_SDK_DIR.
           hdr="$(find "$HOME/ndisdk" -name 'Processing.NDI.Lib.h' -print -quit)"
