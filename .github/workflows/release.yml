@@ -112,15 +112,19 @@ jobs:
             'Categories=Game;' \
             > "${APPDIR}/usr/share/applications/cubedoom.desktop"
 
-          # Custom AppRun: the engine's pk3 search uses absolute paths
-          # (/usr/share/games/doom) which, inside an AppImage, point at the
-          # host's /usr rather than the bundled resources. Point DOOMWADDIR
-          # (already part of the engine's search list) at the in-AppDir copy
-          # so gzdoom.pk3 and friends are found. A user-set DOOMWADDIR wins.
+          # Custom AppRun.
+          # - DOOMWADDIR: engine searches /usr/share/games/doom by absolute path;
+          #   redirect to in-AppDir copy so pk3 files are found.
+          # - LD_LIBRARY_PATH: linuxdeploy sets RUNPATH (not RPATH) on the binary,
+          #   but dlopen() for runtime-loaded libs (NDI, OSC) searches LD_LIBRARY_PATH
+          #   BEFORE RUNPATH.  Without it, plain dlopen("libndi.so.6") only searches
+          #   ldconfig — which may not include /usr/local/lib (NDI Tools install dir).
+          #   Prepend AppDir libs (bundled deps) then /usr/local/lib so NDI is found.
           printf '%s\n' \
             '#!/bin/sh' \
             'HERE="$(dirname "$(readlink -f "$0")")"' \
             'export DOOMWADDIR="${DOOMWADDIR:-$HERE/usr/share/games/doom}"' \
+            'export LD_LIBRARY_PATH="${HERE}/usr/lib:${HERE}/usr/lib/x86_64-linux-gnu:/usr/local/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"' \
             'exec "$HERE/usr/bin/cubedoom" "$@"' \
             > "$(pwd)/AppRun.sh"
           chmod +x "$(pwd)/AppRun.sh"
