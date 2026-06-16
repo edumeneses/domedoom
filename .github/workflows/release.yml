@@ -62,13 +62,17 @@ jobs:
       - name: Install NDI SDK headers
         continue-on-error: true
         run: |
+          # The NDI installer is a hand-rolled self-extractor (NOT makeself): it
+          # gates on an interactive EULA prompt ("Type y or Y to agree") and then
+          # ALWAYS extracts to "./NDI SDK for Linux" relative to the CWD. The
+          # --noexec/--target flags it appears to accept are silently ignored.
+          # So: run it from $HOME with 'y' piped in; the SDK lands in
+          # "$HOME/NDI SDK for Linux", which cmake's find_path HINT already covers.
+          cd "$HOME"
           wget -q https://downloads.ndi.tv/SDK/NDI_SDK_Linux/Install_NDI_SDK_v6_Linux.tar.gz
           tar -xf Install_NDI_SDK_v6_Linux.tar.gz
-          # The installer prompts for EULA acceptance; pipe 'y' to auto-accept.
-          echo y | sh ./Install_NDI_SDK_v6_Linux.sh --noexec --target "$HOME/ndisdk"
-          # Locate the header (layout varies across SDK versions) and point
-          # cmake's find_path at its include dir's parent via NDI_SDK_DIR.
-          hdr="$(find "$HOME/ndisdk" -name 'Processing.NDI.Lib.h' -print -quit)"
+          echo y | sh ./Install_NDI_SDK_v6_Linux.sh || true
+          hdr="$(find "$HOME" -name 'Processing.NDI.Lib.h' -print -quit 2>/dev/null || true)"
           if [ -n "$hdr" ]; then
             echo "NDI_SDK_DIR=$(dirname "$(dirname "$hdr")")" >> "$GITHUB_ENV"
             echo "Found NDI header: $hdr"
