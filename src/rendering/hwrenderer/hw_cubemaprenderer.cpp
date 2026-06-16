@@ -61,8 +61,8 @@ static constexpr FaceDesc kFaces[CUBE_FACE_COUNT] = {
 	{  90.f,   0.f,  1,   0 },  // LEFT   → col 1
 	{ -90.f,   0.f,  0,   0 },  // RIGHT  → col 0
 	{ 180.f,   0.f,  5,   0 },  // BACK   → col 5
-	{   0.f,  90.f,  2,   0 },  // UP     → col 2
-	{   0.f, -90.f,  3,   0 },  // DOWN   → col 3
+	{   0.f, -90.f,  2,   0 },  // UP     → col 2  (engine: -pitch looks up)
+	{   0.f,  90.f,  3,   0 },  // DOWN   → col 3  (engine: +pitch looks down)
 };
 
 // -------------------------------------------------------------------------
