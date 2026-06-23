@@ -271,6 +271,12 @@ public:
 	// Default no-op; overridden by the OpenGL backend.
 	virtual void CompositeCubemapFaces(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* crossTex) {}
 
+	// Warp the 6 pre-rendered face textures into a square fisheye domemaster in
+	// domeTex via a single fullscreen pass. invRot is a column-major 3x3 inverse
+	// content rotation (built CPU-side). fovDeg is the output dome FOV.
+	// Default no-op; overridden by the OpenGL backend.
+	virtual void RenderDomemaster(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* domeTex, int domeSize, float fovDeg, const float* invRot) {}
+
 	// Read the composited cross texture into a CPU buffer using double-PBO
 	// async readback (1-frame latency, no GPU stall after the first call).
 	// buf must hold w*h*4 bytes. GL bottom-up row order is preserved — caller

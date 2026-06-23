@@ -36,6 +36,7 @@ public:
 	static constexpr int CROSS_ROWS = 1;
 	static constexpr int CROSS_W    = FACE_SIZE * CROSS_COLS; // 6144
 	static constexpr int CROSS_H    = FACE_SIZE * CROSS_ROWS; // 1024
+	static constexpr int DOME_SIZE  = 2048;                  // square domemaster
 
 	~CubemapRenderer();
 
@@ -57,12 +58,18 @@ public:
 private:
 	void Init();
 	void InitPipeWire();       // called once after first composite (if enabled)
-	void UpdateSh4ltVideo();   // (re)init sh4lt video writer when label changes
+	void UpdateSh4ltVideo();   // (re)init sh4lt video writer when label/dims change
 	void UpdateSh4ltAudio();   // install/remove audio tap based on CVAR
-	void UpdateNdiVideo();     // (re)init NDI sender when label changes
+	void UpdateNdiVideo();     // (re)init NDI sender when label/dims change
+
+	// Selected output (cubemap strip vs domemaster) — depends on r_cubemap_domemaster.
+	int             OutW() const;
+	int             OutH() const;
+	FCanvasTexture* OutTex();
 
 	FCanvasTexture*       mFaceTex[CUBE_FACE_COUNT] = {};
 	FCanvasTexture*       mCrossTex                 = nullptr;
+	FCanvasTexture*       mDomeTex                  = nullptr;
 	bool                  mInitialized              = false;
 
 	// PipeWire output — initialised lazily on first frame.
@@ -74,6 +81,7 @@ private:
 	// Sh4lt video output
 	Sh4ltVideoOutput      mSh4ltVideo;
 	std::string           mSh4ltVideoLabel;   // tracks current label to detect changes
+	int                   mSh4ltW = 0, mSh4ltH = 0;  // tracks dims to detect format switch
 
 	// Sh4lt audio output (driven via OAL tap)
 	Sh4ltAudioOutput      mSh4ltAudio;
@@ -82,6 +90,7 @@ private:
 	// NDI video output
 	NdiVideoOutput        mNdiVideo;
 	std::string           mNdiVideoLabel;   // tracks current label to detect changes
+	int                   mNdiW = 0, mNdiH = 0;  // tracks dims to detect format switch
 };
 
 extern CubemapRenderer gCubemapRenderer;

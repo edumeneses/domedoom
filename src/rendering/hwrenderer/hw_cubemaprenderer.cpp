@@ -22,6 +22,17 @@
 
 #include <cstdio>
 #include <cstring>
+#include <cmath>
+
+// Output format: false = horizontal cubemap strip (6144x1024),
+//                true  = square fisheye domemaster (DOME_SIZE^2).
+// NOTE: PipeWire init and the readback PBO size on the first frame; switching
+// this at runtime needs a restart to re-init those paths cleanly.
+CVAR(Bool,   r_cubemap_domemaster,      false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_fov,        180.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_yaw,        0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_pitch,      0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_roll,       0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 CVAR(Bool,   r_cubemap_pipewire,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_sh4lt,           false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -79,6 +90,39 @@ CubemapRenderer::~CubemapRenderer()
 	}
 	delete mCrossTex;
 	mCrossTex = nullptr;
+	delete mDomeTex;
+	mDomeTex = nullptr;
+}
+
+// -------------------------------------------------------------------------
+// Output selection: cubemap strip vs domemaster.
+
+int CubemapRenderer::OutW() const { return r_cubemap_domemaster ? DOME_SIZE : CROSS_W; }
+int CubemapRenderer::OutH() const { return r_cubemap_domemaster ? DOME_SIZE : CROSS_H; }
+FCanvasTexture* CubemapRenderer::OutTex() { return r_cubemap_domemaster ? mDomeTex : mCrossTex; }
+
+// Build the inverse content rotation as a column-major 3x3 for
+// glUniformMatrix3fv(transpose=GL_FALSE). The shader computes
+// local = uInvRot * world and must match the ossia domemaster ISF, where
+// inverse_content_rotation_matrix = transpose(makeRotationMatrix(yaw,pitch,roll)).
+//
+// Let M be the ISF forward rotation (math) matrix. We want G = transpose(M).
+// glUniformMatrix3fv column-major means data[col*3+row] = G(row,col) = M(col,row).
+static void BuildInvRot(float yawDeg, float pitchDeg, float rollDeg, float out[9])
+{
+	const float d2r = 3.14159265359f / 180.0f;
+	float cy = cosf(yawDeg   * d2r), sy = sinf(yawDeg   * d2r);
+	float cp = cosf(pitchDeg * d2r), sp = sinf(pitchDeg * d2r);
+	float cr = cosf(rollDeg  * d2r), sr = sinf(rollDeg  * d2r);
+
+	// ISF forward matrix M (math, row-major):
+	//   M(0,*) = [ cy*cr - sy*cp*sr,  sy*cr + cy*cp*sr,   sp*sr ]
+	//   M(1,*) = [-cy*sr - sy*cp*cr, -sy*sr + cy*cp*cr,   sp*cr ]
+	//   M(2,*) = [ sy*sp,            -cy*sp,              cp    ]
+	// out[col*3+row] = M(col,row):
+	out[0] =  cy*cr - sy*cp*sr;  out[1] =  sy*cr + cy*cp*sr;  out[2] =  sp*sr;
+	out[3] = -cy*sr - sy*cp*cr;  out[4] = -sy*sr + cy*cp*cr;  out[5] =  sp*cr;
+	out[6] =  sy*sp;             out[7] = -cy*sp;             out[8] =  cp;
 }
 
 // -------------------------------------------------------------------------
@@ -95,11 +139,14 @@ void CubemapRenderer::UpdateSh4ltVideo()
 		return;
 	}
 
-	// Re-init when label changes or writer died.
-	if (!mSh4ltVideo.IsRunning() || label != mSh4ltVideoLabel)
+	// Re-init when label, dims (format switch), or writer state changed.
+	const int w = OutW(), h = OutH();
+	if (!mSh4ltVideo.IsRunning() || label != mSh4ltVideoLabel ||
+	    w != mSh4ltW || h != mSh4ltH)
 	{
-		mSh4ltVideo.Init(label, CROSS_W, CROSS_H);
+		mSh4ltVideo.Init(label, w, h);
 		mSh4ltVideoLabel = label;
+		mSh4ltW = w; mSh4ltH = h;
 	}
 }
 
@@ -132,11 +179,14 @@ void CubemapRenderer::UpdateNdiVideo()
 		return;
 	}
 
-	// Re-init when label changes or sender died.
-	if (!mNdiVideo.IsRunning() || label != mNdiVideoLabel)
+	// Re-init when label, dims (format switch), or sender state changed.
+	const int w = OutW(), h = OutH();
+	if (!mNdiVideo.IsRunning() || label != mNdiVideoLabel ||
+	    w != mNdiW || h != mNdiH)
 	{
-		mNdiVideo.Init(label, CROSS_W, CROSS_H);
+		mNdiVideo.Init(label, w, h);
 		mNdiVideoLabel = label;
+		mNdiW = w; mNdiH = h;
 	}
 }
 
@@ -154,12 +204,14 @@ void CubemapRenderer::InitPipeWire()
 {
 	mPWAttempted = true;
 
+	const int w = OutW(), h = OutH();
+
 	int stride = 0;
-	int dmaFd  = screen->ExportCubemapCrossAsDmaBuf(mCrossTex, &stride);
+	int dmaFd  = screen->ExportCubemapCrossAsDmaBuf(OutTex(), &stride);
 
 	if (dmaFd >= 0)
 	{
-		if (!mPWOutput.InitDmaBuf(dmaFd, CROSS_W, CROSS_H, stride))
+		if (!mPWOutput.InitDmaBuf(dmaFd, w, h, stride))
 		{
 			fprintf(stderr, "[cubedoom] PipeWire DMA-BUF stream init failed,"
 			                " retrying as CPU\n");
@@ -169,8 +221,8 @@ void CubemapRenderer::InitPipeWire()
 
 	if (dmaFd < 0)
 	{
-		mPixelBuf.resize((size_t)CROSS_W * CROSS_H * 4);
-		if (!mPWOutput.InitCPU(CROSS_W, CROSS_H))
+		mPixelBuf.resize((size_t)w * h * 4);
+		if (!mPWOutput.InitCPU(w, h))
 			fprintf(stderr, "[cubedoom] PipeWire CPU stream init failed\n");
 	}
 }
@@ -180,6 +232,7 @@ void CubemapRenderer::Init()
 	for (int i = 0; i < CUBE_FACE_COUNT; i++)
 		mFaceTex[i] = new FCanvasTexture(FACE_SIZE, FACE_SIZE);
 	mCrossTex = new FCanvasTexture(CROSS_W, CROSS_H);
+	mDomeTex  = new FCanvasTexture(DOME_SIZE, DOME_SIZE);
 	mInitialized = true;
 }
 
@@ -256,8 +309,20 @@ void CubemapRenderer::CompositeAndStream()
 {
 	if (!mInitialized) return;
 
-	// GPU blit: assemble the 6 face textures into the cross layout.
-	screen->CompositeCubemapFaces(mFaceTex, FACE_SIZE, mCrossTex);
+	if (r_cubemap_domemaster)
+	{
+		// Warp the 6 faces into a square fisheye domemaster.
+		float invRot[9];
+		BuildInvRot(r_cubemap_dome_yaw, r_cubemap_dome_pitch, r_cubemap_dome_roll,
+		            invRot);
+		screen->RenderDomemaster(mFaceTex, FACE_SIZE, mDomeTex, DOME_SIZE,
+		                         r_cubemap_dome_fov, invRot);
+	}
+	else
+	{
+		// GPU blit: assemble the 6 face textures into the horizontal strip.
+		screen->CompositeCubemapFaces(mFaceTex, FACE_SIZE, mCrossTex);
+	}
 
 	// ---- PipeWire init / DMA-BUF path -----------------------------------
 	if (r_cubemap_pipewire && !mPWAttempted)
@@ -281,14 +346,16 @@ void CubemapRenderer::CompositeAndStream()
 	UpdateSh4ltVideo();
 	UpdateNdiVideo();
 
+	const int outW = OutW(), outH = OutH();
+
 	const bool needPixels = pwCPU || mSh4ltVideo.IsRunning() || mNdiVideo.IsRunning();
 	if (needPixels)
 	{
-		if (mPixelBuf.empty())
-			mPixelBuf.resize((size_t)CROSS_W * CROSS_H * 4);
+		if (mPixelBuf.size() != (size_t)outW * outH * 4)
+			mPixelBuf.resize((size_t)outW * outH * 4);
 
-		screen->ReadCubemapCrossPixels(mCrossTex, mPixelBuf.data(),
-		                               CROSS_W, CROSS_H);
+		screen->ReadCubemapCrossPixels(OutTex(), mPixelBuf.data(),
+		                               outW, outH);
 
 		// First readback returns nothing (pong PBO not yet populated).
 		if (mPBOFirstFrame)
@@ -304,7 +371,7 @@ void CubemapRenderer::CompositeAndStream()
 				if ((dbgFrame++ % 120) == 0)
 				{
 					const uint8_t* p = mPixelBuf.data();
-					const size_t n = (size_t)CROSS_W * CROSS_H * 4;
+					const size_t n = (size_t)outW * outH * 4;
 					size_t nonzero = 0; uint8_t mx = 0;
 					// Sample every 64th byte to keep this cheap.
 					for (size_t i = 0; i < n; i += 64)
@@ -328,13 +395,13 @@ void CubemapRenderer::CompositeAndStream()
 					FILE* f = fopen(path, "wb");
 					if (f)
 					{
-						fprintf(f, "P6\n%d %d\n255\n", CROSS_W, CROSS_H);
-						std::vector<uint8_t> row((size_t)CROSS_W * 3);
-						for (int y = 0; y < CROSS_H; ++y)
+						fprintf(f, "P6\n%d %d\n255\n", outW, outH);
+						std::vector<uint8_t> row((size_t)outW * 3);
+						for (int y = 0; y < outH; ++y)
 						{
 							const uint8_t* src =
-							    mPixelBuf.data() + (size_t)(CROSS_H - 1 - y) * CROSS_W * 4;
-							for (int x = 0; x < CROSS_W; ++x)
+							    mPixelBuf.data() + (size_t)(outH - 1 - y) * outW * 4;
+							for (int x = 0; x < outW; ++x)
 							{
 								row[x * 3 + 0] = src[x * 4 + 0];
 								row[x * 3 + 1] = src[x * 4 + 1];
@@ -348,9 +415,9 @@ void CubemapRenderer::CompositeAndStream()
 				}
 			}
 
-			if (pwCPU)               mPWOutput.PushFrame(mPixelBuf.data(), CROSS_W * 4);
-			if (mSh4ltVideo.IsRunning()) mSh4ltVideo.PushFrame(mPixelBuf.data(), CROSS_W * 4);
-			if (mNdiVideo.IsRunning())   mNdiVideo.PushFrame(mPixelBuf.data(), CROSS_W * 4);
+			if (pwCPU)               mPWOutput.PushFrame(mPixelBuf.data(), outW * 4);
+			if (mSh4ltVideo.IsRunning()) mSh4ltVideo.PushFrame(mPixelBuf.data(), outW * 4);
+			if (mNdiVideo.IsRunning())   mNdiVideo.PushFrame(mPixelBuf.data(), outW * 4);
 		}
 	}
 

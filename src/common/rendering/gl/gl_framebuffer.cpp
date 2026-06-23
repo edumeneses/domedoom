@@ -342,6 +342,154 @@ void OpenGLFrameBuffer::CompositeCubemapFaces(FCanvasTexture** faces, int N, FCa
 
 //===========================================================================
 //
+// RenderDomemaster
+//
+// Warps the 6 face textures into a square fisheye domemaster via a single
+// fullscreen pass. Samples the 6 face textures directly (no cube map) using
+// the same projection math as the ossia score domemaster ISF, so the result
+// matches the proven shader. invRot is a column-major 3x3 inverse content
+// rotation built CPU-side, so the fragment shader does no trig per pixel.
+//
+//===========================================================================
+
+static const char* kDomeVS = R"GLSL(
+#version 330 core
+out vec2 vUV;
+void main() {
+    // id 0->(0,0) 1->(2,0) 2->(0,2): attrib-less fullscreen triangle.
+    vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
+    vUV = p;
+    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}
+)GLSL";
+
+static const char* kDomeFS = R"GLSL(
+#version 330 core
+in vec2 vUV;
+out vec4 FragColor;
+uniform sampler2D facePosX, faceNegX, facePosY, faceNegY, facePosZ, faceNegZ;
+uniform mat3  uInvRot;
+uniform float uHalfFovRad;
+// Engine face textures are GL bottom-up; sampling them directly is the opposite
+// vertical sense from the ossia strip (flipped on readback), so no vert flip
+// here. If the dome is upside-down, change vec2(1.0,1.0) -> vec2(1.0,-1.0).
+#define UV(c) (((c) * vec2(1.0, 1.0) + 1.0) * 0.5)
+void main() {
+    vec2 p = vUV * 2.0 - 1.0;
+    float r = length(p);
+    if (r > 1.0) { FragColor = vec4(0.0); return; }
+    vec2 az = (r > 1e-6) ? p / r : vec2(0.0);
+    float polar = r * uHalfFovRad;
+    float sp = sin(polar);
+    vec3 d = uInvRot * vec3(sp * az.x, sp * az.y, cos(polar));
+    vec3 a = abs(d); vec2 sc;
+    if (a.x >= a.y && a.x >= a.z) {
+        if (d.x > 0.0) { sc = vec2(-d.z,-d.y)/a.x; FragColor = texture(facePosX, UV(sc)); }
+        else           { sc = vec2( d.z,-d.y)/a.x; FragColor = texture(faceNegX, UV(sc)); }
+    } else if (a.y >= a.z) {
+        if (d.y > 0.0) { sc = vec2( d.x, d.z)/a.y; FragColor = texture(facePosY, UV(sc)); }
+        else           { sc = vec2( d.x,-d.z)/a.y; FragColor = texture(faceNegY, UV(sc)); }
+    } else {
+        if (d.z > 0.0) { sc = vec2( d.x,-d.y)/a.z; FragColor = texture(facePosZ, UV(sc)); }
+        else           { sc = vec2(-d.x,-d.y)/a.z; FragColor = texture(faceNegZ, UV(sc)); }
+    }
+}
+)GLSL";
+
+static GLuint CompileDomeShader(GLenum type, const char* src)
+{
+	GLuint s = glCreateShader(type);
+	glShaderSource(s, 1, &src, nullptr);
+	glCompileShader(s);
+	GLint ok = 0; glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
+	if (!ok)
+	{
+		char log[1024]; glGetShaderInfoLog(s, sizeof(log), nullptr, log);
+		fprintf(stderr, "[cubedoom] dome shader compile failed: %s\n", log);
+	}
+	return s;
+}
+
+void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
+                                         FCanvasTexture* domeTex, int domeSize,
+                                         float fovDeg, const float* invRot)
+{
+	static GLuint sFBO = 0, sProg = 0, sVAO = 0;
+	static GLint  uInvRot = -1, uHalfFov = -1;
+	if (!sFBO)
+	{
+		glGenFramebuffers(1, &sFBO);
+		glGenVertexArrays(1, &sVAO);               // empty VAO for attrib-less draw
+		GLuint vs = CompileDomeShader(GL_VERTEX_SHADER,   kDomeVS);
+		GLuint fs = CompileDomeShader(GL_FRAGMENT_SHADER, kDomeFS);
+		sProg = glCreateProgram();
+		glAttachShader(sProg, vs); glAttachShader(sProg, fs);
+		glLinkProgram(sProg);
+		glDeleteShader(vs); glDeleteShader(fs);
+		glUseProgram(sProg);
+		const char* names[6] = {"facePosX","faceNegX","facePosY","faceNegY","facePosZ","faceNegZ"};
+		for (int i = 0; i < 6; i++) glUniform1i(glGetUniformLocation(sProg, names[i]), i);
+		uInvRot  = glGetUniformLocation(sProg, "uInvRot");
+		uHalfFov = glGetUniformLocation(sProg, "uHalfFovRad");
+		glUseProgram(0);
+	}
+
+	auto* domeHW = static_cast<FHardwareTexture*>(domeTex->GetHardwareTexture(0, 0));
+	domeHW->BindOrCreate(domeTex, 0, 0, 0, 0);
+	FHardwareTexture::Unbind(0);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, sFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+	                       GL_TEXTURE_2D, domeHW->GetTextureHandle(), 0);
+
+	// Save the GL state we touch (mirror CompositeCubemapFaces discipline).
+	const GLboolean savedScissor = glIsEnabled(GL_SCISSOR_TEST);
+	const GLboolean savedDepth   = glIsEnabled(GL_DEPTH_TEST);
+	const GLboolean savedBlend   = glIsEnabled(GL_BLEND);
+	GLint savedVP[4]; glGetIntegerv(GL_VIEWPORT, savedVP);
+	glDisable(GL_SCISSOR_TEST); glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND);
+
+	glViewport(0, 0, domeSize, domeSize);
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	// CubeFaceIndex {FRONT,LEFT,RIGHT,BACK,UP,DOWN} -> sampler unit
+	// {posX(R)=0,negX(L)=1,posY(U)=2,negY(D)=3,posZ(F)=4,negZ(B)=5}.
+	// Same permutation as kFBX in CompositeCubemapFaces.
+	static const int kUnitForFace[6] = { 4, 1, 0, 5, 2, 3 };
+	for (int f = 0; f < 6; f++)
+	{
+		auto* hw = static_cast<FHardwareTexture*>(faces[f]->GetHardwareTexture(0, 0));
+		glActiveTexture(GL_TEXTURE0 + kUnitForFace[f]);
+		glBindTexture(GL_TEXTURE_2D, hw->GetTextureHandle());
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	}
+
+	glUseProgram(sProg);
+	glUniformMatrix3fv(uInvRot, 1, GL_FALSE, invRot);
+	glUniform1f(uHalfFov, fovDeg * (3.14159265359f / 360.0f));
+
+	glBindVertexArray(sVAO);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+	glBindVertexArray(0);
+	glUseProgram(0);
+
+	// Restore the GL state we changed.
+	glActiveTexture(GL_TEXTURE0);
+	glViewport(savedVP[0], savedVP[1], savedVP[2], savedVP[3]);
+	if (savedScissor) glEnable(GL_SCISSOR_TEST);
+	if (savedDepth)   glEnable(GL_DEPTH_TEST);
+	if (savedBlend)   glEnable(GL_BLEND);
+
+	domeTex->SetUpdated(true);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+//===========================================================================
+//
 // ReadCubemapCrossPixels
 //
 // Async GPU→CPU readback using double-PBO (Pixel Buffer Objects).
