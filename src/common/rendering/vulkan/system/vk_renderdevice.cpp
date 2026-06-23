@@ -546,6 +546,215 @@ void VulkanRenderDevice::ReadCubemapCrossPixels(FCanvasTexture* crossTex, uint8_
 	staging->Unmap();
 }
 
+//===========================================================================
+//
+// RenderDomemaster (Vulkan)
+//
+// Warps the 6 face textures into a square fisheye domemaster via one
+// fullscreen graphics pass. Mirrors the OpenGL RenderDomemaster and uses the
+// same projection math as the ossia score domemaster ISF. invRot is a
+// column-major 3x3 inverse content rotation built CPU-side.
+//
+//===========================================================================
+
+static const char* kDomeVertSrc = R"GLSL(
+#version 450
+layout(location = 0) out vec2 vUV;
+void main() {
+	vec2 p = vec2(float((gl_VertexIndex << 1) & 2), float(gl_VertexIndex & 2));
+	vUV = p;
+	gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}
+)GLSL";
+
+static const char* kDomeFragSrc = R"GLSL(
+#version 450
+layout(location = 0) in vec2 vUV;
+layout(location = 0) out vec4 FragColor;
+layout(set = 0, binding = 0) uniform sampler2D facePosX;
+layout(set = 0, binding = 1) uniform sampler2D faceNegX;
+layout(set = 0, binding = 2) uniform sampler2D facePosY;
+layout(set = 0, binding = 3) uniform sampler2D faceNegY;
+layout(set = 0, binding = 4) uniform sampler2D facePosZ;
+layout(set = 0, binding = 5) uniform sampler2D faceNegZ;
+layout(push_constant) uniform PC {
+	vec4 rot0; vec4 rot1; vec4 rot2; // columns of invRot (xyz used)
+	vec4 params;                     // params.x = halfFovRad
+} pc;
+// If the dome is upside-down on the wall, change vec2(1.0,1.0) -> vec2(1.0,-1.0).
+#define UV(c) (((c) * vec2(1.0, 1.0) + 1.0) * 0.5)
+void main() {
+	vec2 p = vUV * 2.0 - 1.0;
+	float r = length(p);
+	if (r > 1.0) { FragColor = vec4(0.0); return; }
+	vec2 az = (r > 1e-6) ? p / r : vec2(0.0);
+	float polar = r * pc.params.x;
+	float sp = sin(polar);
+	mat3 invRot = mat3(pc.rot0.xyz, pc.rot1.xyz, pc.rot2.xyz);
+	vec3 d = invRot * vec3(sp * az.x, sp * az.y, cos(polar));
+	vec3 a = abs(d); vec2 sc;
+	if (a.x >= a.y && a.x >= a.z) {
+		if (d.x > 0.0) { sc = vec2(-d.z,-d.y)/a.x; FragColor = texture(facePosX, UV(sc)); }
+		else           { sc = vec2( d.z,-d.y)/a.x; FragColor = texture(faceNegX, UV(sc)); }
+	} else if (a.y >= a.z) {
+		if (d.y > 0.0) { sc = vec2( d.x, d.z)/a.y; FragColor = texture(facePosY, UV(sc)); }
+		else           { sc = vec2( d.x,-d.z)/a.y; FragColor = texture(faceNegY, UV(sc)); }
+	} else {
+		if (d.z > 0.0) { sc = vec2( d.x,-d.y)/a.z; FragColor = texture(facePosZ, UV(sc)); }
+		else           { sc = vec2(-d.x,-d.y)/a.z; FragColor = texture(faceNegZ, UV(sc)); }
+	}
+}
+)GLSL";
+
+struct DomePush { float rot0[4]; float rot1[4]; float rot2[4]; float params[4]; };
+
+void VulkanRenderDevice::InitDomemasterResources(int domeSize)
+{
+	if (mDomeInit) return;
+
+	mDomeVert = ShaderBuilder()
+		.Type(ShaderType::Vertex)
+		.AddSource("domemaster.vert", kDomeVertSrc)
+		.DebugName("domemaster.vert")
+		.Create("domemaster.vert", device.get());
+	mDomeFrag = ShaderBuilder()
+		.Type(ShaderType::Fragment)
+		.AddSource("domemaster.frag", kDomeFragSrc)
+		.DebugName("domemaster.frag")
+		.Create("domemaster.frag", device.get());
+
+	mDomeSampler = SamplerBuilder()
+		.MinFilter(VK_FILTER_LINEAR)
+		.MagFilter(VK_FILTER_LINEAR)
+		.MipmapMode(VK_SAMPLER_MIPMAP_MODE_NEAREST)
+		.AddressMode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
+		.MaxLod(0.25f)
+		.DebugName("DomemasterSampler")
+		.Create(device.get());
+
+	DescriptorSetLayoutBuilder slb;
+	for (int i = 0; i < 6; i++)
+		slb.AddBinding(i, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
+	mDomeSetLayout = slb.DebugName("DomemasterSetLayout").Create(device.get());
+
+	mDomePipelineLayout = PipelineLayoutBuilder()
+		.AddSetLayout(mDomeSetLayout.get())
+		.AddPushConstantRange(VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(DomePush))
+		.DebugName("DomemasterPipelineLayout")
+		.Create(device.get());
+
+	mDomeRenderPass = RenderPassBuilder()
+		.AddAttachment(VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+		               VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
+		               VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+		.AddSubpass()
+		.AddSubpassColorAttachmentRef(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+		.AddExternalSubpassDependency(
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+			VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_SHADER_READ_BIT)
+		.DebugName("DomemasterRenderPass")
+		.Create(device.get());
+
+	GraphicsPipelineBuilder pb;
+	pb.Cache(GetRenderPassManager()->GetCache());
+	pb.AddVertexShader(mDomeVert.get());
+	pb.AddFragmentShader(mDomeFrag.get());
+	pb.Topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+	pb.Viewport(0.0f, 0.0f, (float)domeSize, (float)domeSize);
+	pb.Scissor(0, 0, domeSize, domeSize);
+	pb.Cull(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+	pb.DepthStencilEnable(false, false, false);
+	pb.RasterizationSamples(VK_SAMPLE_COUNT_1_BIT);
+	pb.AddColorBlendAttachment(ColorBlendAttachmentBuilder().Create());
+	pb.Layout(mDomePipelineLayout.get());
+	pb.RenderPass(mDomeRenderPass.get());
+	pb.DebugName("DomemasterPipeline");
+	mDomePipeline = pb.Create(device.get());
+
+	mDomeDescPool = DescriptorPoolBuilder()
+		.AddPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6)
+		.MaxSets(1)
+		.DebugName("DomemasterDescPool")
+		.Create(device.get());
+	mDomeDescSet = mDomeDescPool->allocate(mDomeSetLayout.get());
+
+	mDomeFbSize = domeSize;
+	mDomeInit = true;
+}
+
+void VulkanRenderDevice::RenderDomemaster(FCanvasTexture** faces, int N,
+                                          FCanvasTexture* domeTex, int domeSize,
+                                          float fovDeg, const float* invRot)
+{
+	InitDomemasterResources(domeSize);
+
+	auto domeHW = static_cast<VkHardwareTexture*>(domeTex->GetHardwareTexture(0, 0));
+	VkTextureImage* dome = domeHW->GetImage(domeTex, 0, 0);
+
+	if (!mDomeFramebuffer)
+	{
+		mDomeFramebuffer = FramebufferBuilder()
+			.RenderPass(mDomeRenderPass.get())
+			.AddAttachment(dome->View.get())
+			.Size(domeSize, domeSize)
+			.DebugName("DomemasterFramebuffer")
+			.Create(device.get());
+	}
+
+	mRenderState->EndRenderPass();
+	auto cmd = mCommands->GetDrawCommands();
+
+	// Move all faces to a sampleable layout.
+	for (int i = 0; i < 6; i++)
+	{
+		auto faceHW = static_cast<VkHardwareTexture*>(faces[i]->GetHardwareTexture(0, 0));
+		VkTextureImage* face = faceHW->GetImage(faces[i], 0, 0);
+		VkImageTransition()
+			.AddImage(face, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false)
+			.Execute(cmd);
+	}
+
+	// Bind faces to sampler bindings. binding -> CubeFaceIndex:
+	// 0 posX=RIGHT(2), 1 negX=LEFT(1), 2 posY=UP(4), 3 negY=DOWN(5),
+	// 4 posZ=FRONT(0), 5 negZ=BACK(3).
+	static const int kFaceForBinding[6] = { 2, 1, 4, 5, 0, 3 };
+	WriteDescriptors wd;
+	for (int b = 0; b < 6; b++)
+	{
+		auto faceHW = static_cast<VkHardwareTexture*>(faces[kFaceForBinding[b]]->GetHardwareTexture(0, 0));
+		VkTextureImage* face = faceHW->GetImage(faces[kFaceForBinding[b]], 0, 0);
+		wd.AddCombinedImageSampler(mDomeDescSet.get(), b, face->View.get(),
+		                           mDomeSampler.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	}
+	wd.Execute(device.get());
+
+	DomePush push = {};
+	push.rot0[0] = invRot[0]; push.rot0[1] = invRot[1]; push.rot0[2] = invRot[2];
+	push.rot1[0] = invRot[3]; push.rot1[1] = invRot[4]; push.rot1[2] = invRot[5];
+	push.rot2[0] = invRot[6]; push.rot2[1] = invRot[7]; push.rot2[2] = invRot[8];
+	push.params[0] = fovDeg * (3.14159265359f / 360.0f);
+
+	RenderPassBegin()
+		.RenderPass(mDomeRenderPass.get())
+		.RenderArea(0, 0, domeSize, domeSize)
+		.Framebuffer(mDomeFramebuffer.get())
+		.AddClearColor(0.0f, 0.0f, 0.0f, 0.0f)
+		.Execute(cmd);
+
+	cmd->bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, mDomePipeline.get());
+	cmd->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, mDomePipelineLayout.get(), 0, mDomeDescSet.get());
+	cmd->pushConstants(mDomePipelineLayout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
+	cmd->draw(3, 1, 0, 0);
+	cmd->endRenderPass();
+
+	// The render pass left the dome image in SHADER_READ_ONLY; sync the tracked
+	// layout so ReadCubemapCrossPixels transitions from the correct old layout.
+	dome->Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	domeTex->SetUpdated(true);
+}
+
 void VulkanRenderDevice::SetActiveRenderTarget()
 {
 	mPostprocess->SetActiveRenderTarget();

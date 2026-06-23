@@ -96,8 +96,10 @@ public:
 	// Fulldome cubemap pipeline (Vulkan implementation; OpenGL has its own).
 	void CompositeCubemapFaces(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* crossTex) override;
 	void ReadCubemapCrossPixels(class FCanvasTexture* crossTex, uint8_t* buf, int w, int h) override;
+	void RenderDomemaster(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* domeTex, int domeSize, float fovDeg, const float* invRot) override;
 
 private:
+	void InitDomemasterResources(int domeSize);
 	void RenderTextureView(FCanvasTexture* tex, std::function<void(IntRect &)> renderFunc) override;
 	void PrintStartupLog();
 	void CopyScreenToBuffer(int w, int h, uint8_t *data) override;
@@ -119,6 +121,20 @@ private:
 	VkRenderBuffers *mActiveRenderBuffers = nullptr;
 
 	bool mVSync = false;
+
+	// Fulldome domemaster warp pass (Vulkan). Built lazily on first use.
+	bool mDomeInit = false;
+	int  mDomeFbSize = 0;
+	std::unique_ptr<VulkanShader>              mDomeVert;
+	std::unique_ptr<VulkanShader>              mDomeFrag;
+	std::unique_ptr<VulkanSampler>             mDomeSampler;
+	std::unique_ptr<VulkanDescriptorSetLayout> mDomeSetLayout;
+	std::unique_ptr<VulkanPipelineLayout>      mDomePipelineLayout;
+	std::unique_ptr<VulkanRenderPass>          mDomeRenderPass;
+	std::unique_ptr<VulkanPipeline>            mDomePipeline;
+	std::unique_ptr<VulkanDescriptorPool>      mDomeDescPool;
+	std::unique_ptr<VulkanDescriptorSet>       mDomeDescSet;
+	std::unique_ptr<VulkanFramebuffer>         mDomeFramebuffer;
 };
 
 class CVulkanError : public CEngineError
