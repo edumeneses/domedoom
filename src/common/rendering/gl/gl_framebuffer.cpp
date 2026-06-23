@@ -449,11 +449,17 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 	                       GL_TEXTURE_2D, domeHW->GetTextureHandle(), 0);
 
 	// Save the GL state we touch (mirror CompositeCubemapFaces discipline).
+	// Stencil test (portal clipping) and face culling are left enabled by the
+	// scene render; a glBlitFramebuffer ignores both but a shader draw does not,
+	// so a failing stencil func or a culled triangle would render all black.
 	const GLboolean savedScissor = glIsEnabled(GL_SCISSOR_TEST);
 	const GLboolean savedDepth   = glIsEnabled(GL_DEPTH_TEST);
 	const GLboolean savedBlend   = glIsEnabled(GL_BLEND);
+	const GLboolean savedStencil = glIsEnabled(GL_STENCIL_TEST);
+	const GLboolean savedCull    = glIsEnabled(GL_CULL_FACE);
 	GLint savedVP[4]; glGetIntegerv(GL_VIEWPORT, savedVP);
 	glDisable(GL_SCISSOR_TEST); glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND);
+	glDisable(GL_STENCIL_TEST); glDisable(GL_CULL_FACE);
 
 	glViewport(0, 0, domeSize, domeSize);
 	glClearColor(0, 0, 0, 0);
@@ -498,12 +504,29 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 	glBindVertexArray(0);
 	glUseProgram(0);
 
+	if (r_cubemap_debug)
+	{
+		static int dbgN2 = 0;
+		if ((dbgN2++ % 120) == 0)
+		{
+			GLenum err = glGetError();
+			uint8_t c[4] = {0,0,0,0};
+			glReadPixels(domeSize/2, domeSize/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, c);
+			GLint curProg = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &curProg);
+			fprintf(stderr, "[cubedoom/dbg] dome draw: prog=%u glErr=0x%x "
+			        "centerRGBA=%u,%u,%u,%u\n",
+			        sProg, (unsigned)err, c[0], c[1], c[2], c[3]);
+		}
+	}
+
 	// Restore the GL state we changed.
 	glActiveTexture(GL_TEXTURE0);
 	glViewport(savedVP[0], savedVP[1], savedVP[2], savedVP[3]);
 	if (savedScissor) glEnable(GL_SCISSOR_TEST);
 	if (savedDepth)   glEnable(GL_DEPTH_TEST);
 	if (savedBlend)   glEnable(GL_BLEND);
+	if (savedStencil) glEnable(GL_STENCIL_TEST);
+	if (savedCull)    glEnable(GL_CULL_FACE);
 
 	domeTex->SetUpdated(true);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
