@@ -425,6 +425,12 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		sProg = glCreateProgram();
 		glAttachShader(sProg, vs); glAttachShader(sProg, fs);
 		glLinkProgram(sProg);
+		GLint linked = 0; glGetProgramiv(sProg, GL_LINK_STATUS, &linked);
+		if (!linked)
+		{
+			char log[1024]; glGetProgramInfoLog(sProg, sizeof(log), nullptr, log);
+			fprintf(stderr, "[cubedoom] dome shader link failed: %s\n", log);
+		}
 		glDeleteShader(vs); glDeleteShader(fs);
 		glUseProgram(sProg);
 		const char* names[6] = {"facePosX","faceNegX","facePosY","faceNegY","facePosZ","faceNegZ"};
@@ -453,6 +459,18 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 	glClearColor(0, 0, 0, 0);
 	glClear(GL_COLOR_BUFFER_BIT);
 
+	if (r_cubemap_debug)
+	{
+		static int dbgN = 0;
+		if ((dbgN++ % 120) == 0)
+		{
+			GLenum st = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+			fprintf(stderr, "[cubedoom/dbg] dome FBO %s, %dx%d\n",
+			        st == GL_FRAMEBUFFER_COMPLETE ? "complete" : "INCOMPLETE",
+			        domeSize, domeSize);
+		}
+	}
+
 	// CubeFaceIndex {FRONT,LEFT,RIGHT,BACK,UP,DOWN} -> sampler unit
 	// {posX(R)=0,negX(L)=1,posY(U)=2,negY(D)=3,posZ(F)=4,negZ(B)=5}.
 	// Same permutation as kFBX in CompositeCubemapFaces.
@@ -461,6 +479,9 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 	{
 		auto* hw = static_cast<FHardwareTexture*>(faces[f]->GetHardwareTexture(0, 0));
 		glActiveTexture(GL_TEXTURE0 + kUnitForFace[f]);
+		// Unbind any sampler object the engine left on this unit — those expect
+		// mipmaps and would make the (mip-less) face texture incomplete -> black.
+		glBindSampler(kUnitForFace[f], 0);
 		glBindTexture(GL_TEXTURE_2D, hw->GetTextureHandle());
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);

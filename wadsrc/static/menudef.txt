@@ -382,6 +382,15 @@ OptionMenu "FulldomeOutputOptions" protected
 	Option "Enable cubemap rendering", "r_cubemap", "YesNo"
 
 	StaticText " "
+	StaticText "Projection Format", 1
+	Option "Domemaster (fisheye) output", "r_cubemap_domemaster", "OnOff"
+	StaticText "Off: 6144 x 1024 cubemap strip. On: 2048 x 2048 domemaster.", 1
+	Slider "Domemaster FOV (degrees)", "r_cubemap_dome_fov", 1, 360, 1
+	Slider "Content yaw (degrees)", "r_cubemap_dome_yaw", -180, 180, 1
+	Slider "Content pitch (degrees)", "r_cubemap_dome_pitch", -180, 180, 1
+	Slider "Content roll (degrees)", "r_cubemap_dome_roll", -180, 180, 1
+
+	StaticText " "
 	StaticText "PipeWire", 1
 	Option "PipeWire video output", "r_cubemap_pipewire", "YesNo"
 
@@ -399,7 +408,7 @@ OptionMenu "FulldomeOutputOptions" protected
 	StaticText "NDI Video", 1
 	Option "NDI video output", "r_cubemap_ndi", "YesNo"
 	TextField "NDI source name", "r_cubemap_ndi_label"
-	StaticText "Output resolution: 6144 x 1024 (6 x 1024 faces)"
+	StaticText "Resolution follows Projection Format (above)."
 
 	StaticText " "
 	StaticText "SpatGRIS Spatial Audio", 1
