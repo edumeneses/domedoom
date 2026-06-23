@@ -370,12 +370,10 @@ out vec4 FragColor;
 uniform sampler2D facePosX, faceNegX, facePosY, faceNegY, facePosZ, faceNegZ;
 uniform mat3  uInvRot;
 uniform float uHalfFovRad;
-// Engine face textures are GL bottom-up; sampling them directly is the opposite
-// vertical sense from the ossia strip (flipped on readback), so no vert flip
-// here. If the dome is upside-down, change vec2(1.0,1.0) -> vec2(1.0,-1.0).
+uniform vec2  uFlip;        // per-axis output flip: (+1 or -1, +1 or -1)
 #define UV(c) (((c) * vec2(1.0, 1.0) + 1.0) * 0.5)
 void main() {
-    vec2 p = vUV * 2.0 - 1.0;
+    vec2 p = (vUV * 2.0 - 1.0) * uFlip;
     float r = length(p);
     if (r > 1.0) { FragColor = vec4(0.0); return; }
     vec2 az = (r > 1e-6) ? p / r : vec2(0.0);
@@ -412,10 +410,11 @@ static GLuint CompileDomeShader(GLenum type, const char* src)
 
 void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
                                          FCanvasTexture* domeTex, int domeSize,
-                                         float fovDeg, const float* invRot)
+                                         float fovDeg, const float* invRot,
+                                         bool flipH, bool flipV)
 {
 	static GLuint sFBO = 0, sProg = 0, sVAO = 0;
-	static GLint  uInvRot = -1, uHalfFov = -1;
+	static GLint  uInvRot = -1, uHalfFov = -1, uFlip = -1;
 	if (!sFBO)
 	{
 		glGenFramebuffers(1, &sFBO);
@@ -437,6 +436,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		for (int i = 0; i < 6; i++) glUniform1i(glGetUniformLocation(sProg, names[i]), i);
 		uInvRot  = glGetUniformLocation(sProg, "uInvRot");
 		uHalfFov = glGetUniformLocation(sProg, "uHalfFovRad");
+		uFlip    = glGetUniformLocation(sProg, "uFlip");
 		glUseProgram(0);
 	}
 
@@ -498,6 +498,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 	glUseProgram(sProg);
 	glUniformMatrix3fv(uInvRot, 1, GL_FALSE, invRot);
 	glUniform1f(uHalfFov, fovDeg * (3.14159265359f / 360.0f));
+	glUniform2f(uFlip, flipH ? -1.0f : 1.0f, flipV ? -1.0f : 1.0f);
 
 	glBindVertexArray(sVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 3);

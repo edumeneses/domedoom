@@ -33,6 +33,10 @@ CVAR(Float,  r_cubemap_dome_fov,        180.f,          CVAR_ARCHIVE | CVAR_GLOB
 CVAR(Float,  r_cubemap_dome_yaw,        0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_pitch,      0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_roll,       0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+// Output image flips. GL and Vulkan need different defaults (NDC + texture
+// origin differ), so these are exposed live per machine/backend.
+CVAR(Bool,   r_cubemap_dome_flip_h,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool,   r_cubemap_dome_flip_v,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 CVAR(Bool,   r_cubemap_pipewire,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_sh4lt,           false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -316,7 +320,8 @@ void CubemapRenderer::CompositeAndStream()
 		BuildInvRot(r_cubemap_dome_yaw, r_cubemap_dome_pitch, r_cubemap_dome_roll,
 		            invRot);
 		screen->RenderDomemaster(mFaceTex, FACE_SIZE, mDomeTex, DOME_SIZE,
-		                         r_cubemap_dome_fov, invRot);
+		                         r_cubemap_dome_fov, invRot,
+		                         r_cubemap_dome_flip_h, r_cubemap_dome_flip_v);
 	}
 	else
 	{

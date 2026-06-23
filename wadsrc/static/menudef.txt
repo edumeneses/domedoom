@@ -384,11 +384,17 @@ OptionMenu "FulldomeOutputOptions" protected
 	StaticText " "
 	StaticText "Projection Format", 1
 	Option "Domemaster (fisheye) output", "r_cubemap_domemaster", "OnOff"
-	StaticText "Off: 6144 x 1024 cubemap strip. On: 2048 x 2048 domemaster.", 1
-	Slider "Domemaster FOV (degrees)", "r_cubemap_dome_fov", 1, 360, 1
-	Slider "Content yaw (degrees)", "r_cubemap_dome_yaw", -180, 180, 1
-	Slider "Content pitch (degrees)", "r_cubemap_dome_pitch", -180, 180, 1
-	Slider "Content roll (degrees)", "r_cubemap_dome_roll", -180, 180, 1
+	StaticText "Legend: cubemap strip = 6144x1024, domemaster = 2048x2048.", 1
+	Slider    "Domemaster FOV (degrees)", "r_cubemap_dome_fov", 1, 360, 1
+	TextField "  FOV (type value)", "r_cubemap_dome_fov"
+	Slider    "Content yaw (degrees)", "r_cubemap_dome_yaw", -180, 180, 1
+	TextField "  Yaw (type value)", "r_cubemap_dome_yaw"
+	Slider    "Content pitch (degrees)", "r_cubemap_dome_pitch", -180, 180, 1
+	TextField "  Pitch (type value)", "r_cubemap_dome_pitch"
+	Slider    "Content roll (degrees)", "r_cubemap_dome_roll", -180, 180, 1
+	TextField "  Roll (type value)", "r_cubemap_dome_roll"
+	Option    "Flip horizontal", "r_cubemap_dome_flip_h", "OnOff"
+	Option    "Flip vertical", "r_cubemap_dome_flip_v", "OnOff"
 
 	StaticText " "
 	StaticText "PipeWire", 1

@@ -275,7 +275,7 @@ public:
 	// domeTex via a single fullscreen pass. invRot is a column-major 3x3 inverse
 	// content rotation (built CPU-side). fovDeg is the output dome FOV.
 	// Default no-op; overridden by the OpenGL backend.
-	virtual void RenderDomemaster(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* domeTex, int domeSize, float fovDeg, const float* invRot) {}
+	virtual void RenderDomemaster(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* domeTex, int domeSize, float fovDeg, const float* invRot, bool flipH, bool flipV) {}
 
 	// Read the composited cross texture into a CPU buffer using double-PBO
 	// async readback (1-frame latency, no GPU stall after the first call).

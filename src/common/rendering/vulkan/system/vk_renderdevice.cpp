@@ -579,12 +579,11 @@ layout(set = 0, binding = 4) uniform sampler2D facePosZ;
 layout(set = 0, binding = 5) uniform sampler2D faceNegZ;
 layout(push_constant) uniform PC {
 	vec4 rot0; vec4 rot1; vec4 rot2; // columns of invRot (xyz used)
-	vec4 params;                     // params.x = halfFovRad
+	vec4 params;                     // x = halfFovRad, y = flipX sign, z = flipY sign
 } pc;
-// If the dome is upside-down on the wall, change vec2(1.0,1.0) -> vec2(1.0,-1.0).
 #define UV(c) (((c) * vec2(1.0, 1.0) + 1.0) * 0.5)
 void main() {
-	vec2 p = vUV * 2.0 - 1.0;
+	vec2 p = (vUV * 2.0 - 1.0) * vec2(pc.params.y, pc.params.z);
 	float r = length(p);
 	if (r > 1.0) { FragColor = vec4(0.0); return; }
 	vec2 az = (r > 1e-6) ? p / r : vec2(0.0);
@@ -686,7 +685,8 @@ void VulkanRenderDevice::InitDomemasterResources(int domeSize)
 
 void VulkanRenderDevice::RenderDomemaster(FCanvasTexture** faces, int N,
                                           FCanvasTexture* domeTex, int domeSize,
-                                          float fovDeg, const float* invRot)
+                                          float fovDeg, const float* invRot,
+                                          bool flipH, bool flipV)
 {
 	InitDomemasterResources(domeSize);
 
@@ -735,6 +735,8 @@ void VulkanRenderDevice::RenderDomemaster(FCanvasTexture** faces, int N,
 	push.rot1[0] = invRot[3]; push.rot1[1] = invRot[4]; push.rot1[2] = invRot[5];
 	push.rot2[0] = invRot[6]; push.rot2[1] = invRot[7]; push.rot2[2] = invRot[8];
 	push.params[0] = fovDeg * (3.14159265359f / 360.0f);
+	push.params[1] = flipH ? -1.0f : 1.0f;
+	push.params[2] = flipV ? -1.0f : 1.0f;
 
 	RenderPassBegin()
 		.RenderPass(mDomeRenderPass.get())
