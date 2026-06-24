@@ -414,13 +414,13 @@ FSoundID S_AddSound (const char *logicalname, const char *lumpname, FScanner *sc
 	if (developer >= DMSG_WARNING && lump <= -1)
 	{
 		if (sc)
-			Printf(PRINT_NONOTIFY,
-			       TEXTCOLOR_ORANGE "%s, " TEXTCOLOR_WHITE "%s" TEXTCOLOR_ORANGE " - Lump doesn't exist: " TEXTCOLOR_WHITE "%s\n",
-			       sc->ScriptName.GetChars(), logicalname, lumpname);
+		{
+			Printf(PRINT_NONOTIFY, TEXTCOLOR_ORANGE "%s, " TEXTCOLOR_WHITE "%s" TEXTCOLOR_ORANGE " - Lump doesn't exist: " TEXTCOLOR_WHITE "%s\n", sc->ScriptName.GetChars(), logicalname, lumpname);
+		}
 		else
-			Printf(PRINT_NONOTIFY,
-			       TEXTCOLOR_WHITE "%s" TEXTCOLOR_ORANGE " - Lump doesn't exist: " TEXTCOLOR_WHITE "%s\n",
-			       logicalname, lumpname);
+		{
+			Printf(PRINT_NONOTIFY, TEXTCOLOR_WHITE "%s" TEXTCOLOR_ORANGE " - Lump doesn't exist: " TEXTCOLOR_WHITE "%s\n", logicalname, lumpname);
+		}
 	}
 
 	return S_AddSound (logicalname, lump, sc);
