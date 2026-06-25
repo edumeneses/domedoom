@@ -29,13 +29,13 @@
 // NOTE: PipeWire init and the readback PBO size on the first frame; switching
 // this at runtime needs a restart to re-init those paths cleanly.
 CVAR(Bool,   r_cubemap_domemaster,      false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Float,  r_cubemap_dome_fov,        180.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Float,  r_cubemap_dome_yaw,        0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Float,  r_cubemap_dome_pitch,      0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_fov,        270.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_yaw,        180.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_pitch,      -90.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_roll,       0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 // Output image flips. GL and Vulkan need different defaults (NDC + texture
 // origin differ), so these are exposed live per machine/backend.
-CVAR(Bool,   r_cubemap_dome_flip_h,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool,   r_cubemap_dome_flip_h,     true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_flip_v,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 CVAR(Bool,   r_cubemap_pipewire,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -127,6 +127,12 @@ static void BuildInvRot(float yawDeg, float pitchDeg, float rollDeg, float out[9
 	out[0] =  cy*cr - sy*cp*sr;  out[1] =  sy*cr + cy*cp*sr;  out[2] =  sp*sr;
 	out[3] = -cy*sr - sy*cp*cr;  out[4] = -sy*sr + cy*cp*cr;  out[5] =  sp*cr;
 	out[6] =  sy*sp;             out[7] = -cy*sp;             out[8] =  cp;
+
+	// Flip the fisheye polar axis (column 2) so the dome centre points to engine
+	// UP, not down. Without this the zenith shows the floor. Folding it here
+	// (instead of negating the ray's z in each shader) keeps the azimuth framing
+	// and fixes both GL and Vulkan from one place.
+	out[6] = -out[6];  out[7] = -out[7];  out[8] = -out[8];
 }
 
 // -------------------------------------------------------------------------
