@@ -42,6 +42,7 @@ CVAR(Bool,   r_cubemap_dome_hud,        true,           CVAR_ARCHIVE | CVAR_GLOB
 CVAR(Float,  r_cubemap_dome_hud_arc,    140.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_hud_band,   0.16f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_hud_strip,  0.20f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_hud_offset, 0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_hud_chroma, true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 CVAR(Bool,   r_cubemap_pipewire,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -365,6 +366,7 @@ void CubemapRenderer::CompositeAndStream()
 		dp.hudArcDeg = r_cubemap_dome_hud_arc;
 		dp.hudBand   = r_cubemap_dome_hud_band;
 		dp.hudStrip  = r_cubemap_dome_hud_strip;
+		dp.hudOffsetDeg = r_cubemap_dome_hud_offset;
 		dp.hudChroma = r_cubemap_dome_hud_chroma;
 		screen->RenderDomemaster(mFaceTex, FACE_SIZE, mDomeTex, DOME_SIZE, dp);
 	}

@@ -374,6 +374,7 @@ uniform vec2  uFlip;        // per-axis output flip: (+1 or -1, +1 or -1)
 uniform sampler2D uHud;     // full 2D HUD; bottom strip = status bar
 uniform float uHudEnable;   // >0.5 = composite rim HUD
 uniform vec4  uHudParams;   // x=halfArcRad y=band z=strip w=chroma(1/0)
+uniform float uHudOffset;   // radians added to the auto front-azimuth
 #define UV(c) (((c) * vec2(1.0, 1.0) + 1.0) * 0.5)
 void main() {
     vec2 p = (vUV * 2.0 - 1.0) * uFlip;
@@ -395,10 +396,13 @@ void main() {
         else           { sc = vec2(-d.x,-d.y)/a.z; FragColor = texture(faceNegZ, UV(sc)); }
     }
 
-    // Rim HUD band along the front (bottom of the flipped output).
+    // Rim HUD band, auto-centred under the forward view (engine +Z), plus a
+    // manual offset. Forward azimuth comes from the inverse rotation.
     if (uHudEnable > 0.5) {
+        vec3 fwd = vec3(uInvRot[0][2], uInvRot[1][2], uInvRot[2][2]);
+        float center = atan(fwd.y, fwd.x) + uHudOffset;
         float ang = atan(p.y, p.x);
-        float dd  = mod(ang - (-1.57079633) + 3.14159265, 6.28318531) - 3.14159265;
+        float dd  = mod(ang - center + 3.14159265, 6.28318531) - 3.14159265;
         float halfArc = uHudParams.x, band = uHudParams.y;
         if (r >= 1.0 - band && abs(dd) <= halfArc) {
             float u  = dd / halfArc * 0.5 + 0.5;
@@ -431,7 +435,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
                                          const DomemasterParams& params)
 {
 	static GLuint sFBO = 0, sProg = 0, sVAO = 0;
-	static GLint  uInvRot = -1, uHalfFov = -1, uFlip = -1, uHudEnable = -1, uHudParams = -1;
+	static GLint  uInvRot = -1, uHalfFov = -1, uFlip = -1, uHudEnable = -1, uHudParams = -1, uHudOffset = -1;
 	if (!sFBO)
 	{
 		glGenFramebuffers(1, &sFBO);
@@ -457,6 +461,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		uFlip      = glGetUniformLocation(sProg, "uFlip");
 		uHudEnable = glGetUniformLocation(sProg, "uHudEnable");
 		uHudParams = glGetUniformLocation(sProg, "uHudParams");
+		uHudOffset = glGetUniformLocation(sProg, "uHudOffset");
 		glUseProgram(0);
 	}
 
@@ -536,6 +541,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 	glUniform1f(uHudEnable, hudOn ? 1.0f : 0.0f);
 	glUniform4f(uHudParams, params.hudArcDeg * (3.14159265359f / 360.0f),
 	            params.hudBand, params.hudStrip, params.hudChroma ? 1.0f : 0.0f);
+	glUniform1f(uHudOffset, params.hudOffsetDeg * (3.14159265359f / 180.0f));
 
 	glBindVertexArray(sVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 3);

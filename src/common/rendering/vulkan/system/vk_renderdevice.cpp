@@ -582,6 +582,7 @@ layout(push_constant) uniform PC {
 	vec4 rot0; vec4 rot1; vec4 rot2; // columns of invRot (xyz used)
 	vec4 params;                     // x=halfFovRad y=flipX z=flipY w=hudEnable
 	vec4 hud;                        // x=halfArcRad y=band z=strip w=chroma
+	vec4 hud2;                       // x=offsetRad
 } pc;
 #define UV(c) (((c) * vec2(1.0, 1.0) + 1.0) * 0.5)
 void main() {
@@ -605,10 +606,12 @@ void main() {
 		else           { sc = vec2(-d.x,-d.y)/a.z; FragColor = texture(faceNegZ, UV(sc)); }
 	}
 
-	// Rim HUD band along the front (bottom of the flipped output).
+	// Rim HUD band, auto-centred under the forward view (engine +Z) + offset.
 	if (pc.params.w > 0.5) {
+		vec3 fwd = vec3(pc.rot0.z, pc.rot1.z, pc.rot2.z);
+		float center = atan(fwd.y, fwd.x) + pc.hud2.x;
 		float ang = atan(p.y, p.x);
-		float dd  = mod(ang - (-1.57079633) + 3.14159265, 6.28318531) - 3.14159265;
+		float dd  = mod(ang - center + 3.14159265, 6.28318531) - 3.14159265;
 		float halfArc = pc.hud.x, band = pc.hud.y;
 		if (r >= 1.0 - band && abs(dd) <= halfArc) {
 			float u  = dd / halfArc * 0.5 + 0.5;
@@ -622,7 +625,7 @@ void main() {
 }
 )GLSL";
 
-struct DomePush { float rot0[4]; float rot1[4]; float rot2[4]; float params[4]; float hud[4]; };
+struct DomePush { float rot0[4]; float rot1[4]; float rot2[4]; float params[4]; float hud[4]; float hud2[4]; };
 
 void VulkanRenderDevice::InitDomemasterResources(int domeSize)
 {
@@ -777,6 +780,7 @@ void VulkanRenderDevice::RenderDomemaster(FCanvasTexture** faces, int N,
 	push.hud[1] = params.hudBand;
 	push.hud[2] = params.hudStrip;
 	push.hud[3] = params.hudChroma ? 1.0f : 0.0f;
+	push.hud2[0] = params.hudOffsetDeg * (3.14159265359f / 180.0f);
 
 	RenderPassBegin()
 		.RenderPass(mDomeRenderPass.get())

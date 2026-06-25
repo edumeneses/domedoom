@@ -136,10 +136,11 @@ struct DomemasterParams
 	// dome. hudTex null disables it. hudTex holds the full 2D HUD; only its
 	// bottom `hudStrip` fraction (the status bar) is sampled into the band.
 	class FCanvasTexture* hudTex = nullptr;
-	float hudArcDeg = 140.f; // angular width of the band, centred on the front
-	float hudBand   = 0.16f; // radial thickness as a fraction of the dome radius
-	float hudStrip  = 0.20f; // bottom fraction of hudTex treated as the status bar
-	bool  hudChroma = true;  // chroma-key green to transparent
+	float hudArcDeg    = 140.f; // angular width of the band, centred on the front
+	float hudBand      = 0.16f; // radial thickness as a fraction of the dome radius
+	float hudStrip     = 0.20f; // bottom fraction of hudTex treated as the status bar
+	float hudOffsetDeg = 0.f;   // manual rotation of the band around the rim
+	bool  hudChroma    = true;  // chroma-key green to transparent
 };
 
 class DFrameBuffer
