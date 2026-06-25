@@ -399,9 +399,9 @@ void main() {
     if (uHudEnable > 0.5) {
         float ang = atan(p.y, p.x);
         float dd  = mod(ang - (-1.57079633) + 3.14159265, 6.28318531) - 3.14159265;
-        float half = uHudParams.x, band = uHudParams.y;
-        if (r >= 1.0 - band && abs(dd) <= half) {
-            float u  = dd / half * 0.5 + 0.5;
+        float halfArc = uHudParams.x, band = uHudParams.y;
+        if (r >= 1.0 - band && abs(dd) <= halfArc) {
+            float u  = dd / halfArc * 0.5 + 0.5;
             float vv = (r - (1.0 - band)) / band;       // 0 inner .. 1 rim
             vec4 h = texture(uHud, vec2(u, vv * uHudParams.z));
             bool keyed = (uHudParams.w > 0.5) &&

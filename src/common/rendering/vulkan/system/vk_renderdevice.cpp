@@ -609,9 +609,9 @@ void main() {
 	if (pc.params.w > 0.5) {
 		float ang = atan(p.y, p.x);
 		float dd  = mod(ang - (-1.57079633) + 3.14159265, 6.28318531) - 3.14159265;
-		float half = pc.hud.x, band = pc.hud.y;
-		if (r >= 1.0 - band && abs(dd) <= half) {
-			float u  = dd / half * 0.5 + 0.5;
+		float halfArc = pc.hud.x, band = pc.hud.y;
+		if (r >= 1.0 - band && abs(dd) <= halfArc) {
+			float u  = dd / halfArc * 0.5 + 0.5;
 			float vv = (r - (1.0 - band)) / band;
 			vec4 h = texture(hudTex, vec2(u, vv * pc.hud.z));
 			bool keyed = (pc.hud.w > 0.5) &&
