@@ -96,7 +96,7 @@ public:
 	// Fulldome cubemap pipeline (Vulkan implementation; OpenGL has its own).
 	void CompositeCubemapFaces(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* crossTex) override;
 	void ReadCubemapCrossPixels(class FCanvasTexture* crossTex, uint8_t* buf, int w, int h) override;
-	void RenderDomemaster(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* domeTex, int domeSize, float fovDeg, const float* invRot, bool flipH, bool flipV) override;
+	void RenderDomemaster(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* domeTex, int domeSize, const struct DomemasterParams& params) override;
 
 private:
 	void InitDomemasterResources(int domeSize);

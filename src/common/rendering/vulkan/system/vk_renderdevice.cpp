@@ -577,9 +577,11 @@ layout(set = 0, binding = 2) uniform sampler2D facePosY;
 layout(set = 0, binding = 3) uniform sampler2D faceNegY;
 layout(set = 0, binding = 4) uniform sampler2D facePosZ;
 layout(set = 0, binding = 5) uniform sampler2D faceNegZ;
+layout(set = 0, binding = 6) uniform sampler2D hudTex;
 layout(push_constant) uniform PC {
 	vec4 rot0; vec4 rot1; vec4 rot2; // columns of invRot (xyz used)
-	vec4 params;                     // x = halfFovRad, y = flipX sign, z = flipY sign
+	vec4 params;                     // x=halfFovRad y=flipX z=flipY w=hudEnable
+	vec4 hud;                        // x=halfArcRad y=band z=strip w=chroma
 } pc;
 #define UV(c) (((c) * vec2(1.0, 1.0) + 1.0) * 0.5)
 void main() {
@@ -602,10 +604,25 @@ void main() {
 		if (d.z > 0.0) { sc = vec2( d.x,-d.y)/a.z; FragColor = texture(facePosZ, UV(sc)); }
 		else           { sc = vec2(-d.x,-d.y)/a.z; FragColor = texture(faceNegZ, UV(sc)); }
 	}
+
+	// Rim HUD band along the front (bottom of the flipped output).
+	if (pc.params.w > 0.5) {
+		float ang = atan(p.y, p.x);
+		float dd  = mod(ang - (-1.57079633) + 3.14159265, 6.28318531) - 3.14159265;
+		float half = pc.hud.x, band = pc.hud.y;
+		if (r >= 1.0 - band && abs(dd) <= half) {
+			float u  = dd / half * 0.5 + 0.5;
+			float vv = (r - (1.0 - band)) / band;
+			vec4 h = texture(hudTex, vec2(u, vv * pc.hud.z));
+			bool keyed = (pc.hud.w > 0.5) &&
+			             (h.g > h.r * 1.15 && h.g > h.b * 1.15 && h.g > 0.2);
+			if (h.a > 0.01 && !keyed) FragColor = vec4(h.rgb, 1.0);
+		}
+	}
 }
 )GLSL";
 
-struct DomePush { float rot0[4]; float rot1[4]; float rot2[4]; float params[4]; };
+struct DomePush { float rot0[4]; float rot1[4]; float rot2[4]; float params[4]; float hud[4]; };
 
 void VulkanRenderDevice::InitDomemasterResources(int domeSize)
 {
@@ -632,7 +649,7 @@ void VulkanRenderDevice::InitDomemasterResources(int domeSize)
 		.Create(device.get());
 
 	DescriptorSetLayoutBuilder slb;
-	for (int i = 0; i < 6; i++)
+	for (int i = 0; i < 7; i++)   // 6 faces + 1 HUD
 		slb.AddBinding(i, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 	mDomeSetLayout = slb.DebugName("DomemasterSetLayout").Create(device.get());
 
@@ -673,7 +690,7 @@ void VulkanRenderDevice::InitDomemasterResources(int domeSize)
 	mDomePipeline = pb.Create(device.get());
 
 	mDomeDescPool = DescriptorPoolBuilder()
-		.AddPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6)
+		.AddPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 7)
 		.MaxSets(1)
 		.DebugName("DomemasterDescPool")
 		.Create(device.get());
@@ -685,8 +702,7 @@ void VulkanRenderDevice::InitDomemasterResources(int domeSize)
 
 void VulkanRenderDevice::RenderDomemaster(FCanvasTexture** faces, int N,
                                           FCanvasTexture* domeTex, int domeSize,
-                                          float fovDeg, const float* invRot,
-                                          bool flipH, bool flipV)
+                                          const DomemasterParams& params)
 {
 	InitDomemasterResources(domeSize);
 
@@ -716,27 +732,51 @@ void VulkanRenderDevice::RenderDomemaster(FCanvasTexture** faces, int N,
 			.Execute(cmd);
 	}
 
+	// HUD texture -> sampleable (or fall back to a face when disabled, so
+	// binding 6 is always valid; the shader gates sampling on params.w).
+	const bool hudOn = params.hudTex != nullptr;
+	VkTextureImage* hudImg = nullptr;
+	if (hudOn)
+	{
+		auto hudHW = static_cast<VkHardwareTexture*>(params.hudTex->GetHardwareTexture(0, 0));
+		hudImg = hudHW->GetImage(params.hudTex, 0, 0);
+		VkImageTransition()
+			.AddImage(hudImg, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false)
+			.Execute(cmd);
+	}
+
 	// Bind faces to sampler bindings. binding -> CubeFaceIndex:
 	// 0 posX=RIGHT(2), 1 negX=LEFT(1), 2 posY=UP(4), 3 negY=DOWN(5),
 	// 4 posZ=FRONT(0), 5 negZ=BACK(3).
 	static const int kFaceForBinding[6] = { 2, 1, 4, 5, 0, 3 };
 	WriteDescriptors wd;
+	VkTextureImage* face0 = nullptr;
 	for (int b = 0; b < 6; b++)
 	{
 		auto faceHW = static_cast<VkHardwareTexture*>(faces[kFaceForBinding[b]]->GetHardwareTexture(0, 0));
 		VkTextureImage* face = faceHW->GetImage(faces[kFaceForBinding[b]], 0, 0);
+		if (!face0) face0 = face;
 		wd.AddCombinedImageSampler(mDomeDescSet.get(), b, face->View.get(),
 		                           mDomeSampler.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
+	wd.AddCombinedImageSampler(mDomeDescSet.get(), 6,
+	                           (hudImg ? hudImg : face0)->View.get(),
+	                           mDomeSampler.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	wd.Execute(device.get());
 
+	const float* invRot = params.invRot;
 	DomePush push = {};
 	push.rot0[0] = invRot[0]; push.rot0[1] = invRot[1]; push.rot0[2] = invRot[2];
 	push.rot1[0] = invRot[3]; push.rot1[1] = invRot[4]; push.rot1[2] = invRot[5];
 	push.rot2[0] = invRot[6]; push.rot2[1] = invRot[7]; push.rot2[2] = invRot[8];
-	push.params[0] = fovDeg * (3.14159265359f / 360.0f);
-	push.params[1] = flipH ? -1.0f : 1.0f;
-	push.params[2] = flipV ? -1.0f : 1.0f;
+	push.params[0] = params.fovDeg * (3.14159265359f / 360.0f);
+	push.params[1] = params.flipH ? -1.0f : 1.0f;
+	push.params[2] = params.flipV ? -1.0f : 1.0f;
+	push.params[3] = hudOn ? 1.0f : 0.0f;
+	push.hud[0] = params.hudArcDeg * (3.14159265359f / 360.0f);
+	push.hud[1] = params.hudBand;
+	push.hud[2] = params.hudStrip;
+	push.hud[3] = params.hudChroma ? 1.0f : 0.0f;
 
 	RenderPassBegin()
 		.RenderPass(mDomeRenderPass.get())

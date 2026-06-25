@@ -1185,9 +1185,10 @@ void D_Display ()
 
 	if (r_cubemap)
 	{
-		// HUD is now in twod; overlay it onto the front face, then composite
-		// all 6 faces into the cross texture and push to streaming outputs.
-		gCubemapRenderer.BlitHUDToFrontFace(twod);
+		// HUD is now in twod; route it to the front face (cube strip) or a
+		// dedicated rim-band texture (domemaster), then composite all faces and
+		// push to streaming outputs.
+		gCubemapRenderer.BlitHUD(twod);
 		gCubemapRenderer.CompositeAndStream();
 	}
 

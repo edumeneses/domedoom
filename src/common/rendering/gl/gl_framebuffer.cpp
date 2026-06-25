@@ -371,6 +371,9 @@ uniform sampler2D facePosX, faceNegX, facePosY, faceNegY, facePosZ, faceNegZ;
 uniform mat3  uInvRot;
 uniform float uHalfFovRad;
 uniform vec2  uFlip;        // per-axis output flip: (+1 or -1, +1 or -1)
+uniform sampler2D uHud;     // full 2D HUD; bottom strip = status bar
+uniform float uHudEnable;   // >0.5 = composite rim HUD
+uniform vec4  uHudParams;   // x=halfArcRad y=band z=strip w=chroma(1/0)
 #define UV(c) (((c) * vec2(1.0, 1.0) + 1.0) * 0.5)
 void main() {
     vec2 p = (vUV * 2.0 - 1.0) * uFlip;
@@ -391,6 +394,21 @@ void main() {
         if (d.z > 0.0) { sc = vec2( d.x,-d.y)/a.z; FragColor = texture(facePosZ, UV(sc)); }
         else           { sc = vec2(-d.x,-d.y)/a.z; FragColor = texture(faceNegZ, UV(sc)); }
     }
+
+    // Rim HUD band along the front (bottom of the flipped output).
+    if (uHudEnable > 0.5) {
+        float ang = atan(p.y, p.x);
+        float dd  = mod(ang - (-1.57079633) + 3.14159265, 6.28318531) - 3.14159265;
+        float half = uHudParams.x, band = uHudParams.y;
+        if (r >= 1.0 - band && abs(dd) <= half) {
+            float u  = dd / half * 0.5 + 0.5;
+            float vv = (r - (1.0 - band)) / band;       // 0 inner .. 1 rim
+            vec4 h = texture(uHud, vec2(u, vv * uHudParams.z));
+            bool keyed = (uHudParams.w > 0.5) &&
+                         (h.g > h.r * 1.15 && h.g > h.b * 1.15 && h.g > 0.2);
+            if (h.a > 0.01 && !keyed) FragColor = vec4(h.rgb, 1.0);
+        }
+    }
 }
 )GLSL";
 
@@ -410,11 +428,10 @@ static GLuint CompileDomeShader(GLenum type, const char* src)
 
 void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
                                          FCanvasTexture* domeTex, int domeSize,
-                                         float fovDeg, const float* invRot,
-                                         bool flipH, bool flipV)
+                                         const DomemasterParams& params)
 {
 	static GLuint sFBO = 0, sProg = 0, sVAO = 0;
-	static GLint  uInvRot = -1, uHalfFov = -1, uFlip = -1;
+	static GLint  uInvRot = -1, uHalfFov = -1, uFlip = -1, uHudEnable = -1, uHudParams = -1;
 	if (!sFBO)
 	{
 		glGenFramebuffers(1, &sFBO);
@@ -434,9 +451,12 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		glUseProgram(sProg);
 		const char* names[6] = {"facePosX","faceNegX","facePosY","faceNegY","facePosZ","faceNegZ"};
 		for (int i = 0; i < 6; i++) glUniform1i(glGetUniformLocation(sProg, names[i]), i);
-		uInvRot  = glGetUniformLocation(sProg, "uInvRot");
-		uHalfFov = glGetUniformLocation(sProg, "uHalfFovRad");
-		uFlip    = glGetUniformLocation(sProg, "uFlip");
+		glUniform1i(glGetUniformLocation(sProg, "uHud"), 6);
+		uInvRot    = glGetUniformLocation(sProg, "uInvRot");
+		uHalfFov   = glGetUniformLocation(sProg, "uHalfFovRad");
+		uFlip      = glGetUniformLocation(sProg, "uFlip");
+		uHudEnable = glGetUniformLocation(sProg, "uHudEnable");
+		uHudParams = glGetUniformLocation(sProg, "uHudParams");
 		glUseProgram(0);
 	}
 
@@ -495,10 +515,27 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	}
 
+	// HUD texture on unit 6 (for the rim band).
+	const bool hudOn = params.hudTex != nullptr;
+	if (hudOn)
+	{
+		auto* hudHW = static_cast<FHardwareTexture*>(params.hudTex->GetHardwareTexture(0, 0));
+		glActiveTexture(GL_TEXTURE0 + 6);
+		glBindSampler(6, 0);
+		glBindTexture(GL_TEXTURE_2D, hudHW->GetTextureHandle());
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	}
+
 	glUseProgram(sProg);
-	glUniformMatrix3fv(uInvRot, 1, GL_FALSE, invRot);
-	glUniform1f(uHalfFov, fovDeg * (3.14159265359f / 360.0f));
-	glUniform2f(uFlip, flipH ? -1.0f : 1.0f, flipV ? -1.0f : 1.0f);
+	glUniformMatrix3fv(uInvRot, 1, GL_FALSE, params.invRot);
+	glUniform1f(uHalfFov, params.fovDeg * (3.14159265359f / 360.0f));
+	glUniform2f(uFlip, params.flipH ? -1.0f : 1.0f, params.flipV ? -1.0f : 1.0f);
+	glUniform1f(uHudEnable, hudOn ? 1.0f : 0.0f);
+	glUniform4f(uHudParams, params.hudArcDeg * (3.14159265359f / 360.0f),
+	            params.hudBand, params.hudStrip, params.hudChroma ? 1.0f : 0.0f);
 
 	glBindVertexArray(sVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 3);

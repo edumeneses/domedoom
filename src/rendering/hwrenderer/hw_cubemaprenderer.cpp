@@ -37,6 +37,12 @@ CVAR(Float,  r_cubemap_dome_roll,       0.f,            CVAR_ARCHIVE | CVAR_GLOB
 // origin differ), so these are exposed live per machine/backend.
 CVAR(Bool,   r_cubemap_dome_flip_h,     true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_flip_v,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+// Rim HUD (domemaster only): status bar drawn as a band along the front rim.
+CVAR(Bool,   r_cubemap_dome_hud,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_hud_arc,    140.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_hud_band,   0.16f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_hud_strip,  0.20f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool,   r_cubemap_dome_hud_chroma, true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 CVAR(Bool,   r_cubemap_pipewire,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_sh4lt,           false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -96,6 +102,8 @@ CubemapRenderer::~CubemapRenderer()
 	mCrossTex = nullptr;
 	delete mDomeTex;
 	mDomeTex = nullptr;
+	delete mHudTex;
+	mHudTex = nullptr;
 }
 
 // -------------------------------------------------------------------------
@@ -243,6 +251,7 @@ void CubemapRenderer::Init()
 		mFaceTex[i] = new FCanvasTexture(FACE_SIZE, FACE_SIZE);
 	mCrossTex = new FCanvasTexture(CROSS_W, CROSS_H);
 	mDomeTex  = new FCanvasTexture(DOME_SIZE, DOME_SIZE);
+	mHudTex   = new FCanvasTexture(HUD_W, HUD_H);
 	mInitialized = true;
 }
 
@@ -315,6 +324,30 @@ void CubemapRenderer::BlitHUDToFrontFace(F2DDrawer* drawer)
 
 // -------------------------------------------------------------------------
 
+void CubemapRenderer::BlitHUD(F2DDrawer* drawer)
+{
+	if (!mInitialized || !drawer) return;
+
+	if (r_cubemap_domemaster)
+	{
+		// Render the 2D HUD into its own texture; RenderDomemaster overlays the
+		// status bar (the bottom strip) as a band along the dome rim. The status
+		// bar fully repaints its strip each frame, so no clear is needed.
+		if (r_cubemap_dome_hud && mHudTex)
+		{
+			screen->RenderTextureView(mHudTex, [&](IntRect& bounds) {
+				Draw2D(drawer, *screen->RenderState(), 0, 0, bounds.width, bounds.height);
+			});
+		}
+	}
+	else
+	{
+		BlitHUDToFrontFace(drawer);
+	}
+}
+
+// -------------------------------------------------------------------------
+
 void CubemapRenderer::CompositeAndStream()
 {
 	if (!mInitialized) return;
@@ -322,12 +355,18 @@ void CubemapRenderer::CompositeAndStream()
 	if (r_cubemap_domemaster)
 	{
 		// Warp the 6 faces into a square fisheye domemaster.
-		float invRot[9];
+		DomemasterParams dp;
+		dp.fovDeg = r_cubemap_dome_fov;
 		BuildInvRot(r_cubemap_dome_yaw, r_cubemap_dome_pitch, r_cubemap_dome_roll,
-		            invRot);
-		screen->RenderDomemaster(mFaceTex, FACE_SIZE, mDomeTex, DOME_SIZE,
-		                         r_cubemap_dome_fov, invRot,
-		                         r_cubemap_dome_flip_h, r_cubemap_dome_flip_v);
+		            dp.invRot);
+		dp.flipH = r_cubemap_dome_flip_h;
+		dp.flipV = r_cubemap_dome_flip_v;
+		dp.hudTex    = (r_cubemap_dome_hud && mHudTex) ? mHudTex : nullptr;
+		dp.hudArcDeg = r_cubemap_dome_hud_arc;
+		dp.hudBand   = r_cubemap_dome_hud_band;
+		dp.hudStrip  = r_cubemap_dome_hud_strip;
+		dp.hudChroma = r_cubemap_dome_hud_chroma;
+		screen->RenderDomemaster(mFaceTex, FACE_SIZE, mDomeTex, DOME_SIZE, dp);
 	}
 	else
 	{

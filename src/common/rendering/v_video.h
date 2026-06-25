@@ -124,6 +124,23 @@ protected:
 class IHardwareTexture;
 class FTexture;
 
+// Parameters for the fulldome domemaster warp pass (see RenderDomemaster).
+struct DomemasterParams
+{
+	float fovDeg = 180.f;
+	float invRot[9] = { 1,0,0, 0,1,0, 0,0,1 }; // column-major inverse content rotation
+	bool  flipH = false;
+	bool  flipV = false;
+
+	// Rim HUD overlay: status bar drawn as a band along the front rim of the
+	// dome. hudTex null disables it. hudTex holds the full 2D HUD; only its
+	// bottom `hudStrip` fraction (the status bar) is sampled into the band.
+	class FCanvasTexture* hudTex = nullptr;
+	float hudArcDeg = 140.f; // angular width of the band, centred on the front
+	float hudBand   = 0.16f; // radial thickness as a fraction of the dome radius
+	float hudStrip  = 0.20f; // bottom fraction of hudTex treated as the status bar
+	bool  hudChroma = true;  // chroma-key green to transparent
+};
 
 class DFrameBuffer
 {
@@ -275,7 +292,7 @@ public:
 	// domeTex via a single fullscreen pass. invRot is a column-major 3x3 inverse
 	// content rotation (built CPU-side). fovDeg is the output dome FOV.
 	// Default no-op; overridden by the OpenGL backend.
-	virtual void RenderDomemaster(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* domeTex, int domeSize, float fovDeg, const float* invRot, bool flipH, bool flipV) {}
+	virtual void RenderDomemaster(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* domeTex, int domeSize, const struct DomemasterParams& params) {}
 
 	// Read the composited cross texture into a CPU buffer using double-PBO
 	// async readback (1-frame latency, no GPU stall after the first call).

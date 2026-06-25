@@ -37,6 +37,8 @@ public:
 	static constexpr int CROSS_W    = FACE_SIZE * CROSS_COLS; // 6144
 	static constexpr int CROSS_H    = FACE_SIZE * CROSS_ROWS; // 1024
 	static constexpr int DOME_SIZE  = 2048;                  // square domemaster
+	static constexpr int HUD_W      = 2048;                  // rim-HUD source tex
+	static constexpr int HUD_H      = 512;
 
 	~CubemapRenderer();
 
@@ -51,6 +53,11 @@ public:
 	// Render the contents of `drawer` (HUD/statusbar) into the front face FBO,
 	// compositing on top of the already-rendered 3D scene.
 	void BlitHUDToFrontFace(F2DDrawer* drawer);
+
+	// Dispatch HUD handling by output mode: domemaster renders the HUD into a
+	// dedicated texture (overlaid as a rim band by RenderDomemaster); the cube
+	// strip keeps baking it onto the front face.
+	void BlitHUD(F2DDrawer* drawer);
 
 	FCanvasTexture* FaceTex(int i)  { return mFaceTex[i]; }
 	FCanvasTexture* CrossTex()      { return mCrossTex; }
@@ -70,6 +77,7 @@ private:
 	FCanvasTexture*       mFaceTex[CUBE_FACE_COUNT] = {};
 	FCanvasTexture*       mCrossTex                 = nullptr;
 	FCanvasTexture*       mDomeTex                  = nullptr;
+	FCanvasTexture*       mHudTex                   = nullptr;
 	bool                  mInitialized              = false;
 
 	// PipeWire output — initialised lazily on first frame.

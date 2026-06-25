@@ -385,7 +385,7 @@ OptionMenu "FulldomeOutputOptions" protected
 	StaticText "Projection Format", 1
 	Option "Domemaster (fisheye) output", "r_cubemap_domemaster", "OnOff"
 	StaticText "Legend: cubemap strip = 6144x1024, domemaster = 2048x2048.", 1
-	Slider    "Domemaster FOV (degrees)", "r_cubemap_dome_fov", 1, 360, 1
+	Slider    "Domemaster FOV (degrees)", "r_cubemap_dome_fov", 120, 300, 5
 	TextField "  FOV (type value)", "r_cubemap_dome_fov"
 	Slider    "Content yaw (degrees)", "r_cubemap_dome_yaw", -180, 180, 1
 	TextField "  Yaw (type value)", "r_cubemap_dome_yaw"
@@ -395,6 +395,17 @@ OptionMenu "FulldomeOutputOptions" protected
 	TextField "  Roll (type value)", "r_cubemap_dome_roll"
 	Option    "Flip horizontal", "r_cubemap_dome_flip_h", "OnOff"
 	Option    "Flip vertical", "r_cubemap_dome_flip_v", "OnOff"
+
+	StaticText " "
+	StaticText "Domemaster Rim HUD", 1
+	Option    "Rim HUD (status bar on rim)", "r_cubemap_dome_hud", "OnOff"
+	Slider    "HUD arc width (degrees)", "r_cubemap_dome_hud_arc", 20, 360, 5
+	TextField "  Arc (type value)", "r_cubemap_dome_hud_arc"
+	Slider    "HUD band thickness", "r_cubemap_dome_hud_band", 0.02, 0.5, 0.01
+	TextField "  Band (type value)", "r_cubemap_dome_hud_band"
+	Slider    "HUD source strip", "r_cubemap_dome_hud_strip", 0.05, 0.5, 0.01
+	TextField "  Strip (type value)", "r_cubemap_dome_hud_strip"
+	Option    "HUD chroma-key green", "r_cubemap_dome_hud_chroma", "OnOff"
 
 	StaticText " "
 	StaticText "PipeWire", 1
