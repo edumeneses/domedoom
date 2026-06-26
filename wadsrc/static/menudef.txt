@@ -408,6 +408,7 @@ OptionMenu "FulldomeOutputOptions" protected
 	Slider    "HUD angle offset (degrees)", "r_cubemap_dome_hud_offset", -180, 180, 5
 	TextField "  Angle offset (type value)", "r_cubemap_dome_hud_offset"
 	Option    "HUD chroma-key green", "r_cubemap_dome_hud_chroma", "OnOff"
+	Option    "HUD debug (show raw band)", "r_cubemap_dome_hud_debug", "OnOff"
 
 	StaticText " "
 	StaticText "PipeWire", 1

@@ -141,6 +141,7 @@ struct DomemasterParams
 	float hudStrip     = 0.20f; // bottom fraction of hudTex treated as the status bar
 	float hudOffsetDeg = 0.f;   // manual rotation of the band around the rim
 	bool  hudChroma    = true;  // chroma-key green to transparent
+	bool  hudDebug     = false; // show the raw sampled band (opaque, no keying)
 };
 
 class DFrameBuffer

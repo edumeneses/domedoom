@@ -38,7 +38,7 @@ public:
 	static constexpr int CROSS_H    = FACE_SIZE * CROSS_ROWS; // 1024
 	static constexpr int DOME_SIZE  = 2048;                  // square domemaster
 	static constexpr int HUD_W      = 2048;                  // rim-HUD source tex
-	static constexpr int HUD_H      = 512;
+	static constexpr int HUD_H      = 2048;                  // square: avoids vertical squish
 
 	~CubemapRenderer();
 

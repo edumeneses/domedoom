@@ -582,7 +582,7 @@ layout(push_constant) uniform PC {
 	vec4 rot0; vec4 rot1; vec4 rot2; // columns of invRot (xyz used)
 	vec4 params;                     // x=halfFovRad y=flipX z=flipY w=hudEnable
 	vec4 hud;                        // x=halfArcRad y=band z=strip w=chroma
-	vec4 hud2;                       // x=offsetRad
+	vec4 hud2;                       // x=offsetRad y=debug
 } pc;
 #define UV(c) (((c) * vec2(1.0, 1.0) + 1.0) * 0.5)
 void main() {
@@ -617,9 +617,13 @@ void main() {
 			float u  = dd / halfArc * 0.5 + 0.5;
 			float vv = (r - (1.0 - band)) / band;
 			vec4 h = texture(hudTex, vec2(u, vv * pc.hud.z));
-			bool keyed = (pc.hud.w > 0.5) &&
-			             (h.g > h.r * 1.15 && h.g > h.b * 1.15 && h.g > 0.2);
-			if (h.a > 0.01 && !keyed) FragColor = vec4(h.rgb, 1.0);
+			if (pc.hud2.y > 0.5) {
+				FragColor = vec4(h.rgb, 1.0);
+			} else {
+				bool keyed = (pc.hud.w > 0.5) &&
+				             (h.g > h.r * 1.15 && h.g > h.b * 1.15 && h.g > 0.2);
+				if (h.a > 0.01 && !keyed) FragColor = vec4(h.rgb, 1.0);
+			}
 		}
 	}
 }
@@ -781,6 +785,7 @@ void VulkanRenderDevice::RenderDomemaster(FCanvasTexture** faces, int N,
 	push.hud[2] = params.hudStrip;
 	push.hud[3] = params.hudChroma ? 1.0f : 0.0f;
 	push.hud2[0] = params.hudOffsetDeg * (3.14159265359f / 180.0f);
+	push.hud2[1] = params.hudDebug ? 1.0f : 0.0f;
 
 	RenderPassBegin()
 		.RenderPass(mDomeRenderPass.get())

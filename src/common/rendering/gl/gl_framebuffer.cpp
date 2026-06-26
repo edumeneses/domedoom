@@ -375,6 +375,7 @@ uniform sampler2D uHud;     // full 2D HUD; bottom strip = status bar
 uniform float uHudEnable;   // >0.5 = composite rim HUD
 uniform vec4  uHudParams;   // x=halfArcRad y=band z=strip w=chroma(1/0)
 uniform float uHudOffset;   // radians added to the auto front-azimuth
+uniform float uHudDebug;    // >0.5 = show raw sampled band
 #define UV(c) (((c) * vec2(1.0, 1.0) + 1.0) * 0.5)
 void main() {
     vec2 p = (vUV * 2.0 - 1.0) * uFlip;
@@ -408,9 +409,13 @@ void main() {
             float u  = dd / halfArc * 0.5 + 0.5;
             float vv = (r - (1.0 - band)) / band;       // 0 inner .. 1 rim
             vec4 h = texture(uHud, vec2(u, vv * uHudParams.z));
-            bool keyed = (uHudParams.w > 0.5) &&
-                         (h.g > h.r * 1.15 && h.g > h.b * 1.15 && h.g > 0.2);
-            if (h.a > 0.01 && !keyed) FragColor = vec4(h.rgb, 1.0);
+            if (uHudDebug > 0.5) {
+                FragColor = vec4(h.rgb, 1.0);
+            } else {
+                bool keyed = (uHudParams.w > 0.5) &&
+                             (h.g > h.r * 1.15 && h.g > h.b * 1.15 && h.g > 0.2);
+                if (h.a > 0.01 && !keyed) FragColor = vec4(h.rgb, 1.0);
+            }
         }
     }
 }
@@ -435,7 +440,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
                                          const DomemasterParams& params)
 {
 	static GLuint sFBO = 0, sProg = 0, sVAO = 0;
-	static GLint  uInvRot = -1, uHalfFov = -1, uFlip = -1, uHudEnable = -1, uHudParams = -1, uHudOffset = -1;
+	static GLint  uInvRot = -1, uHalfFov = -1, uFlip = -1, uHudEnable = -1, uHudParams = -1, uHudOffset = -1, uHudDebug = -1;
 	if (!sFBO)
 	{
 		glGenFramebuffers(1, &sFBO);
@@ -462,6 +467,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		uHudEnable = glGetUniformLocation(sProg, "uHudEnable");
 		uHudParams = glGetUniformLocation(sProg, "uHudParams");
 		uHudOffset = glGetUniformLocation(sProg, "uHudOffset");
+		uHudDebug  = glGetUniformLocation(sProg, "uHudDebug");
 		glUseProgram(0);
 	}
 
@@ -542,6 +548,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 	glUniform4f(uHudParams, params.hudArcDeg * (3.14159265359f / 360.0f),
 	            params.hudBand, params.hudStrip, params.hudChroma ? 1.0f : 0.0f);
 	glUniform1f(uHudOffset, params.hudOffsetDeg * (3.14159265359f / 180.0f));
+	glUniform1f(uHudDebug, params.hudDebug ? 1.0f : 0.0f);
 
 	glBindVertexArray(sVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
