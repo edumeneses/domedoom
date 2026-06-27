@@ -494,7 +494,7 @@ FSoundID S_AddPlayerSound (const char *pclass, int gender, FSoundID refid, const
 		{
 			Printf(PRINT_NONOTIFY,
 			       TEXTCOLOR_ORANGE "Player sound " TEXTCOLOR_WHITE "%s, %s" TEXTCOLOR_ORANGE " - Lump doesn't exist: " TEXTCOLOR_WHITE "%s\n",
-			       pclass, soundEngine->GetSfx(refid)->name.GetChars(), lumpname);
+			       pclass, soundEngine->GetSoundName(refid), lumpname);
 		}
 	}
 
