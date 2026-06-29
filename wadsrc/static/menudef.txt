@@ -408,8 +408,8 @@ OptionMenu "FulldomeOutputOptions" protected
 	TextField "  Strip (type value)", "r_cubemap_dome_hud_strip"
 	Slider    "HUD angle offset (degrees)", "r_cubemap_dome_hud_offset", -180, 180, 5
 	TextField "  Angle offset (type value)", "r_cubemap_dome_hud_offset"
-	Option    "HUD chroma-key green", "r_cubemap_dome_hud_chroma", "OnOff"
-	Option    "HUD debug (show raw band)", "r_cubemap_dome_hud_debug", "OnOff"
+	Slider    "HUD side crop", "r_cubemap_dome_hud_crop", 0.0, 0.49, 0.01
+	TextField "  Side crop (type value)", "r_cubemap_dome_hud_crop"
 
 	StaticText " "
 	StaticText "PipeWire", 1

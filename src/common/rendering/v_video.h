@@ -141,8 +141,7 @@ struct DomemasterParams
 	float hudBand      = 0.16f; // radial thickness as a fraction of the dome radius
 	float hudStrip     = 0.20f; // bottom fraction of hudTex treated as the status bar
 	float hudOffsetDeg = 0.f;   // manual rotation of the band around the rim
-	bool  hudChroma    = true;  // chroma-key green to transparent
-	bool  hudDebug     = false; // show the raw sampled band (opaque, no keying)
+	float hudCrop      = 0.f;   // crop each side of the band (0..0.49)
 };
 
 class DFrameBuffer

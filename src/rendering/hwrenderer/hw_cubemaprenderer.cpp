@@ -31,11 +31,11 @@
 CVAR(Bool,   r_cubemap_domemaster,      false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_fov,        270.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_yaw,        180.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Float,  r_cubemap_dome_pitch,      -90.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Float,  r_cubemap_dome_roll,       0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_pitch,      90.f,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_roll,       180.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 // Output image flips. GL and Vulkan need different defaults (NDC + texture
 // origin differ), so these are exposed live per machine/backend.
-CVAR(Bool,   r_cubemap_dome_flip_h,     true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool,   r_cubemap_dome_flip_h,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_flip_v,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_flip_ud,    false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 // Rim HUD (domemaster only): status bar drawn as a band along the front rim.
@@ -44,8 +44,8 @@ CVAR(Float,  r_cubemap_dome_hud_arc,    140.f,          CVAR_ARCHIVE | CVAR_GLOB
 CVAR(Float,  r_cubemap_dome_hud_band,   0.16f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_hud_strip,  0.20f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_hud_offset, 0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Bool,   r_cubemap_dome_hud_chroma, true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Bool,   r_cubemap_dome_hud_debug,  false,          0)
+// Crop each side of the HUD band (0 = full width, 0.49 = almost nothing).
+CVAR(Float,  r_cubemap_dome_hud_crop,   0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 CVAR(Bool,   r_cubemap_pipewire,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_sh4lt,           false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -370,8 +370,7 @@ void CubemapRenderer::CompositeAndStream()
 		dp.hudBand   = r_cubemap_dome_hud_band;
 		dp.hudStrip  = r_cubemap_dome_hud_strip;
 		dp.hudOffsetDeg = r_cubemap_dome_hud_offset;
-		dp.hudChroma = r_cubemap_dome_hud_chroma;
-		dp.hudDebug  = r_cubemap_dome_hud_debug;
+		dp.hudCrop   = r_cubemap_dome_hud_crop;
 		screen->RenderDomemaster(mFaceTex, FACE_SIZE, mDomeTex, DOME_SIZE, dp);
 	}
 	else
