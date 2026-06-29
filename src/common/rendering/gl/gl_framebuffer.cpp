@@ -371,6 +371,7 @@ uniform sampler2D facePosX, faceNegX, facePosY, faceNegY, facePosZ, faceNegZ;
 uniform mat3  uInvRot;
 uniform float uHalfFovRad;
 uniform vec2  uFlip;        // per-axis output flip: (+1 or -1, +1 or -1)
+uniform float uFlipUD;      // +1 or -1: swap ceiling/floor (sampled vertical)
 uniform sampler2D uHud;     // full 2D HUD; bottom strip = status bar
 uniform float uHudEnable;   // >0.5 = composite rim HUD
 uniform vec4  uHudParams;   // x=halfArcRad y=band z=strip w=chroma(1/0)
@@ -385,6 +386,7 @@ void main() {
     float polar = r * uHalfFovRad;
     float sp = sin(polar);
     vec3 d = uInvRot * vec3(sp * az.x, sp * az.y, cos(polar));
+    d.y *= uFlipUD;
     vec3 a = abs(d); vec2 sc;
     if (a.x >= a.y && a.x >= a.z) {
         if (d.x > 0.0) { sc = vec2(-d.z,-d.y)/a.x; FragColor = texture(facePosX, UV(sc)); }
@@ -440,7 +442,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
                                          const DomemasterParams& params)
 {
 	static GLuint sFBO = 0, sProg = 0, sVAO = 0;
-	static GLint  uInvRot = -1, uHalfFov = -1, uFlip = -1, uHudEnable = -1, uHudParams = -1, uHudOffset = -1, uHudDebug = -1;
+	static GLint  uInvRot = -1, uHalfFov = -1, uFlip = -1, uFlipUD = -1, uHudEnable = -1, uHudParams = -1, uHudOffset = -1, uHudDebug = -1;
 	if (!sFBO)
 	{
 		glGenFramebuffers(1, &sFBO);
@@ -464,6 +466,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		uInvRot    = glGetUniformLocation(sProg, "uInvRot");
 		uHalfFov   = glGetUniformLocation(sProg, "uHalfFovRad");
 		uFlip      = glGetUniformLocation(sProg, "uFlip");
+		uFlipUD    = glGetUniformLocation(sProg, "uFlipUD");
 		uHudEnable = glGetUniformLocation(sProg, "uHudEnable");
 		uHudParams = glGetUniformLocation(sProg, "uHudParams");
 		uHudOffset = glGetUniformLocation(sProg, "uHudOffset");
@@ -544,6 +547,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 	glUniformMatrix3fv(uInvRot, 1, GL_FALSE, params.invRot);
 	glUniform1f(uHalfFov, params.fovDeg * (3.14159265359f / 360.0f));
 	glUniform2f(uFlip, params.flipH ? -1.0f : 1.0f, params.flipV ? -1.0f : 1.0f);
+	glUniform1f(uFlipUD, params.flipUpDown ? -1.0f : 1.0f);
 	glUniform1f(uHudEnable, hudOn ? 1.0f : 0.0f);
 	glUniform4f(uHudParams, params.hudArcDeg * (3.14159265359f / 360.0f),
 	            params.hudBand, params.hudStrip, params.hudChroma ? 1.0f : 0.0f);

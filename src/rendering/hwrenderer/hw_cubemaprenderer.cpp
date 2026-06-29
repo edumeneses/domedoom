@@ -37,6 +37,7 @@ CVAR(Float,  r_cubemap_dome_roll,       0.f,            CVAR_ARCHIVE | CVAR_GLOB
 // origin differ), so these are exposed live per machine/backend.
 CVAR(Bool,   r_cubemap_dome_flip_h,     true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_flip_v,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool,   r_cubemap_dome_flip_ud,    false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 // Rim HUD (domemaster only): status bar drawn as a band along the front rim.
 CVAR(Bool,   r_cubemap_dome_hud,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_hud_arc,    140.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -363,6 +364,7 @@ void CubemapRenderer::CompositeAndStream()
 		            dp.invRot);
 		dp.flipH = r_cubemap_dome_flip_h;
 		dp.flipV = r_cubemap_dome_flip_v;
+		dp.flipUpDown = r_cubemap_dome_flip_ud;
 		dp.hudTex    = (r_cubemap_dome_hud && mHudTex) ? mHudTex : nullptr;
 		dp.hudArcDeg = r_cubemap_dome_hud_arc;
 		dp.hudBand   = r_cubemap_dome_hud_band;

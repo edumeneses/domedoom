@@ -131,6 +131,7 @@ struct DomemasterParams
 	float invRot[9] = { 1,0,0, 0,1,0, 0,0,1 }; // column-major inverse content rotation
 	bool  flipH = false;
 	bool  flipV = false;
+	bool  flipUpDown = false; // swap ceiling/floor (negates sampled vertical)
 
 	// Rim HUD overlay: status bar drawn as a band along the front rim of the
 	// dome. hudTex null disables it. hudTex holds the full 2D HUD; only its

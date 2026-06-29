@@ -395,6 +395,7 @@ OptionMenu "FulldomeOutputOptions" protected
 	TextField "  Roll (type value)", "r_cubemap_dome_roll"
 	Option    "Flip horizontal", "r_cubemap_dome_flip_h", "OnOff"
 	Option    "Flip vertical", "r_cubemap_dome_flip_v", "OnOff"
+	Option    "Swap ceiling/floor", "r_cubemap_dome_flip_ud", "OnOff"
 
 	StaticText " "
 	StaticText "Domemaster Rim HUD", 1
