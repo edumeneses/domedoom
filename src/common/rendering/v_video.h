@@ -132,6 +132,7 @@ struct DomemasterParams
 	bool  flipH = false;
 	bool  flipV = false;
 	bool  flipUpDown = false; // swap ceiling/floor (negates sampled vertical)
+	bool  swapUpDownFaces = false; // swap the +Y/-Y (up/down) face inputs
 
 	// Rim HUD overlay: status bar drawn as a band along the front rim of the
 	// dome. hudTex null disables it. hudTex holds the full 2D HUD; only its
@@ -142,6 +143,8 @@ struct DomemasterParams
 	float hudStrip     = 0.20f; // bottom fraction of hudTex treated as the status bar
 	float hudOffsetDeg = 0.f;   // manual rotation of the band around the rim
 	float hudCrop      = 0.f;   // crop each side of the band (0..0.49)
+	bool  hudFlipH     = false; // mirror the HUD band horizontally
+	bool  hudFlipV     = false; // mirror the HUD band vertically
 };
 
 class DFrameBuffer

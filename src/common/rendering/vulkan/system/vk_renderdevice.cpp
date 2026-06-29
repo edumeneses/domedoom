@@ -582,7 +582,7 @@ layout(push_constant) uniform PC {
 	vec4 rot0; vec4 rot1; vec4 rot2; // columns of invRot (xyz used)
 	vec4 params;                     // x=halfFovRad y=flipX z=flipY w=hudEnable
 	vec4 hud;                        // x=halfArcRad y=band z=strip w=crop
-	vec4 hud2;                       // x=offsetRad z=flipUD
+	vec4 hud2;                       // x=offsetRad y=hudFlipH z=flipUD w=hudFlipV
 } pc;
 #define UV(c) (((c) * vec2(1.0, 1.0) + 1.0) * 0.5)
 void main() {
@@ -615,10 +615,12 @@ void main() {
 		float dd  = mod(ang - center + 3.14159265, 6.28318531) - 3.14159265;
 		float halfArc = pc.hud.x, band = pc.hud.y;
 		if (r >= 1.0 - band && abs(dd) <= halfArc) {
-			float u  = 1.0 - (dd / halfArc * 0.5 + 0.5);   // flip H
+			float u  = dd / halfArc * 0.5 + 0.5;
+			if (pc.hud2.y > 0.5) u = 1.0 - u;
 			float crop = pc.hud.w;
 			float texU = crop + u * (1.0 - 2.0 * crop);    // crop both sides
 			float vv = (r - (1.0 - band)) / band;
+			if (pc.hud2.w > 0.5) vv = 1.0 - vv;
 			FragColor = vec4(texture(hudTex, vec2(texU, vv * pc.hud.z)).rgb, 1.0);
 		}
 	}
@@ -751,13 +753,14 @@ void VulkanRenderDevice::RenderDomemaster(FCanvasTexture** faces, int N,
 	// Bind faces to sampler bindings. binding -> CubeFaceIndex:
 	// 0 posX=RIGHT(2), 1 negX=LEFT(1), 2 posY=UP(4), 3 negY=DOWN(5),
 	// 4 posZ=FRONT(0), 5 negZ=BACK(3).
-	static const int kFaceForBinding[6] = { 2, 1, 4, 5, 0, 3 };
+	int faceForBinding[6] = { 2, 1, 4, 5, 0, 3 };
+	if (params.swapUpDownFaces) { faceForBinding[2] = 5; faceForBinding[3] = 4; } // posY<->negY
 	WriteDescriptors wd;
 	VkTextureImage* face0 = nullptr;
 	for (int b = 0; b < 6; b++)
 	{
-		auto faceHW = static_cast<VkHardwareTexture*>(faces[kFaceForBinding[b]]->GetHardwareTexture(0, 0));
-		VkTextureImage* face = faceHW->GetImage(faces[kFaceForBinding[b]], 0, 0);
+		auto faceHW = static_cast<VkHardwareTexture*>(faces[faceForBinding[b]]->GetHardwareTexture(0, 0));
+		VkTextureImage* face = faceHW->GetImage(faces[faceForBinding[b]], 0, 0);
 		if (!face0) face0 = face;
 		wd.AddCombinedImageSampler(mDomeDescSet.get(), b, face->View.get(),
 		                           mDomeSampler.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -781,7 +784,9 @@ void VulkanRenderDevice::RenderDomemaster(FCanvasTexture** faces, int N,
 	push.hud[2] = params.hudStrip;
 	push.hud[3] = params.hudCrop;
 	push.hud2[0] = params.hudOffsetDeg * (3.14159265359f / 180.0f);
+	push.hud2[1] = params.hudFlipH ? 1.0f : 0.0f;
 	push.hud2[2] = params.flipUpDown ? -1.0f : 1.0f;
+	push.hud2[3] = params.hudFlipV ? 1.0f : 0.0f;
 
 	RenderPassBegin()
 		.RenderPass(mDomeRenderPass.get())
