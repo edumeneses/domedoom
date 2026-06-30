@@ -145,7 +145,12 @@ CUSTOM_CVAR(String, fluid_lib, "", CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_VIRTU
 	FORWARD_STRING_CVAR(fluid_lib);
 }
 
-CUSTOM_CVAR(String, fluid_patchset, GAMENAMELOWERCASE, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_VIRTUAL | CVAR_SYSTEM_ONLY)
+// Default empty: there is no soundfont bundled under the game name, so using
+// GAMENAMELOWERCASE made FluidSynth try to load a file literally named
+// "cubedoom" (not a RIFF/.sf2) and then parse it as a command script, spamming
+// "Not a RIFF file" + "line N: syntax error". Empty falls back cleanly; set a
+// real .sf2 path to enable FluidSynth music.
+CUSTOM_CVAR(String, fluid_patchset, "", CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_VIRTUAL | CVAR_SYSTEM_ONLY)
 {
 	FORWARD_STRING_CVAR(fluid_patchset);
 }
