@@ -103,7 +103,24 @@ CubemapRenderer gCubemapRenderer;
 
 CubemapRenderer::~CubemapRenderer()
 {
-	UpdateSh4ltAudio();  // removes tap before Sh4ltAudioOutput dtor runs
+	Shutdown();
+}
+
+void CubemapRenderer::Shutdown()
+{
+	// Stop streaming outputs first.
+	if (mAudioTapActive)
+	{
+		Sh4ltRemoveAudioTap();
+		mSh4ltAudio.Shutdown();
+		mAudioTapActive = false;
+	}
+	mNdiVideo.Shutdown();
+	mSh4ltVideo.Shutdown();
+	mPWOutput.Shutdown();
+
+	// Free GPU textures while the renderer (screen) is still alive. Deleting a
+	// null pointer is a no-op, so this is safe to call more than once.
 	for (int i = 0; i < CUBE_FACE_COUNT; i++)
 	{
 		delete mFaceTex[i];
@@ -115,6 +132,8 @@ CubemapRenderer::~CubemapRenderer()
 	mDomeTex = nullptr;
 	delete mHudTex;
 	mHudTex = nullptr;
+
+	mInitialized = false;
 }
 
 // -------------------------------------------------------------------------

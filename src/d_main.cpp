@@ -3999,6 +3999,7 @@ int GameMain()
 	C_DeinitConsole();
 	R_DeinitColormaps();
 	R_Shutdown();
+	gCubemapRenderer.Shutdown();	// free GPU textures while the renderer is still alive
 	I_ShutdownGraphics();
 	I_ShutdownInput();
 	M_SaveDefaultsFinal();

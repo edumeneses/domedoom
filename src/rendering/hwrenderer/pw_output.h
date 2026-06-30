@@ -52,9 +52,11 @@ public:
     bool IsDmaBufMode() const { return mDmaBufMode; }
     bool IsRunning()    const { return mRunning.load(std::memory_order_relaxed); }
 
+    // Stop the stream and release resources. Safe to call when not running.
+    void Shutdown();
+
 private:
     bool Connect(bool dmaBufMode, int nBufs);
-    void Shutdown();
 
     static void OnStateChanged(void* data, enum pw_stream_state old,
                                enum pw_stream_state state, const char* error);

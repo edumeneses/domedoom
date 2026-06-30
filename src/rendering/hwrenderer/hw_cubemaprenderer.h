@@ -42,6 +42,12 @@ public:
 
 	~CubemapRenderer();
 
+	// Free GPU textures and stop streaming outputs. MUST be called during engine
+	// shutdown while the renderer (screen) is still alive — otherwise the global
+	// gCubemapRenderer destructor frees textures after the GL/Vulkan context is
+	// gone, calling into a dead renderer ("pure virtual method called"). Idempotent.
+	void Shutdown();
+
 	// Render all 6 faces offscreen. Does NOT composite or stream — call
 	// BlitHUDToFrontFace + CompositeAndStream after drawing the HUD.
 	void RenderFacesToTextures(player_t* player);
