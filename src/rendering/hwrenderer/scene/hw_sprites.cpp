@@ -428,14 +428,20 @@ bool HWSprite::CalculateVertices(HWDrawInfo* di, FVector3* v, DVector3* vp)
 	const bool AngledRoll = (actor != nullptr && actor->renderflags2 & RF2_ANGLEDROLL);
 
 	// [BB] Billboard stuff
-	const bool drawWithXYBillboard = ((particle && gl_billboard_particles && !(particle->flags & SPF_NO_XY_BILLBOARD)) || (!(actor && actor->renderflags & RF_FORCEYBILLBOARD)
+	// While rendering fulldome cube faces, force full face-the-camera-position
+	// billboarding so sprites match across face seams (each face has a
+	// different view direction; a view-aligned billboard would split a sprite
+	// straddling a seam). See gCubemapFaceRender in hw_cubemaprenderer.cpp.
+	extern bool gCubemapFaceRender;
+
+	const bool drawWithXYBillboard = gCubemapFaceRender || ((particle && gl_billboard_particles && !(particle->flags & SPF_NO_XY_BILLBOARD)) || (!(actor && actor->renderflags & RF_FORCEYBILLBOARD)
 		//&& di->mViewActor != nullptr
 		&& (gl_billboard_mode == 1 || (actor && actor->renderflags & RF_FORCEXYBILLBOARD)))) && !AngledRoll;
 
-	const bool drawBillboardFacingCamera = hw_force_cambbpref ? gl_billboard_faces_camera :
+	const bool drawBillboardFacingCamera = gCubemapFaceRender || (hw_force_cambbpref ? gl_billboard_faces_camera :
 		gl_billboard_faces_camera
 		|| ((actor && (!(actor->renderflags2 & RF2_BILLBOARDNOFACECAMERA) && (actor->renderflags2 & RF2_BILLBOARDFACECAMERA)))
-		|| (particle && particle->texture.isValid() && (!(particle->flags & SPF_NOFACECAMERA) && (particle->flags & SPF_FACECAMERA))));
+		|| (particle && particle->texture.isValid() && (!(particle->flags & SPF_NOFACECAMERA) && (particle->flags & SPF_FACECAMERA)))));
 
 	// [Nash] has +ROLLSPRITE
 	const bool drawRollSpriteActor = (actor != nullptr && actor->renderflags & RF_ROLLSPRITE);

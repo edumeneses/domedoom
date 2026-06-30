@@ -72,6 +72,11 @@ CVAR(Int,    r_cubemap_spatgris_sources,32,             CVAR_ARCHIVE | CVAR_GLOB
 // Defined in r_utility.cpp, also extern'd in hw_entrypoint.cpp
 extern bool NoInterpolateView;
 
+// True while rendering the 6 cube faces. Sprite billboarding reads this to
+// face the camera POSITION (view-direction-independent) so billboards line up
+// across face seams instead of splitting. See hw_sprites.cpp.
+bool gCubemapFaceRender = false;
+
 // -------------------------------------------------------------------------
 
 struct FaceDesc
@@ -286,6 +291,7 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 
 	const DRotator savedAngles = camera->Angles;
 
+	gCubemapFaceRender = true;   // sprites face camera position, not per-face view
 	for (int i = 0; i < CUBE_FACE_COUNT; i++)
 	{
 		// Override camera direction for this face.
@@ -309,6 +315,8 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 			                isFront);// drawPSprites — weapons on front face only
 		});
 	}
+
+	gCubemapFaceRender = false;
 
 	// Restore player camera so the game stays unaffected.
 	camera->Angles = savedAngles;
