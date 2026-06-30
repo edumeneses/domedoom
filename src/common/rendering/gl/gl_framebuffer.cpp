@@ -471,6 +471,30 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		glUseProgram(0);
 	}
 
+	// Save ALL GL state we touch, so this raw-GL pass cannot corrupt GZDoom's
+	// own renderer (a leaked program / VAO / FBO / texture+sampler binding was
+	// freezing the GL backend). Mirror CompositeCubemapFaces' discipline but
+	// cover the full binding set since this pass uses a custom shader.
+	const GLboolean savedScissor = glIsEnabled(GL_SCISSOR_TEST);
+	const GLboolean savedDepth   = glIsEnabled(GL_DEPTH_TEST);
+	const GLboolean savedBlend   = glIsEnabled(GL_BLEND);
+	const GLboolean savedStencil = glIsEnabled(GL_STENCIL_TEST);
+	const GLboolean savedCull    = glIsEnabled(GL_CULL_FACE);
+	GLint savedVP[4];   glGetIntegerv(GL_VIEWPORT, savedVP);
+	GLint savedProg = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &savedProg);
+	GLint savedVAO = 0;  glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &savedVAO);
+	GLint savedDrawFBO = 0, savedReadFBO = 0;
+	glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &savedDrawFBO);
+	glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &savedReadFBO);
+	GLint savedActive = GL_TEXTURE0; glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActive);
+	GLint savedTex[7] = {}, savedSamp[7] = {};
+	for (int u = 0; u < 7; u++)
+	{
+		glActiveTexture(GL_TEXTURE0 + u);
+		glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTex[u]);
+		glGetIntegerv(GL_SAMPLER_BINDING, &savedSamp[u]);
+	}
+
 	auto* domeHW = static_cast<FHardwareTexture*>(domeTex->GetHardwareTexture(0, 0));
 	domeHW->BindOrCreate(domeTex, 0, 0, 0, 0);
 	FHardwareTexture::Unbind(0);
@@ -479,16 +503,6 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
 	                       GL_TEXTURE_2D, domeHW->GetTextureHandle(), 0);
 
-	// Save the GL state we touch (mirror CompositeCubemapFaces discipline).
-	// Stencil test (portal clipping) and face culling are left enabled by the
-	// scene render; a glBlitFramebuffer ignores both but a shader draw does not,
-	// so a failing stencil func or a culled triangle would render all black.
-	const GLboolean savedScissor = glIsEnabled(GL_SCISSOR_TEST);
-	const GLboolean savedDepth   = glIsEnabled(GL_DEPTH_TEST);
-	const GLboolean savedBlend   = glIsEnabled(GL_BLEND);
-	const GLboolean savedStencil = glIsEnabled(GL_STENCIL_TEST);
-	const GLboolean savedCull    = glIsEnabled(GL_CULL_FACE);
-	GLint savedVP[4]; glGetIntegerv(GL_VIEWPORT, savedVP);
 	glDisable(GL_SCISSOR_TEST); glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND);
 	glDisable(GL_STENCIL_TEST); glDisable(GL_CULL_FACE);
 
@@ -554,8 +568,6 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 
 	glBindVertexArray(sVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
-	glBindVertexArray(0);
-	glUseProgram(0);
 
 	if (r_cubemap_debug)
 	{
@@ -572,17 +584,26 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		}
 	}
 
-	// Restore the GL state we changed.
-	glActiveTexture(GL_TEXTURE0);
-	glViewport(savedVP[0], savedVP[1], savedVP[2], savedVP[3]);
-	if (savedScissor) glEnable(GL_SCISSOR_TEST);
-	if (savedDepth)   glEnable(GL_DEPTH_TEST);
-	if (savedBlend)   glEnable(GL_BLEND);
-	if (savedStencil) glEnable(GL_STENCIL_TEST);
-	if (savedCull)    glEnable(GL_CULL_FACE);
-
 	domeTex->SetUpdated(true);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Restore the full GL state exactly as we found it.
+	for (int u = 0; u < 7; u++)
+	{
+		glActiveTexture(GL_TEXTURE0 + u);
+		glBindTexture(GL_TEXTURE_2D, (GLuint)savedTex[u]);
+		glBindSampler(u, (GLuint)savedSamp[u]);
+	}
+	glActiveTexture((GLenum)savedActive);
+	glBindVertexArray((GLuint)savedVAO);
+	glUseProgram((GLuint)savedProg);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, (GLuint)savedDrawFBO);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)savedReadFBO);
+	glViewport(savedVP[0], savedVP[1], savedVP[2], savedVP[3]);
+	if (savedScissor) glEnable(GL_SCISSOR_TEST);  else glDisable(GL_SCISSOR_TEST);
+	if (savedDepth)   glEnable(GL_DEPTH_TEST);    else glDisable(GL_DEPTH_TEST);
+	if (savedBlend)   glEnable(GL_BLEND);         else glDisable(GL_BLEND);
+	if (savedStencil) glEnable(GL_STENCIL_TEST);  else glDisable(GL_STENCIL_TEST);
+	if (savedCull)    glEnable(GL_CULL_FACE);     else glDisable(GL_CULL_FACE);
 }
 
 //===========================================================================
