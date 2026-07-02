@@ -87,17 +87,17 @@ const char *GetVersionString();
 
 // This is so that derivates can use the same savegame versions without worrying about engine compatibility
 #define GAMESIG "GZDOOM"
-#define BASEWAD "cubedoom.pk3"
+#define BASEWAD "domedoom.pk3"
 // Set OPTIONALWAD to "" (null) to disable searching for it
 #define OPTIONALWAD "game_support.pk3"
 #define GZDOOM 1
 #define VR3D_ENABLED
 
 // More stuff that needs to be different for derivatives.
-#define GAMENAME "CubeDoom"
-#define WGAMENAME L"CubeDoom"
-#define GAMENAMELOWERCASE "cubedoom"
-#define APPID "qc.sat.CubeDoom"
+#define GAMENAME "DomeDoom"
+#define WGAMENAME L"DomeDoom"
+#define GAMENAMELOWERCASE "domedoom"
+#define APPID "qc.sat.DomeDoom"
 #define QUERYIWADDEFAULT true
 #define FORUM_URL "http://forum.zdoom.org/"
 #define BUGS_FORUM_URL	"http://forum.zdoom.org/viewforum.php?f=2"

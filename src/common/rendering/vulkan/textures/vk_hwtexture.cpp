@@ -120,7 +120,7 @@ void VkHardwareTexture::CreateImage(FTexture *tex, int translation, int flags)
 		mImage.Image = ImageBuilder()
 			.Format(format)
 			.Size(w, h)
-			// TRANSFER_SRC/DST added for the CubeDoom fulldome cubemap pipeline:
+			// TRANSFER_SRC/DST added for the DomeDoom fulldome cubemap pipeline:
 			// faces are blitted (SRC) into the cross strip (DST) and the cross is
 			// copied to a staging buffer (SRC) for PipeWire/Sh4lt/NDI readback.
 			.Usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |

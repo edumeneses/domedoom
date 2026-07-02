@@ -52,11 +52,11 @@ CVAR(Bool,   r_cubemap_dome_hud_flip_v, false,          CVAR_ARCHIVE | CVAR_GLOB
 
 CVAR(Bool,   r_cubemap_pipewire,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_sh4lt,           false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(String, r_cubemap_sh4lt_label,     "cubedoom",     CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(String, r_cubemap_sh4lt_label,     "domedoom",     CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_sh4lt_audio,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(String, r_cubemap_sh4lt_audio_label, "cubedoom-audio", CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(String, r_cubemap_sh4lt_audio_label, "domedoom-audio", CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_ndi,             false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(String, r_cubemap_ndi_label,       "CubeDoom",     CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(String, r_cubemap_ndi_label,       "DomeDoom",     CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_debug,           false,          0)
 
 CUSTOM_CVAR(Bool, r_cubemap_spatgris, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -261,7 +261,7 @@ void CubemapRenderer::InitPipeWire()
 	{
 		if (!mPWOutput.InitDmaBuf(dmaFd, w, h, stride))
 		{
-			fprintf(stderr, "[cubedoom] PipeWire DMA-BUF stream init failed,"
+			fprintf(stderr, "[domedoom] PipeWire DMA-BUF stream init failed,"
 			                " retrying as CPU\n");
 			dmaFd = -1;
 		}
@@ -271,7 +271,7 @@ void CubemapRenderer::InitPipeWire()
 	{
 		mPixelBuf.resize((size_t)w * h * 4);
 		if (!mPWOutput.InitCPU(w, h))
-			fprintf(stderr, "[cubedoom] PipeWire CPU stream init failed\n");
+			fprintf(stderr, "[domedoom] PipeWire CPU stream init failed\n");
 	}
 }
 
@@ -466,7 +466,7 @@ void CubemapRenderer::CompositeAndStream()
 					{
 						if (p[i]) { ++nonzero; if (p[i] > mx) mx = p[i]; }
 					}
-					fprintf(stderr, "[cubedoom/dbg] frame=%d pwCPU=%d pwDMA=%d "
+					fprintf(stderr, "[domedoom/dbg] frame=%d pwCPU=%d pwDMA=%d "
 					        "sh4lt=%d ndi=%d  buf: nonzero(sampled)=%zu max=%u\n",
 					        dbgFrame, (int)pwCPU, (int)pwDmaBuf,
 					        (int)mSh4ltVideo.IsRunning(), (int)mNdiVideo.IsRunning(),
@@ -479,7 +479,7 @@ void CubemapRenderer::CompositeAndStream()
 				if (!dbgDumped)
 				{
 					dbgDumped = true;
-					const char* path = "/tmp/cubedoom-readback.ppm";
+					const char* path = "/tmp/domedoom-readback.ppm";
 					FILE* f = fopen(path, "wb");
 					if (f)
 					{
@@ -498,7 +498,7 @@ void CubemapRenderer::CompositeAndStream()
 							fwrite(row.data(), 1, row.size(), f);
 						}
 						fclose(f);
-						fprintf(stderr, "[cubedoom/dbg] wrote %s\n", path);
+						fprintf(stderr, "[domedoom/dbg] wrote %s\n", path);
 					}
 				}
 			}

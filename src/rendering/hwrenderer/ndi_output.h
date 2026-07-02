@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <string>
 
-// NDI video output for the CubeDoom fulldome pipeline.
+// NDI video output for the DomeDoom fulldome pipeline.
 // When HAVE_NDI is not defined, all methods are no-ops.
 
 #ifdef HAVE_NDI

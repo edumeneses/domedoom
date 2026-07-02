@@ -1,7 +1,7 @@
 //
 // pw_audio_output.cpp — single N-channel PipeWire audio stream for SpatGRIS
 //
-// Creates one "cubedoom [spat]" stream with N mono channels so it appears as
+// Creates one "domedoom [spat]" stream with N mono channels so it appears as
 // a single device in qpwgraph/Helvum with N output ports that can be patched
 // directly into SpatGRIS input channels.
 //
@@ -133,9 +133,9 @@ bool PipeWireAudioOutput::Init(int numSlots)
 
     EnsurePwInit();
 
-    mLoop = pw_thread_loop_new("cubedoom-spat", nullptr);
+    mLoop = pw_thread_loop_new("domedoom-spat", nullptr);
     if (!mLoop) {
-        fprintf(stderr, "[cubedoom/pw-audio] pw_thread_loop_new failed\n");
+        fprintf(stderr, "[domedoom/pw-audio] pw_thread_loop_new failed\n");
         return false;
     }
 
@@ -147,18 +147,18 @@ bool PipeWireAudioOutput::Init(int numSlots)
 
     mStream = pw_stream_new_simple(
         pw_thread_loop_get_loop(mLoop),
-        "cubedoom-spat",
+        "domedoom-spat",
         pw_properties_new(
             PW_KEY_MEDIA_TYPE,     "Audio",
             PW_KEY_MEDIA_CATEGORY, "Playback",
             PW_KEY_MEDIA_ROLE,     "Game",
-            PW_KEY_NODE_NAME,      "cubedoom-spat",
-            PW_KEY_NODE_DESCRIPTION, "CubeDoom [spat]",
+            PW_KEY_NODE_NAME,      "domedoom-spat",
+            PW_KEY_NODE_DESCRIPTION, "DomeDoom [spat]",
             nullptr),
         &kEvents, this);
 
     if (!mStream) {
-        fprintf(stderr, "[cubedoom/pw-audio] pw_stream_new_simple failed\n");
+        fprintf(stderr, "[domedoom/pw-audio] pw_stream_new_simple failed\n");
         pw_thread_loop_destroy(mLoop);
         mLoop = nullptr;
         return false;
@@ -190,7 +190,7 @@ bool PipeWireAudioOutput::Init(int numSlots)
                                                   PW_STREAM_FLAG_MAP_BUFFERS),
                                 params, 2);
     if (ret < 0) {
-        fprintf(stderr, "[cubedoom/pw-audio] pw_stream_connect: %d\n", ret);
+        fprintf(stderr, "[domedoom/pw-audio] pw_stream_connect: %d\n", ret);
         pw_stream_destroy(mStream);  mStream = nullptr;
         pw_thread_loop_destroy(mLoop); mLoop = nullptr;
         return false;
@@ -199,7 +199,7 @@ bool PipeWireAudioOutput::Init(int numSlots)
     mNumSlots = numSlots;
     pw_thread_loop_start(mLoop);
     mRunning = true;
-    fprintf(stderr, "[cubedoom/pw-audio] single %d-ch stream \"CubeDoom [spat]\" at %d Hz\n",
+    fprintf(stderr, "[domedoom/pw-audio] single %d-ch stream \"DomeDoom [spat]\" at %d Hz\n",
             numSlots, OUT_RATE);
     return true;
 }

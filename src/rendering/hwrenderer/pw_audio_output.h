@@ -1,7 +1,7 @@
 #pragma once
 
 // Manages a single N-channel S16 PipeWire audio stream for SpatGRIS.
-// Appears as one device ("cubedoom [spat]") with N mono output ports in
+// Appears as one device ("domedoom [spat]") with N mono output ports in
 // qpwgraph. Call Init() at startup; AllocSlot/FreeSlot per active source.
 
 #ifdef HAVE_PIPEWIRE

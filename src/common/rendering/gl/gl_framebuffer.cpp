@@ -313,7 +313,7 @@ void OpenGLFrameBuffer::CompositeCubemapFaces(FCanvasTexture** faces, int N, FCa
 				GLenum st = glCheckFramebufferStatus(GL_READ_FRAMEBUFFER);
 				uint8_t px[4] = {0,0,0,0};
 				glReadPixels(N / 2, N / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
-				fprintf(stderr, "[cubedoom/dbg] face %d tex=%u fbo=%s "
+				fprintf(stderr, "[domedoom/dbg] face %d tex=%u fbo=%s "
 				        "centerRGBA=%u,%u,%u,%u\n",
 				        i, faceTex,
 				        st == GL_FRAMEBUFFER_COMPLETE ? "complete" : "INCOMPLETE",
@@ -429,7 +429,7 @@ static GLuint CompileDomeShader(GLenum type, const char* src)
 	if (!ok)
 	{
 		char log[1024]; glGetShaderInfoLog(s, sizeof(log), nullptr, log);
-		fprintf(stderr, "[cubedoom] dome shader compile failed: %s\n", log);
+		fprintf(stderr, "[domedoom] dome shader compile failed: %s\n", log);
 	}
 	return s;
 }
@@ -453,7 +453,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		if (!linked)
 		{
 			char log[1024]; glGetProgramInfoLog(sProg, sizeof(log), nullptr, log);
-			fprintf(stderr, "[cubedoom] dome shader link failed: %s\n", log);
+			fprintf(stderr, "[domedoom] dome shader link failed: %s\n", log);
 		}
 		glDeleteShader(vs); glDeleteShader(fs);
 		glUseProgram(sProg);
@@ -516,7 +516,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		if ((dbgN++ % 120) == 0)
 		{
 			GLenum st = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-			fprintf(stderr, "[cubedoom/dbg] dome FBO %s, %dx%d\n",
+			fprintf(stderr, "[domedoom/dbg] dome FBO %s, %dx%d\n",
 			        st == GL_FRAMEBUFFER_COMPLETE ? "complete" : "INCOMPLETE",
 			        domeSize, domeSize);
 		}
@@ -578,7 +578,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 			uint8_t c[4] = {0,0,0,0};
 			glReadPixels(domeSize/2, domeSize/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, c);
 			GLint curProg = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &curProg);
-			fprintf(stderr, "[cubedoom/dbg] dome draw: prog=%u glErr=0x%x "
+			fprintf(stderr, "[domedoom/dbg] dome draw: prog=%u glErr=0x%x "
 			        "centerRGBA=%u,%u,%u,%u\n",
 			        sProg, (unsigned)err, c[0], c[1], c[2], c[3]);
 		}
@@ -756,7 +756,7 @@ int OpenGLFrameBuffer::ExportCubemapCrossAsDmaBuf(FCanvasTexture* crossTex,
 
 	if (!createImage || !destroyImage || !dmaBufQuery || !dmaBufExport)
 	{
-		fprintf(stderr, "[cubedoom/egl] DMA-BUF export extensions not available"
+		fprintf(stderr, "[domedoom/egl] DMA-BUF export extensions not available"
 		                " — falling back to CPU readback\n");
 		return -1;
 	}
@@ -766,7 +766,7 @@ int OpenGLFrameBuffer::ExportCubemapCrossAsDmaBuf(FCanvasTexture* crossTex,
 	GLuint texId  = crossHW->GetTextureHandle();
 	if (!texId)
 	{
-		fprintf(stderr, "[cubedoom/egl] cross texture has no GL id yet\n");
+		fprintf(stderr, "[domedoom/egl] cross texture has no GL id yet\n");
 		return -1;
 	}
 
@@ -777,7 +777,7 @@ int OpenGLFrameBuffer::ExportCubemapCrossAsDmaBuf(FCanvasTexture* crossTex,
 	                              nullptr);
 	if (!img)
 	{
-		fprintf(stderr, "[cubedoom/egl] eglCreateImageKHR failed\n");
+		fprintf(stderr, "[domedoom/egl] eglCreateImageKHR failed\n");
 		return -1;
 	}
 
@@ -786,7 +786,7 @@ int OpenGLFrameBuffer::ExportCubemapCrossAsDmaBuf(FCanvasTexture* crossTex,
 	EGLuint64KHR modifier = 0;
 	if (!dmaBufQuery(dpy, img, &fourcc, &nplanes, &modifier) || nplanes != 1)
 	{
-		fprintf(stderr, "[cubedoom/egl] DMA-BUF query failed or nplanes=%d\n", nplanes);
+		fprintf(stderr, "[domedoom/egl] DMA-BUF query failed or nplanes=%d\n", nplanes);
 		destroyImage(dpy, img);
 		return -1;
 	}
@@ -797,7 +797,7 @@ int OpenGLFrameBuffer::ExportCubemapCrossAsDmaBuf(FCanvasTexture* crossTex,
 	int  offset =  0;
 	if (!dmaBufExport(dpy, img, &fd, &stride, &offset))
 	{
-		fprintf(stderr, "[cubedoom/egl] eglExportDMABUFImageMESA failed\n");
+		fprintf(stderr, "[domedoom/egl] eglExportDMABUFImageMESA failed\n");
 		destroyImage(dpy, img);
 		return -1;
 	}
@@ -806,7 +806,7 @@ int OpenGLFrameBuffer::ExportCubemapCrossAsDmaBuf(FCanvasTexture* crossTex,
 	// long as the GL texture exists (which is the whole game session).
 	destroyImage(dpy, img);
 
-	fprintf(stderr, "[cubedoom/egl] exported cross texture as DMA-BUF"
+	fprintf(stderr, "[domedoom/egl] exported cross texture as DMA-BUF"
 	                " fd=%d stride=%d offset=%d fourcc=0x%x\n",
 	        fd, stride, offset, (unsigned)fourcc);
 

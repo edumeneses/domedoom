@@ -9,7 +9,7 @@
 
 #include <pipewire/pipewire.h>
 
-// PipeWire video output stream for CubeDoom fulldome pipeline.
+// PipeWire video output stream for DomeDoom fulldome pipeline.
 //
 // Two modes, selected at Init time:
 //
@@ -85,7 +85,7 @@ private:
 
 #else // !HAVE_PIPEWIRE
 
-// No-op stub so CubeDoom builds without libpipewire-0.3-dev. The fulldome
+// No-op stub so DomeDoom builds without libpipewire-0.3-dev. The fulldome
 // PipeWire transport is simply unavailable; Sh4lt output is unaffected.
 class PipeWireOutput
 {

@@ -40,9 +40,9 @@ static bool NdiRuntimeLoad()
         std::string p = std::string(envDir) + "/" + NDILIB_LIBRARY_NAME;
         gNdiHandle = dlopen(p.c_str(), RTLD_LOCAL | RTLD_LAZY);
         if (gNdiHandle)
-            fprintf(stderr, "[cubedoom/ndi] loaded from NDI_RUNTIME_DIR_V6: %s\n", p.c_str());
+            fprintf(stderr, "[domedoom/ndi] loaded from NDI_RUNTIME_DIR_V6: %s\n", p.c_str());
         else
-            fprintf(stderr, "[cubedoom/ndi] NDI_RUNTIME_DIR_V6 set but dlopen failed: %s\n", dlerror());
+            fprintf(stderr, "[domedoom/ndi] NDI_RUNTIME_DIR_V6 set but dlopen failed: %s\n", dlerror());
     }
 
     // Fallback: common system install paths.  Prepend each dir to LD_LIBRARY_PATH
@@ -58,20 +58,20 @@ static bool NdiRuntimeLoad()
         std::string p = std::string(*dir) + "/" + NDILIB_LIBRARY_NAME;
         gNdiHandle = dlopen(p.c_str(), RTLD_LOCAL | RTLD_LAZY);
         if (gNdiHandle)
-            fprintf(stderr, "[cubedoom/ndi] loaded from %s\n", p.c_str());
+            fprintf(stderr, "[domedoom/ndi] loaded from %s\n", p.c_str());
         else
-            fprintf(stderr, "[cubedoom/ndi] not at %s: %s\n", p.c_str(), dlerror());
+            fprintf(stderr, "[domedoom/ndi] not at %s: %s\n", p.c_str(), dlerror());
     }
 
     // Last resort: plain name via ldconfig / remaining LD_LIBRARY_PATH.
     if (!gNdiHandle) {
         gNdiHandle = dlopen(NDILIB_LIBRARY_NAME, RTLD_LOCAL | RTLD_LAZY);
         if (gNdiHandle)
-            fprintf(stderr, "[cubedoom/ndi] loaded via ldconfig: %s\n", NDILIB_LIBRARY_NAME);
+            fprintf(stderr, "[domedoom/ndi] loaded via ldconfig: %s\n", NDILIB_LIBRARY_NAME);
     }
 
     if (!gNdiHandle) {
-        fprintf(stderr, "[cubedoom/ndi] could not load %s — "
+        fprintf(stderr, "[domedoom/ndi] could not load %s — "
                         "install NDI runtime from http://ndi.link/NDIRedistV6\n",
                 NDILIB_LIBRARY_NAME);
         gNdiHandle = (void*)-1;
@@ -81,7 +81,7 @@ static bool NdiRuntimeLoad()
     using pfnLoad = const NDIlib_v6* (*)();
     auto load_fn = (pfnLoad)dlsym(gNdiHandle, "NDIlib_v6_load");
     if (!load_fn) {
-        fprintf(stderr, "[cubedoom/ndi] NDIlib_v6_load not found in %s\n",
+        fprintf(stderr, "[domedoom/ndi] NDIlib_v6_load not found in %s\n",
                 NDILIB_LIBRARY_NAME);
         dlclose(gNdiHandle);
         gNdiHandle = (void*)-1;
@@ -90,7 +90,7 @@ static bool NdiRuntimeLoad()
 
     gNdiLib = load_fn();
     if (!gNdiLib) {
-        fprintf(stderr, "[cubedoom/ndi] NDIlib_v6_load() returned null\n");
+        fprintf(stderr, "[domedoom/ndi] NDIlib_v6_load() returned null\n");
         dlclose(gNdiHandle);
         gNdiHandle = (void*)-1;
         return false;
@@ -110,7 +110,7 @@ static bool NdiLibInit()
             return false;
         if (!gNdiLib->initialize())
         {
-            fprintf(stderr, "[cubedoom/ndi] NDIlib initialize failed "
+            fprintf(stderr, "[domedoom/ndi] NDIlib initialize failed "
                             "(unsupported CPU?)\n");
             return false;
         }
@@ -149,7 +149,7 @@ bool NdiVideoOutput::Init(const std::string& label, int width, int height)
     impl->sender = gNdiLib->send_create(&desc);
     if (!impl->sender)
     {
-        fprintf(stderr, "[cubedoom/ndi] send_create failed (label=%s)\n",
+        fprintf(stderr, "[domedoom/ndi] send_create failed (label=%s)\n",
                 label.c_str());
         delete impl;
         NdiLibShutdown();
@@ -160,7 +160,7 @@ bool NdiVideoOutput::Init(const std::string& label, int width, int height)
     mWidth   = width;
     mHeight  = height;
     mRunning = true;
-    fprintf(stderr, "[cubedoom/ndi] sender ready: %s (%dx%d)\n",
+    fprintf(stderr, "[domedoom/ndi] sender ready: %s (%dx%d)\n",
             label.c_str(), width, height);
     return true;
 }

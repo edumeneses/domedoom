@@ -437,7 +437,7 @@ void VulkanRenderDevice::CopyScreenToBuffer(int w, int h, uint8_t *data)
 
 //===========================================================================
 //
-// CubeDoom fulldome cubemap pipeline (Vulkan)
+// DomeDoom fulldome cubemap pipeline (Vulkan)
 //
 // Mirrors the OpenGL implementation in gl_framebuffer.cpp: assemble the six
 // 90-degree face textures into a horizontal strip, then read the strip back

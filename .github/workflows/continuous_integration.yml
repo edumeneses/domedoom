@@ -101,7 +101,7 @@ jobs:
             ./appimage-builder --skip-tests --recipe ../tools/AppImageBuilder.yml
             cp *.AppImage package
           else
-            cp cubedoom *.pk3 libzmusic.so* package
+            cp domedoom *.pk3 libzmusic.so* package
           fi
         fi
 

@@ -1,5 +1,5 @@
 //
-// pw_output.cpp  —  PipeWire video output for CubeDoom
+// pw_output.cpp  —  PipeWire video output for DomeDoom
 //
 // Implements two delivery modes:
 //
@@ -54,7 +54,7 @@ void PipeWireOutput::OnStateChanged(void* data,
         self->mRunning.store(true, std::memory_order_relaxed);
         break;
     case PW_STREAM_STATE_ERROR:
-        fprintf(stderr, "[cubedoom/pw] stream error: %s\n", error ? error : "?");
+        fprintf(stderr, "[domedoom/pw] stream error: %s\n", error ? error : "?");
         self->mRunning.store(false, std::memory_order_relaxed);
         break;
     default:
@@ -162,10 +162,10 @@ bool PipeWireOutput::Connect(bool dmaBufMode, int nBufs)
 {
     EnsurePwInit();
 
-    mLoop = pw_thread_loop_new("cubedoom-video", nullptr);
+    mLoop = pw_thread_loop_new("domedoom-video", nullptr);
     if (!mLoop)
     {
-        fprintf(stderr, "[cubedoom/pw] pw_thread_loop_new failed\n");
+        fprintf(stderr, "[domedoom/pw] pw_thread_loop_new failed\n");
         return false;
     }
 
@@ -178,7 +178,7 @@ bool PipeWireOutput::Connect(bool dmaBufMode, int nBufs)
 
     mStream = pw_stream_new_simple(
         pw_thread_loop_get_loop(mLoop),
-        "cubedoom-fulldome",
+        "domedoom-fulldome",
         pw_properties_new(
             PW_KEY_MEDIA_TYPE,     "Video",
             PW_KEY_MEDIA_CATEGORY, "Capture",
@@ -189,7 +189,7 @@ bool PipeWireOutput::Connect(bool dmaBufMode, int nBufs)
 
     if (!mStream)
     {
-        fprintf(stderr, "[cubedoom/pw] pw_stream_new_simple failed\n");
+        fprintf(stderr, "[domedoom/pw] pw_stream_new_simple failed\n");
         pw_thread_loop_destroy(mLoop);
         mLoop = nullptr;
         return false;
@@ -230,7 +230,7 @@ bool PipeWireOutput::Connect(bool dmaBufMode, int nBufs)
                                 flags, params, 2);
     if (ret < 0)
     {
-        fprintf(stderr, "[cubedoom/pw] pw_stream_connect: %d\n", ret);
+        fprintf(stderr, "[domedoom/pw] pw_stream_connect: %d\n", ret);
         pw_stream_destroy(mStream);
         mStream = nullptr;
         pw_thread_loop_destroy(mLoop);
@@ -239,7 +239,7 @@ bool PipeWireOutput::Connect(bool dmaBufMode, int nBufs)
     }
 
     pw_thread_loop_start(mLoop);
-    fprintf(stderr, "[cubedoom/pw] stream started (%s, %dx%d)\n",
+    fprintf(stderr, "[domedoom/pw] stream started (%s, %dx%d)\n",
             dmaBufMode ? "DMA-BUF" : "CPU", mWidth, mHeight);
     return true;
 }

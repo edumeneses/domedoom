@@ -51,7 +51,7 @@ const char *GetChannelConfigName(ChannelConfig chan);
 FModule OpenALModule{"OpenAL"};
 
 #include "oalload.h"
-#include "rendering/hwrenderer/cubedoom_audiotap.h"
+#include "rendering/hwrenderer/domedoom_audiotap.h"
 #include "rendering/hwrenderer/spatgris_output.h"
 #include "oal_sfxcache.h"
 

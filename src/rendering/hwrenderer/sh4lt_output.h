@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <string>
 
-// Sh4lt video and audio output for CubeDoom fulldome pipeline.
+// Sh4lt video and audio output for DomeDoom fulldome pipeline.
 // When HAVE_SH4LT is not defined, all methods are no-ops.
 
 #ifdef HAVE_SH4LT

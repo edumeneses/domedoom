@@ -84,7 +84,7 @@ jobs:
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DZDOOM_EXE_NAME=cubedoom \
+            -DZDOOM_EXE_NAME=domedoom \
             -DPK3_QUIET_ZIPDIR=ON \
             -DCMAKE_INSTALL_PREFIX=/usr
 
@@ -109,13 +109,13 @@ jobs:
 
           printf '%s\n' \
             '[Desktop Entry]' \
-            'Name=CubeDoom' \
+            'Name=DomeDoom' \
             'Comment=Doom engine - Fulldome Edition' \
-            'Exec=cubedoom' \
-            'Icon=cubedoom' \
+            'Exec=domedoom' \
+            'Icon=domedoom' \
             'Type=Application' \
             'Categories=Game;' \
-            > "${APPDIR}/usr/share/applications/cubedoom.desktop"
+            > "${APPDIR}/usr/share/applications/domedoom.desktop"
 
           # Custom AppRun.
           # - DOOMWADDIR: engine searches /usr/share/games/doom by absolute path;
@@ -130,12 +130,12 @@ jobs:
             'HERE="$(dirname "$(readlink -f "$0")")"' \
             'export DOOMWADDIR="${DOOMWADDIR:-$HERE/usr/share/games/doom}"' \
             'export LD_LIBRARY_PATH="${HERE}/usr/lib:${HERE}/usr/lib/x86_64-linux-gnu:/usr/local/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"' \
-            'exec "$HERE/usr/bin/cubedoom" "$@"' \
+            'exec "$HERE/usr/bin/domedoom" "$@"' \
             > "$(pwd)/AppRun.sh"
           chmod +x "$(pwd)/AppRun.sh"
 
           ICON_SRC="${APPDIR}/usr/share/icons/hicolor/scalable/apps/org.zdoom.GZDoom.svg"
-          ICON_DST="${APPDIR}/usr/share/icons/hicolor/256x256/apps/cubedoom.png"
+          ICON_DST="${APPDIR}/usr/share/icons/hicolor/256x256/apps/domedoom.png"
           if [ -f "${ICON_SRC}" ]; then
             rsvg-convert -w 256 -h 256 "${ICON_SRC}" -o "${ICON_DST}"
           else
@@ -172,31 +172,31 @@ jobs:
           export LD_LIBRARY_PATH="$(pwd)/AppDir/usr/lib:$(pwd)/AppDir/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
           linuxdeploy \
             --appdir AppDir \
-            --executable AppDir/usr/bin/cubedoom \
-            --desktop-file AppDir/usr/share/applications/cubedoom.desktop \
-            --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/cubedoom.png \
+            --executable AppDir/usr/bin/domedoom \
+            --desktop-file AppDir/usr/share/applications/domedoom.desktop \
+            --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/domedoom.png \
             --custom-apprun "$(pwd)/AppRun.sh" \
             --exclude-library "libpipewire*" \
             --exclude-library "libspa-*" \
             --output appimage
-          mv CubeDoom*.AppImage "cubedoom-${VERSION}-x86_64.AppImage" 2>/dev/null \
-            || mv *.AppImage "cubedoom-${VERSION}-x86_64.AppImage"
+          mv DomeDoom*.AppImage "domedoom-${VERSION}-x86_64.AppImage" 2>/dev/null \
+            || mv *.AppImage "domedoom-${VERSION}-x86_64.AppImage"
 
       - name: Upload AppImage
         uses: actions/upload-artifact@v4
         with:
-          name: CubeDoom-${{ steps.ver.outputs.version }}-x86_64
-          path: cubedoom-*.AppImage
+          name: DomeDoom-${{ steps.ver.outputs.version }}-x86_64
+          path: domedoom-*.AppImage
           if-no-files-found: error
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: cubedoom-*.AppImage
-          name: CubeDoom ${{ steps.ver.outputs.version }}
+          files: domedoom-*.AppImage
+          name: DomeDoom ${{ steps.ver.outputs.version }}
           body: |
-            ## CubeDoom ${{ steps.ver.outputs.version }} - Fulldome Edition
+            ## DomeDoom ${{ steps.ver.outputs.version }} - Fulldome Edition
 
             ### Requirements
             - Linux x86_64
@@ -205,8 +205,8 @@ jobs:
 
             ### Usage
             ```
-            chmod +x cubedoom-*.AppImage
-            ./cubedoom-*.AppImage -iwad /path/to/doom.wad
+            chmod +x domedoom-*.AppImage
+            ./domedoom-*.AppImage -iwad /path/to/doom.wad
             ```
 
             ### Fulldome output
@@ -221,7 +221,7 @@ jobs:
       # always carries the newest AppImage under a stable filename.
       - name: Stage rolling asset
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-        run: cp "cubedoom-${{ steps.ver.outputs.version }}-x86_64.AppImage" cubedoom-continuous-x86_64.AppImage
+        run: cp "domedoom-${{ steps.ver.outputs.version }}-x86_64.AppImage" domedoom-continuous-x86_64.AppImage
 
       - name: Publish rolling release
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
@@ -230,10 +230,10 @@ jobs:
           tag_name: continuous
           prerelease: true
           make_latest: false
-          name: CubeDoom (rolling build)
-          files: cubedoom-continuous-x86_64.AppImage
+          name: DomeDoom (rolling build)
+          files: domedoom-continuous-x86_64.AppImage
           body: |
-            ## CubeDoom - rolling build
+            ## DomeDoom - rolling build
 
             Automatic build from the latest commit on `master`
             (${{ github.sha }}). This prerelease is overwritten on every push;
@@ -246,8 +246,8 @@ jobs:
 
             ### Usage
             ```
-            chmod +x cubedoom-continuous-x86_64.AppImage
-            ./cubedoom-continuous-x86_64.AppImage -iwad /path/to/doom.wad
+            chmod +x domedoom-continuous-x86_64.AppImage
+            ./domedoom-continuous-x86_64.AppImage -iwad /path/to/doom.wad
             ```
 
             ### Fulldome output

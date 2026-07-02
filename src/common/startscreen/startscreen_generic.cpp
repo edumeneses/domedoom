@@ -134,13 +134,13 @@ FGenericStartScreen::FGenericStartScreen(int max_progress)
 	StartupBitmap.Create(W, H);
 	ClearBlock(StartupBitmap, { 0, 0, 0, 255 }, 0, 0, W, H);
 
-	// "CubeDoom" in large white letters, centered vertically and horizontally.
+	// "DomeDoom" in large white letters, centered vertically and horizontally.
 	// Font cells are 8×16 px; scale=8 gives 64×128 px per character.
 	const int titleScale = 8;
 	const int titleH     = 16 * titleScale;  // 128 px tall
 	const RgbQuad white  = { 255, 255, 255, 255 };
 
-	const char* title    = "CubeDoom";
+	const char* title    = "DomeDoom";
 	int titleW = ScaledStringWidth(title, titleScale);
 	int titleX = (W - titleW) / 2;
 	int titleY = (H - titleH) / 2 - titleScale * 4;  // slightly above centre

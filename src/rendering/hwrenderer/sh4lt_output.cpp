@@ -1,5 +1,5 @@
 #include "sh4lt_output.h"
-#include "cubedoom_audiotap.h"
+#include "domedoom_audiotap.h"
 
 #ifdef HAVE_SH4LT
 
@@ -39,7 +39,7 @@ bool Sh4ltVideoOutput::Init(const std::string& label, int width, int height) {
     Shutdown();
     auto* impl = new Impl(label, width, height);
     if (!impl->writer) {
-        fprintf(stderr, "[cubedoom/sh4lt] video init failed (label=%s)\n", label.c_str());
+        fprintf(stderr, "[domedoom/sh4lt] video init failed (label=%s)\n", label.c_str());
         delete impl;
         return false;
     }
@@ -47,7 +47,7 @@ bool Sh4ltVideoOutput::Init(const std::string& label, int width, int height) {
     mWidth  = width;
     mHeight = height;
     mRunning = true;
-    fprintf(stderr, "[cubedoom/sh4lt] video ready: %s (%dx%d)\n",
+    fprintf(stderr, "[domedoom/sh4lt] video ready: %s (%dx%d)\n",
             label.c_str(), width, height);
     return true;
 }
@@ -92,13 +92,13 @@ bool Sh4ltAudioOutput::Init(const std::string& label, int samplerate, int channe
     Shutdown();
     auto* impl = new Impl(label, samplerate, channels, isFloat);
     if (!impl->writer) {
-        fprintf(stderr, "[cubedoom/sh4lt] audio init failed (label=%s)\n", label.c_str());
+        fprintf(stderr, "[domedoom/sh4lt] audio init failed (label=%s)\n", label.c_str());
         delete impl;
         return false;
     }
     mImpl    = impl;
     mRunning = true;
-    fprintf(stderr, "[cubedoom/sh4lt] audio ready: %s (%dHz, %dch, %s)\n",
+    fprintf(stderr, "[domedoom/sh4lt] audio ready: %s (%dHz, %dch, %s)\n",
             label.c_str(), samplerate, channels, isFloat ? "F32" : "S16");
     return true;
 }

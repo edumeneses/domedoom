@@ -1,12 +1,12 @@
-# CubeDoom — Fulldome Edition
+# DomeDoom — Fulldome Edition
 
-CubeDoom is a GZDoom fork that renders the scene as a 6-face cubemap and
+DomeDoom is a GZDoom fork that renders the scene as a 6-face cubemap and
 streams it to a fulldome planetarium pipeline (PipeWire, Sh4lt, NDI) for the
 Satosphère dome at the Société des Arts Technologiques (SAT).
 
 ## TODO
 
-Tracked work for CubeDoom (check the boxes as items land):
+Tracked work for DomeDoom (check the boxes as items land):
 
 - [x] **Vulkan backend support for the cubemap pipeline.**
   `CompositeCubemapFaces` and `ReadCubemapCrossPixels` are now implemented
@@ -16,9 +16,9 @@ Tracked work for CubeDoom (check the boxes as items land):
   images gained `TRANSFER_SRC|DST` usage to allow this. (DMA-BUF export
   `ExportCubemapCrossAsDmaBuf` remains OpenGL-only; Vulkan uses the CPU
   readback path. Zero-copy DMA-BUF export on Vulkan is a future optimization.)
-- [x] **Rename the locally built executable from `gzdoom` to `cubedoom`.**
-  The default `ZDOOM_EXE_NAME` is now `cubedoom`, so local builds produce a
-  `cubedoom` binary (CI already set this explicitly).
+- [x] **Rename the locally built executable from `gzdoom` to `domedoom`.**
+  The default `ZDOOM_EXE_NAME` is now `domedoom`, so local builds produce a
+  `domedoom` binary (CI already set this explicitly).
 - [ ] **Fix AppImage build for NDI and OSC/SpatGRIS.**
   NDI fails at runtime because `libndi.so.6` is not bundled (intentionally —
   loaded via `dlopen`) but the AppImage may land on a system without the NDI
@@ -43,11 +43,11 @@ or in a startup config file.
 | `r_cubemap` | `false` | Enable cubemap rendering pipeline |
 | `r_cubemap_pipewire` | `true` | PipeWire DMA-BUF output |
 | `r_cubemap_sh4lt` | `false` | Sh4lt video output |
-| `r_cubemap_sh4lt_label` | `"cubedoom"` | Sh4lt video stream label |
+| `r_cubemap_sh4lt_label` | `"domedoom"` | Sh4lt video stream label |
 | `r_cubemap_sh4lt_audio` | `false` | Sh4lt audio tap output |
-| `r_cubemap_sh4lt_audio_label` | `"cubedoom-audio"` | Sh4lt audio stream label |
+| `r_cubemap_sh4lt_audio_label` | `"domedoom-audio"` | Sh4lt audio stream label |
 | `r_cubemap_ndi` | `false` | NDI video output |
-| `r_cubemap_ndi_label` | `"CubeDoom"` | NDI source name |
+| `r_cubemap_ndi_label` | `"DomeDoom"` | NDI source name |
 | `r_cubemap_debug` | `false` | Debug logging |
 
 All of the above are also exposed in-game under **Options → Fulldome Output**.
@@ -59,7 +59,7 @@ so the host running the AppImage must have the NDI 6 runtime installed
 
 ### SpatGRIS spatial audio
 
-CubeDoom sends per-source 3D positions to [SpatGRIS](https://github.com/GRIS-UdeM/SpatGRIS)
+DomeDoom sends per-source 3D positions to [SpatGRIS](https://github.com/GRIS-UdeM/SpatGRIS)
 over OSC UDP so the Satosphère's speaker array can do VBAP spatialization of
 each Doom sound object independently.
 
@@ -97,7 +97,7 @@ sent to SpatGRIS — they remain in the OpenAL stereo mix.
 
 #### Audio routing
 
-SpatGRIS receives **positions** from CubeDoom via OSC. For **audio**, configure
+SpatGRIS receives **positions** from DomeDoom via OSC. For **audio**, configure
 OpenAL Soft to use the JACK backend (`snd_aldevice` in the console) and route
 the JACK output ports into SpatGRIS's input channels, or use the Sh4lt audio
 tap for a stereo bed. True per-source JACK audio (one port per active sound) is
