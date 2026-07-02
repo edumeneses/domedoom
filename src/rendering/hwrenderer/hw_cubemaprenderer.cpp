@@ -28,7 +28,7 @@
 //                true  = square fisheye domemaster (DOME_SIZE^2).
 // NOTE: PipeWire init and the readback PBO size on the first frame; switching
 // this at runtime needs a restart to re-init those paths cleanly.
-CVAR(Bool,   r_cubemap_domemaster,      false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool,   r_cubemap_domemaster,      true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_fov,        270.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_yaw,        180.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_pitch,      90.f,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -38,17 +38,17 @@ CVAR(Float,  r_cubemap_dome_roll,       180.f,          CVAR_ARCHIVE | CVAR_GLOB
 CVAR(Bool,   r_cubemap_dome_flip_h,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_flip_v,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_flip_ud,    false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Bool,   r_cubemap_dome_swap_ud,    false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool,   r_cubemap_dome_swap_ud,    true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 // Rim HUD (domemaster only): status bar drawn as a band along the front rim.
 CVAR(Bool,   r_cubemap_dome_hud,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Float,  r_cubemap_dome_hud_arc,    140.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Float,  r_cubemap_dome_hud_band,   0.16f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Float,  r_cubemap_dome_hud_strip,  0.20f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_hud_arc,    45.f,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_hud_band,   0.035f,         CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_hud_strip,  0.07f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_hud_offset, 0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 // Crop each side of the HUD band (0 = full width, 0.49 = almost nothing).
-CVAR(Float,  r_cubemap_dome_hud_crop,   0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_hud_crop,   0.275f,         CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_hud_flip_h, false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Bool,   r_cubemap_dome_hud_flip_v, false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool,   r_cubemap_dome_hud_flip_v, true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 CVAR(Bool,   r_cubemap_pipewire,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_sh4lt,           false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)

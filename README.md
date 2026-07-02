@@ -1,46 +1,32 @@
 # DomeDoom — Fulldome Edition
 
 DomeDoom is a GZDoom fork that renders the scene as a 6-face cubemap and
-streams it to a fulldome planetarium pipeline (PipeWire, Sh4lt, NDI) for the
-Satosphère dome at the Société des Arts Technologiques (SAT).
+either streams the raw cubemap strip or warps it into a square fisheye
+**domemaster** image, feeding a fulldome planetarium pipeline (PipeWire,
+Sh4lt, NDI) for the Satosphère dome at the Société des Arts Technologiques
+(SAT). It also sends per-source 3D positions to SpatGRIS over OSC for
+object-based dome audio.
 
-## TODO
-
-Tracked work for DomeDoom (check the boxes as items land):
-
-- [x] **Vulkan backend support for the cubemap pipeline.**
-  `CompositeCubemapFaces` and `ReadCubemapCrossPixels` are now implemented
-  for the Vulkan backend (`VulkanRenderDevice`), using `vkCmdBlitImage` to
-  assemble the strip and an image→staging-buffer copy for readback, so
-  PipeWire/Sh4lt/NDI work on the default (Vulkan) backend. Canvas-texture
-  images gained `TRANSFER_SRC|DST` usage to allow this. (DMA-BUF export
-  `ExportCubemapCrossAsDmaBuf` remains OpenGL-only; Vulkan uses the CPU
-  readback path. Zero-copy DMA-BUF export on Vulkan is a future optimization.)
-- [x] **Rename the locally built executable from `gzdoom` to `domedoom`.**
-  The default `ZDOOM_EXE_NAME` is now `domedoom`, so local builds produce a
-  `domedoom` binary (CI already set this explicitly).
-- [ ] **Fix AppImage build for NDI and OSC/SpatGRIS.**
-  NDI fails at runtime because `libndi.so.6` is not bundled (intentionally —
-  loaded via `dlopen`) but the AppImage may land on a system without the NDI
-  runtime; document the install requirement more prominently or bundle the
-  redistributable `.so`. OSC (SpatGRIS positions) should work in principle
-  (raw UDP, no external library) but needs verification on a clean AppImage
-  host — check whether the `r_cubemap_spatgris` CVAR survives the AppImage
-  startup config path. Reference: ossia score's AppImage CI produces a working
-  OSC + NDI bundle worth diffing against.
+Both render backends are supported: the cubemap compositing, readback, and
+domemaster warp run on **OpenGL** and **Vulkan** (Vulkan uses `vkCmdBlitImage`
+plus an image→staging-buffer readback; zero-copy DMA-BUF export remains an
+OpenGL-only optimization). Local builds produce a `domedoom` binary
+(`ZDOOM_EXE_NAME` default).
 
 ---
 
 ## Fulldome Configuration
 
 All options live in the `r_cubemap_*` namespace and can be set in the console
-or in a startup config file.
+or in a startup config file. Most are also exposed in-game under
+**Options → Fulldome Output**.
 
 ### Video / streaming
 
 | CVar | Default | Description |
 |------|---------|-------------|
 | `r_cubemap` | `false` | Enable cubemap rendering pipeline |
+| `r_cubemap_domemaster` | `true` | Output square fisheye domemaster instead of the 6-face strip (needs restart — re-inits PipeWire + readback buffers) |
 | `r_cubemap_pipewire` | `true` | PipeWire DMA-BUF output |
 | `r_cubemap_sh4lt` | `false` | Sh4lt video output |
 | `r_cubemap_sh4lt_label` | `"domedoom"` | Sh4lt video stream label |
@@ -50,7 +36,39 @@ or in a startup config file.
 | `r_cubemap_ndi_label` | `"DomeDoom"` | NDI source name |
 | `r_cubemap_debug` | `false` | Debug logging |
 
-All of the above are also exposed in-game under **Options → Fulldome Output**.
+### Domemaster warp / orientation
+
+Only active when `r_cubemap_domemaster` is `true`. The warp assembles the six
+cube faces into a fisheye; orientation and flips are exposed live because
+OpenGL and Vulkan differ in NDC and texture origin, so tuned values vary per
+machine/backend.
+
+| CVar | Default | Description |
+|------|---------|-------------|
+| `r_cubemap_dome_fov` | `270` | Fisheye field of view, degrees |
+| `r_cubemap_dome_yaw` | `180` | Orientation yaw, degrees |
+| `r_cubemap_dome_pitch` | `90` | Orientation pitch, degrees |
+| `r_cubemap_dome_roll` | `180` | Orientation roll, degrees |
+| `r_cubemap_dome_flip_h` | `false` | Flip output horizontally |
+| `r_cubemap_dome_flip_v` | `false` | Flip output vertically |
+| `r_cubemap_dome_flip_ud` | `false` | Swap ceiling/floor |
+| `r_cubemap_dome_swap_ud` | `true` | Swap up/down faces |
+
+### Rim HUD (domemaster only)
+
+The status bar / HUD is drawn as a band along the front rim of the dome so it
+stays readable in fisheye output. Auto-follows the forward view.
+
+| CVar | Default | Description |
+|------|---------|-------------|
+| `r_cubemap_dome_hud` | `true` | Enable the rim HUD band |
+| `r_cubemap_dome_hud_arc` | `45` | Arc width of the band, degrees |
+| `r_cubemap_dome_hud_band` | `0.035` | Radial thickness of the band (fraction of radius) |
+| `r_cubemap_dome_hud_strip` | `0.07` | Source strip height sampled from the HUD |
+| `r_cubemap_dome_hud_offset` | `0` | Manual angular offset from the forward view, degrees |
+| `r_cubemap_dome_hud_crop` | `0.275` | Crop each side of the band (0 = full width, 0.49 = almost nothing) |
+| `r_cubemap_dome_hud_flip_h` | `false` | Flip the HUD band horizontally |
+| `r_cubemap_dome_hud_flip_v` | `true` | Flip the HUD band vertically |
 
 NDI is compiled in when the NDI SDK headers are present at build time (CI
 installs them); the `libndi.so.6` runtime is loaded via `dlopen` at first use,
@@ -102,6 +120,22 @@ OpenAL Soft to use the JACK backend (`snd_aldevice` in the console) and route
 the JACK output ports into SpatGRIS's input channels, or use the Sh4lt audio
 tap for a stereo bed. True per-source JACK audio (one port per active sound) is
 a planned future enhancement.
+
+---
+
+## Notes & known issues
+
+**Recent fixes** — sprites no longer split across cube-face seams (billboards
+forced to face the camera); the GL dome pass fully saves/restores GL state
+(fixes a GL freeze); clean shutdown no longer crashes with "pure virtual method
+called"; FluidSynth "Not a RIFF file" soundfont spam silenced.
+
+**AppImage / NDI runtime** — NDI is compiled in when the SDK headers are
+present at build time (CI installs them), but `libndi.so.6` is *not* bundled;
+it is loaded via `dlopen` at first use, so the host running the AppImage must
+have the NDI 6 runtime installed
+(https://ndi.video/download-ndi-sdk/ or the NDI Tools/Redist package).
+OSC (SpatGRIS positions) uses raw UDP with no external library.
 
 ---
 
