@@ -86,6 +86,7 @@
 #include "events.h"
 #include "c_buttons.h"
 #include "d_buttons.h"
+#include "osc_input.h"
 #include "hwrenderer/scene/hw_drawinfo.h"
 #include "doommenu.h"
 #include "screenjob.h"
@@ -623,8 +624,15 @@ void G_BuildTiccmd (usercmd_t *cmd)
 	// Update axis polling for the button map
 	buttonMap.GetAxes();
 
+	// DomeDoom: drain OSC control packets once per tic (no-op when disabled).
+	OSC_Input_Tick();
+
 	strafe = buttonMap.ButtonDown(Button_Strafe);
 	speed = buttonMap.ButtonDown(Button_Speed) ^ (int)cl_run;
+
+	// DomeDoom: OSC "run" acts as an additional speed modifier.
+	if (OSC_Input_Enabled() && OSC_Input_State().run)
+		speed = 1;
 
 	forward = side = fly = 0;
 
@@ -730,6 +738,31 @@ void G_BuildTiccmd (usercmd_t *cmd)
 	float axis_forward = buttonMap.ButtonAnalog(Button_Forward) - buttonMap.ButtonAnalog(Button_Back);
 	float axis_side = buttonMap.ButtonAnalog(Button_MoveLeft) - buttonMap.ButtonAnalog(Button_MoveRight);
 	float axis_up = buttonMap.ButtonAnalog(Button_MoveUp) - buttonMap.ButtonAnalog(Button_MoveDown);
+
+	// DomeDoom: fold OSC control into the analog input, so it flows through the
+	// same scaling/sensitivity as a joystick. Sign conventions match the axes
+	// above (axis_side is MoveLeft-MoveRight; OSC side is +right, so subtract).
+	if (OSC_Input_Enabled())
+	{
+		const OSCInputState& o = OSC_Input_State();
+		axis_forward += o.forward;
+		axis_side    -= o.side;
+		axis_yaw     += o.turn;
+		axis_pitch   += o.pitch;
+		axis_up      += o.fly;
+		cmd->buttons |= o.buttons;
+
+		// Absolute dome heading: snap the player's view yaw to the requested
+		// angle. Done through the actor angle (not cmd->yaw) so it is exact
+		// regardless of turn sensitivity; interpolation makes it a smooth turn.
+		double rotDeg;
+		if (OSC_Input_ConsumeRotate(&rotDeg) &&
+		    gamestate == GS_LEVEL &&
+		    players[consoleplayer].mo != nullptr)
+		{
+			players[consoleplayer].mo->Angles.Yaw = DAngle::fromDeg(rotDeg);
+		}
+	}
 
 	if (buttonMap.ButtonDown(Button_Strafe) || (buttonMap.ButtonDown(Button_Mlook) && lookstrafe))
 	{

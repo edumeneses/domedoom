@@ -365,6 +365,7 @@ OptionMenu "OptionsMenu" protected
 	Submenu "$OPTMNU_SYSTEM",			"SystemMenu"
 	StaticText " "
 	Submenu "Fulldome Output",			"FulldomeOutputOptions"
+	Submenu "OSC Control",				"OSCControlOptions"
 	Submenu "$OS_TITLE", "os_Menu"
 }
 
@@ -442,6 +443,33 @@ OptionMenu "FulldomeOutputOptions" protected
 	TextField "SpatGRIS OSC port", "r_cubemap_spatgris_port"
 	Slider "Source pool size", "r_cubemap_spatgris_sources", 1, 128, 1
 	StaticText "Source pool size needs a restart to take effect.", 1
+}
+
+//-------------------------------------------------------------------------------------------
+//
+// OSC Control Options (DomeDoom)
+//
+//-------------------------------------------------------------------------------------------
+
+OptionMenu "OSCControlOptions" protected
+{
+	Title "OSC CONTROL"
+
+	StaticText "Parallel game control over OSC/UDP", 1
+	Option    "Enable OSC control", "osc_control", "OnOff"
+	TextField "Listen port", "osc_control_port"
+	Option    "Debug logging (stderr)", "osc_control_debug", "OnOff"
+
+	StaticText " "
+	StaticText "Runs alongside keyboard/mouse/joystick.", 1
+	StaticText "Send OSC to this host's IP on the port above.", 1
+
+	StaticText " "
+	StaticText "Namespace /domedoom/* (arg 0..1, default 1):", 1
+	StaticText "  front  back  strafeleft  straferight", 1
+	StaticText "  left  right  lookup  lookdown  moveup  movedown", 1
+	StaticText "  attack  altattack  use  jump  crouch  reload  zoom  run", 1
+	StaticText "  rotate <deg 0..360> = absolute dome heading", 1
 }
 
 //-------------------------------------------------------------------------------------------

@@ -123,6 +123,54 @@ a planned future enhancement.
 
 ---
 
+## OSC game control
+
+DomeDoom can be driven **in parallel** over OSC/UDP — the normal
+keyboard/mouse/joystick input keeps working; OSC is folded into the same
+analog input path. Intended for a dome-side controller (touch surface, show
+control, etc.) that streams messages to the host running DomeDoom.
+
+Enable it in-game under **Options → OSC Control**, or via CVars:
+
+| CVar | Default | Description |
+|------|---------|-------------|
+| `osc_control` | `false` | Enable the OSC control receiver |
+| `osc_control_port` | `6666` | UDP port to listen on (all interfaces) |
+| `osc_control_debug` | `false` | Log received messages to stderr |
+
+Send OSC messages to the host's IP on that port. Every address lives under the
+`/domedoom/*` namespace. The single argument is the magnitude in `[0, 1]`
+(`f` or `i`); if omitted it defaults to `1.0`. Send `0` to release.
+
+| Address | Action |
+|---------|--------|
+| `/domedoom/front` `/domedoom/back` | Move forward / backward |
+| `/domedoom/strafeleft` `/domedoom/straferight` | Strafe |
+| `/domedoom/left` `/domedoom/right` | Turn (yaw) |
+| `/domedoom/lookup` `/domedoom/lookdown` | Look (pitch) |
+| `/domedoom/moveup` `/domedoom/movedown` | Fly / swim up / down |
+| `/domedoom/attack` `/domedoom/altattack` | Fire |
+| `/domedoom/use` `/domedoom/jump` `/domedoom/crouch` | Use / jump / crouch |
+| `/domedoom/reload` `/domedoom/zoom` `/domedoom/run` | Reload / zoom / run modifier |
+| `/domedoom/rotate` `<deg>` | **Absolute** view heading on the dome, `0–360°` |
+
+`/domedoom/rotate` snaps DoomGuy's facing to an absolute compass heading — the
+natural way to point the action at a given spot on the dome. All other
+controls are relative and mirror the joystick axes/buttons.
+
+Axes and buttons **auto-release ~250 ms** after their last message, so a
+stalled sender never leaves DoomGuy running. A live controller streaming at
+≥10 Hz holds the input; a single message acts as a brief pulse.
+
+A dependency-free test sender lives at `tools/osc_test_sender.py`:
+
+```
+tools/osc_test_sender.py 127.0.0.1 6666 /domedoom/front 1.0
+tools/osc_test_sender.py 127.0.0.1 6666 /domedoom/rotate 90
+```
+
+---
+
 ## Notes & known issues
 
 **Recent fixes** — sprites no longer split across cube-face seams (billboards
