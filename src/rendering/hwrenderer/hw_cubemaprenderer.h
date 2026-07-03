@@ -86,11 +86,14 @@ private:
 	FCanvasTexture*       mHudTex                   = nullptr;
 	bool                  mInitialized              = false;
 
-	// Dome yaw lock: when r_cubemap_dome_lock_yaw is set, the cube faces are
-	// rendered at a fixed world heading (latched here on enable) instead of
-	// following the player. Turning/rotating then moves the player across a
-	// static dome image rather than spinning the whole projected world.
-	double                mDomeLockYaw   = 0.0;
+	// Dome yaw lock: when r_cubemap_dome_lock_yaw is set, the domemaster OUTPUT
+	// is counter-rotated by the player's yaw change since the reference latched
+	// on enable. This cancels the scene's rotation (world stays fixed on the
+	// dome) while the front-face content — including the weapon — orbits around
+	// the dome to show the player's aim. The faces themselves still follow the
+	// player so the weapon stays baked at front-centre before the warp.
+	double                mCurViewYaw    = 0.0;   // player yaw captured this frame
+	double                mDomeLockYaw   = 0.0;   // reference yaw latched on enable
 	bool                  mDomeLockValid = false;
 
 	// PipeWire output — initialised lazily on first frame.

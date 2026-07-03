@@ -215,6 +215,10 @@ CVAR (Float,	m_side,			2.f,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
 
 #define ANALOG_LOOK_BASE	1280
 
+// DomeDoom: degrees/tic of player yaw at full OSC turn (o.turn == 1). ~7°/tic
+// matches a fast keyboard turn; at 35 tics/s that is ~245°/s.
+static constexpr double OSC_TURN_DEG_PER_TIC = 7.0;
+
 // You can change cl_analog_sensitivity_pitch's default to 1.6f if the old historical
 // behavior is preferred, but IMO that is so fast that it's practically unplayable...
 CVAR (Float, cl_analog_sensitivity_yaw,		1.f,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
@@ -747,10 +751,11 @@ void G_BuildTiccmd (usercmd_t *cmd)
 		const OSCInputState& o = OSC_Input_State();
 		axis_forward += o.forward;
 		axis_side    -= o.side;
-		axis_yaw     += o.turn;
 		axis_pitch   += o.pitch;
 		axis_up      += o.fly;
 		cmd->buttons |= o.buttons;
+		// Note: OSC turn (o.turn) is applied to cmd->yaw below, not here — the
+		// analog G_AddViewAngle path can keep turning after input stops.
 	}
 
 	if (buttonMap.ButtonDown(Button_Strafe) || (buttonMap.ButtonDown(Button_Mlook) && lookstrafe))
@@ -843,6 +848,15 @@ void G_BuildTiccmd (usercmd_t *cmd)
 	// player on a static dome; on a normal window it just turns to that angle.
 	if (OSC_Input_Enabled())
 	{
+		const OSCInputState& o = OSC_Input_State();
+		double addDeg = 0.0;
+
+		// Continuous turn: o.turn in [-1,1] (+ = left) applied as a yaw rate.
+		// Via cmd->yaw (not G_AddViewAngle) so it stops the instant input does.
+		if (o.turn != 0.f)
+			addDeg += o.turn * OSC_TURN_DEG_PER_TIC;
+
+		// Absolute heading: turn toward the requested angle by the shortest arc.
 		double tgt;
 		if (OSC_Input_ConsumeRotate(&tgt) &&
 		    gamestate == GS_LEVEL &&
@@ -852,8 +866,12 @@ void G_BuildTiccmd (usercmd_t *cmd)
 			double d = tgt - cur;
 			while (d >  180.0) d -= 360.0;
 			while (d <= -180.0) d += 360.0;
-			int add = (int)lround(d * (65536.0 / 360.0));
-			int y = cmd->yaw + add;
+			addDeg += d;
+		}
+
+		if (addDeg != 0.0)
+		{
+			int y = cmd->yaw + (int)lround(addDeg * (65536.0 / 360.0));
 			if (y >  32767) y =  32767;
 			if (y < -32768) y = -32768;
 			cmd->yaw = (short)y;

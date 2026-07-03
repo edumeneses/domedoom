@@ -53,7 +53,7 @@ machine/backend.
 | `r_cubemap_dome_flip_v` | `false` | Flip output vertically |
 | `r_cubemap_dome_flip_ud` | `false` | Swap ceiling/floor |
 | `r_cubemap_dome_swap_ud` | `true` | Swap up/down faces |
-| `r_cubemap_dome_lock_yaw` | `false` | Lock the dome to a fixed world heading — the projected world stops following the player, so turning/rotating moves the player *across* a static dome instead of spinning the whole image. Latched to the player's yaw when first enabled. |
+| `r_cubemap_dome_lock_yaw` | `false` | Lock the scene to a fixed dome heading. The domemaster output is counter-rotated by the player's yaw change (latched on enable), so the projected world stays still while the weapon orbits around the dome to show the player's aim. Domemaster only. |
 
 ### Rim HUD (domemaster only)
 
@@ -160,10 +160,11 @@ way to point the action at a given spot on the dome. All other controls are
 relative and mirror the joystick axes/buttons.
 
 **For the intended dome behaviour, enable `r_cubemap_dome_lock_yaw`** (Options →
-Fulldome Output → *Lock dome heading*). With it on, turning and `/domedoom/rotate`
-move the player *across a fixed dome image* instead of spinning the whole
-projected world — DoomGuy relocates on the dome surface while the background
-stays put. With it off, turning yaws the entire dome (normal Doom behaviour).
+Fulldome Output → *Lock dome heading*). With it on, the scene stays fixed on the
+dome while turning and `/domedoom/rotate` orbit the weapon around the dome to
+show where the player is aiming (the output is counter-rotated by the player's
+yaw so the world does not spin). With it off, turning yaws the entire dome
+(normal Doom behaviour, useful on a flat window).
 
 Axes and buttons **auto-release ~250 ms** after their last message, so a
 stalled sender never leaves DoomGuy running. A live controller streaming at

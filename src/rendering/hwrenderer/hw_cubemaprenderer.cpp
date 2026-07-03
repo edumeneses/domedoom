@@ -315,14 +315,13 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 
 	const DRotator savedAngles = camera->Angles;
 
-	// Base yaw for the cube faces. Normally follows the player so the dome
-	// tracks where they look. When yaw-locked, latch a fixed world heading so
-	// the projected world stays put and only the player moves across the dome.
-	double baseYaw = savedAngles.Yaw.Degrees();
+	// Capture the player's yaw for the yaw-lock output offset (see
+	// CompositeAndStream). The faces still follow the player, so the weapon
+	// stays baked at front-centre; the lock is applied later, to the warp.
+	mCurViewYaw = savedAngles.Yaw.Degrees();
 	if (r_cubemap_dome_lock_yaw)
 	{
-		if (!mDomeLockValid) { mDomeLockYaw = baseYaw; mDomeLockValid = true; }
-		baseYaw = mDomeLockYaw;
+		if (!mDomeLockValid) { mDomeLockYaw = mCurViewYaw; mDomeLockValid = true; }
 	}
 	else
 	{
@@ -333,7 +332,7 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 	for (int i = 0; i < CUBE_FACE_COUNT; i++)
 	{
 		// Override camera direction for this face.
-		camera->Angles.Yaw   = DAngle::fromDeg(baseYaw + kFaces[i].yawDeg);
+		camera->Angles.Yaw   = savedAngles.Yaw + DAngle::fromDeg(kFaces[i].yawDeg);
 		camera->Angles.Pitch = DAngle::fromDeg(kFaces[i].pitchDeg);
 		camera->Angles.Roll  = nullAngle;
 
@@ -409,7 +408,17 @@ void CubemapRenderer::CompositeAndStream()
 		// Warp the 6 faces into a square fisheye domemaster.
 		DomemasterParams dp;
 		dp.fovDeg = r_cubemap_dome_fov;
-		BuildInvRot(r_cubemap_dome_yaw, r_cubemap_dome_pitch, r_cubemap_dome_roll,
+
+		// Yaw lock: counter-rotate the output by the player's yaw change since
+		// the reference. The scene is captured in the player's frame, so adding
+		// the player yaw to the warp yaw cancels the scene's rotation (world
+		// stays fixed on the dome) while orbiting the front-face weapon to the
+		// aim direction. See the mDomeLock* comment in the header.
+		float domeYaw = r_cubemap_dome_yaw;
+		if (r_cubemap_dome_lock_yaw && mDomeLockValid)
+			domeYaw += (float)(mCurViewYaw - mDomeLockYaw);
+
+		BuildInvRot(domeYaw, r_cubemap_dome_pitch, r_cubemap_dome_roll,
 		            dp.invRot);
 		dp.flipH = r_cubemap_dome_flip_h;
 		dp.flipV = r_cubemap_dome_flip_v;
