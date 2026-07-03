@@ -86,6 +86,13 @@ private:
 	FCanvasTexture*       mHudTex                   = nullptr;
 	bool                  mInitialized              = false;
 
+	// Dome yaw lock: when r_cubemap_dome_lock_yaw is set, the cube faces are
+	// rendered at a fixed world heading (latched here on enable) instead of
+	// following the player. Turning/rotating then moves the player across a
+	// static dome image rather than spinning the whole projected world.
+	double                mDomeLockYaw   = 0.0;
+	bool                  mDomeLockValid = false;
+
 	// PipeWire output — initialised lazily on first frame.
 	PipeWireOutput        mPWOutput;
 	std::vector<uint8_t>  mPixelBuf;     // CPU readback staging buffer

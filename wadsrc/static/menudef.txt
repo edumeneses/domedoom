@@ -398,6 +398,7 @@ OptionMenu "FulldomeOutputOptions" protected
 	Option    "Flip vertical", "r_cubemap_dome_flip_v", "OnOff"
 	Option    "Swap ceiling/floor", "r_cubemap_dome_flip_ud", "OnOff"
 	Option    "Swap up/down faces", "r_cubemap_dome_swap_ud", "OnOff"
+	Option    "Lock dome heading (player moves, world fixed)", "r_cubemap_dome_lock_yaw", "OnOff"
 
 	StaticText " "
 	StaticText "Domemaster Rim HUD", 1

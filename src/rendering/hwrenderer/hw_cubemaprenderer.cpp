@@ -39,6 +39,11 @@ CVAR(Bool,   r_cubemap_dome_flip_h,     false,          CVAR_ARCHIVE | CVAR_GLOB
 CVAR(Bool,   r_cubemap_dome_flip_v,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_flip_ud,    false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_swap_ud,    true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+// Lock the dome to a fixed world heading: the projected world stops following
+// the player's yaw, so turning/rotating moves the player across a static dome
+// instead of spinning the whole image. Latched to the player's yaw when first
+// enabled. Intended for OSC /domedoom/rotate + left/right dome control.
+CVAR(Bool,   r_cubemap_dome_lock_yaw,    false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 // Rim HUD (domemaster only): status bar drawn as a band along the front rim.
 CVAR(Bool,   r_cubemap_dome_hud,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_hud_arc,    45.f,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -310,11 +315,25 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 
 	const DRotator savedAngles = camera->Angles;
 
+	// Base yaw for the cube faces. Normally follows the player so the dome
+	// tracks where they look. When yaw-locked, latch a fixed world heading so
+	// the projected world stays put and only the player moves across the dome.
+	double baseYaw = savedAngles.Yaw.Degrees();
+	if (r_cubemap_dome_lock_yaw)
+	{
+		if (!mDomeLockValid) { mDomeLockYaw = baseYaw; mDomeLockValid = true; }
+		baseYaw = mDomeLockYaw;
+	}
+	else
+	{
+		mDomeLockValid = false;
+	}
+
 	gCubemapFaceRender = true;   // sprites face camera position, not per-face view
 	for (int i = 0; i < CUBE_FACE_COUNT; i++)
 	{
 		// Override camera direction for this face.
-		camera->Angles.Yaw   = savedAngles.Yaw + DAngle::fromDeg(kFaces[i].yawDeg);
+		camera->Angles.Yaw   = DAngle::fromDeg(baseYaw + kFaces[i].yawDeg);
 		camera->Angles.Pitch = DAngle::fromDeg(kFaces[i].pitchDeg);
 		camera->Angles.Roll  = nullAngle;
 

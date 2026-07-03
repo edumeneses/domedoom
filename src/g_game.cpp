@@ -751,17 +751,6 @@ void G_BuildTiccmd (usercmd_t *cmd)
 		axis_pitch   += o.pitch;
 		axis_up      += o.fly;
 		cmd->buttons |= o.buttons;
-
-		// Absolute dome heading: snap the player's view yaw to the requested
-		// angle. Done through the actor angle (not cmd->yaw) so it is exact
-		// regardless of turn sensitivity; interpolation makes it a smooth turn.
-		double rotDeg;
-		if (OSC_Input_ConsumeRotate(&rotDeg) &&
-		    gamestate == GS_LEVEL &&
-		    players[consoleplayer].mo != nullptr)
-		{
-			players[consoleplayer].mo->Angles.Yaw = DAngle::fromDeg(rotDeg);
-		}
 	}
 
 	if (buttonMap.ButtonDown(Button_Strafe) || (buttonMap.ButtonDown(Button_Mlook) && lookstrafe))
@@ -847,6 +836,29 @@ void G_BuildTiccmd (usercmd_t *cmd)
 	cmd->upmove = fly;
 	LocalViewAngle = 0;
 	LocalViewPitch = 0;
+
+	// DomeDoom: OSC absolute heading. Turn the player toward the requested
+	// heading via cmd->yaw (same path as normal turning) so the change is
+	// reliable and networked. With the dome yaw locked, this repositions the
+	// player on a static dome; on a normal window it just turns to that angle.
+	if (OSC_Input_Enabled())
+	{
+		double tgt;
+		if (OSC_Input_ConsumeRotate(&tgt) &&
+		    gamestate == GS_LEVEL &&
+		    players[consoleplayer].mo != nullptr)
+		{
+			double cur = players[consoleplayer].mo->Angles.Yaw.Degrees();
+			double d = tgt - cur;
+			while (d >  180.0) d -= 360.0;
+			while (d <= -180.0) d += 360.0;
+			int add = (int)lround(d * (65536.0 / 360.0));
+			int y = cmd->yaw + add;
+			if (y >  32767) y =  32767;
+			if (y < -32768) y = -32768;
+			cmd->yaw = (short)y;
+		}
+	}
 
 	// special buttons
 	if (sendturn180)
