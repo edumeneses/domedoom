@@ -143,7 +143,7 @@ jobs:
       commit: ${{ github.sha }}
       branch: ${{ needs.ci-init.outputs.branch }}
       tag-name: ${{ needs.ci-init.outputs.tag }}
-      message: Release Draft for ${{ needs.ci-init.outputs.tag }}
+      message: Release Draft
       preview: false
 
 # ======================
