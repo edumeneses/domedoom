@@ -78,6 +78,7 @@ jobs:
     needs:
       - debinfo
       - extra
+      - lint-appstream
       - ci-init
     runs-on: ubuntu-latest
     name: CI Success
@@ -145,6 +146,26 @@ jobs:
       tag-name: ${{ needs.ci-init.outputs.tag }}
       message: Release Draft
       preview: false
+
+# ======================
+# Other Checks
+# ======================
+
+  lint-appstream:
+    needs:
+    - ci-init
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub/flatpak-builder-lint:latest
+    name: Lint Appstream
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+      - run: |
+          flatpak-builder-lint --gha-format \
+            appstream src/posix/freedesktop/org.zdoom.UZDoom.metainfo.xml
 
 # ======================
 # Primary Build Configuration
