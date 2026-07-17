@@ -65,8 +65,9 @@ public:
 	// streaming outputs (PipeWire, Sh4lt, NDI). Call after BlitHUDToFrontFace.
 	void CompositeAndStream();
 
-	// Render the contents of `drawer` (HUD/statusbar) into the front face FBO,
-	// compositing on top of the already-rendered 3D scene.
+	// Render the contents of `drawer` (HUD/statusbar) into the FBO of the face
+	// selected by r_cubemap_hud_face (front by default), compositing on top of
+	// the already-rendered 3D scene.
 	void BlitHUDToFrontFace(F2DDrawer* drawer);
 
 	// Dispatch HUD handling by output mode: domemaster renders the HUD into a
@@ -75,16 +76,17 @@ public:
 	void BlitHUD(F2DDrawer* drawer);
 
 	// Bake the drawer's commands from `firstCommand` onward (menu/console,
-	// drawn after BlitHUD) onto the front face in BOTH output modes. The front
-	// face also holds the weapon, so on the domemaster the menu lands on top
-	// of the gun at the dome's front; the cube strip shows it on the front
-	// face. Must run before CompositeAndStream. No-op when nothing was added.
+	// drawn after BlitHUD) onto the face selected by r_cubemap_hud_face in
+	// ALL output modes. The front face (the default) also holds the weapon,
+	// so on the domemaster the menu lands on top of the gun at the dome's
+	// front. Must run before CompositeAndStream. No-op when nothing was added.
 	void BlitMenuToFrontFace(F2DDrawer* drawer, int firstCommand);
 
 	// No-scene fallback (title screen, intermission, full console): blank all
-	// faces and bake the entire 2D screen onto the front face, so the
-	// streaming outputs are live from launch — before any level is loaded.
-	// Initializes the renderer (and thus the outputs) on first use.
+	// faces and bake the entire 2D screen onto the face selected by
+	// r_cubemap_hud_face, so the streaming outputs are live from launch —
+	// before any level is loaded. Initializes the renderer (and thus the
+	// outputs) on first use.
 	void BlitScreenToFrontFace(F2DDrawer* drawer);
 
 	// True when RenderFacesToTextures ran this frame (a 3D scene exists).

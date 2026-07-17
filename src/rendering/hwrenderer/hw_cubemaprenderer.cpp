@@ -49,12 +49,15 @@ CVAR(Bool,   r_cubemap_dome_lock_yaw,    false,          CVAR_ARCHIVE | CVAR_GLO
 CVAR(Bool,   r_cubemap_dome_hud,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_hud_arc,    45.f,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_hud_band,   0.035f,         CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Float,  r_cubemap_dome_hud_strip,  0.07f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_dome_hud_strip,  0.035f,         CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_hud_offset, 0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 // Crop each side of the HUD band (0 = full width, 0.49 = almost nothing).
 CVAR(Float,  r_cubemap_dome_hud_crop,   0.275f,         CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_hud_flip_h, false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_hud_flip_v, true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+// Cube face the 2D overlays (strip-mode HUD, menu, no-scene screen) are baked
+// onto. Front suits most setups; rotated dome orientations may want another.
+CVAR(Int,    r_cubemap_hud_face,        CUBE_FRONT,     CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 // Equirectangular content rotation (defaults keep the front view centred).
 CVAR(Float,  r_cubemap_equi_yaw,        0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_equi_pitch,      0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -159,6 +162,13 @@ static int OutputMode()
 {
 	const int m = r_cubemap_mode;
 	return (m < CUBE_OUT_STRIP || m > CUBE_OUT_EQUI) ? CUBE_OUT_DOME : m;
+}
+
+// Face selected for baked 2D overlays, clamped to a valid index.
+static int HudFace()
+{
+	const int f = r_cubemap_hud_face;
+	return (f < 0 || f >= CUBE_FACE_COUNT) ? CUBE_FRONT : f;
 }
 
 int CubemapRenderer::OutW() const
@@ -412,12 +422,13 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 
 void CubemapRenderer::BlitHUDToFrontFace(F2DDrawer* drawer)
 {
-	if (!mInitialized || !mFaceTex[CUBE_FRONT] || !drawer) return;
+	if (!mInitialized || !mFaceTex[HudFace()] || !drawer) return;
 
-	// Re-bind the front face FBO and overlay the 2D HUD (statusbar, etc.)
-	// on top of the already-rendered 3D scene.  Draw2D scales the drawer's
-	// logical coordinate space (screen resolution) into the face viewport.
-	screen->RenderTextureView(mFaceTex[CUBE_FRONT], [&](IntRect& bounds) {
+	// Re-bind the selected face FBO (r_cubemap_hud_face, front by default) and
+	// overlay the 2D HUD (statusbar, etc.) on top of the already-rendered 3D
+	// scene.  Draw2D scales the drawer's logical coordinate space (screen
+	// resolution) into the face viewport.
+	screen->RenderTextureView(mFaceTex[HudFace()], [&](IntRect& bounds) {
 		Draw2D(drawer, *screen->RenderState(), 0, 0, bounds.width, bounds.height);
 	});
 }
@@ -453,10 +464,10 @@ void CubemapRenderer::BlitHUD(F2DDrawer* drawer)
 
 void CubemapRenderer::BlitMenuToFrontFace(F2DDrawer* drawer, int firstCommand)
 {
-	if (!mInitialized || !mFaceTex[CUBE_FRONT] || !drawer) return;
+	if (!mInitialized || !mFaceTex[HudFace()] || !drawer) return;
 	if (firstCommand >= drawer->DrawCount()) return;   // no menu this frame
 
-	screen->RenderTextureView(mFaceTex[CUBE_FRONT], [&](IntRect& bounds) {
+	screen->RenderTextureView(mFaceTex[HudFace()], [&](IntRect& bounds) {
 		Draw2D(drawer, *screen->RenderState(), 0, 0, bounds.width, bounds.height,
 		       firstCommand);
 	});
@@ -470,8 +481,8 @@ void CubemapRenderer::BlitScreenToFrontFace(F2DDrawer* drawer)
 	if (!drawer) return;
 
 	// Blank all faces so stale scene content (or uninitialized texture memory)
-	// doesn't surround the 2D screen on the dome/strip; the front face gets
-	// the full 2D screen (title pic, console, menu) on top of the clear.
+	// doesn't surround the 2D screen on the dome/strip; the selected HUD face
+	// gets the full 2D screen (title pic, console, menu) on top of the clear.
 	F2DDrawer clear;
 	clear.Begin(screen->GetWidth(), screen->GetHeight());
 	clear.ClearScreen();
@@ -481,7 +492,7 @@ void CubemapRenderer::BlitScreenToFrontFace(F2DDrawer* drawer)
 	{
 		screen->RenderTextureView(mFaceTex[i], [&](IntRect& bounds) {
 			Draw2D(&clear, *screen->RenderState(), 0, 0, bounds.width, bounds.height);
-			if (i == CUBE_FRONT)
+			if (i == HudFace())
 				Draw2D(drawer, *screen->RenderState(), 0, 0, bounds.width, bounds.height);
 		});
 	}
