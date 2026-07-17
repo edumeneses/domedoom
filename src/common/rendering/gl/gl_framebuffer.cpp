@@ -409,20 +409,35 @@ void main() {
         else           { sc = vec2(-d.x,-d.y)/a.z; FragColor = texture(faceNegZ, UV(sc)); }
     }
 
-    // Rim HUD band, auto-centred under the forward view (engine +Z), plus a
-    // manual offset. Forward azimuth comes from the inverse rotation.
+    // HUD band. Fisheye: along the front rim, auto-centred under the forward
+    // view (engine +Z) plus a manual offset. Equirect: a screen-space band at
+    // the bottom of the panorama, centred on the front azimuth. Both share
+    // the same arc/band/strip/offset/crop/flip parameters.
     if (uHudEnable > 0.5) {
-        vec3 fwd = vec3(uInvRot[0][2], uInvRot[1][2], uInvRot[2][2]);
-        float center = atan(fwd.y, fwd.x) + uHudOffset;
-        float ang = atan(p.y, p.x);
-        float dd  = mod(ang - center + 3.14159265, 6.28318531) - 3.14159265;
         float halfArc = uHudParams.x, band = uHudParams.y;
-        if (r >= 1.0 - band && abs(dd) <= halfArc) {
-            float u  = dd / halfArc * 0.5 + 0.5;
+        float u = -1.0, vv = 0.0;
+        if (uEquirect > 0.5) {
+            // p.y = +1 is the bottom of the (flipped) output image.
+            float bandH = band * 2.0;                      // fraction of half-height
+            float ang = p.x * 3.14159265359 - uHudOffset;
+            if (p.y >= 1.0 - bandH && abs(ang) <= halfArc) {
+                u  = ang / halfArc * 0.5 + 0.5;
+                vv = (p.y - (1.0 - bandH)) / bandH;        // 0 band-top .. 1 bottom edge
+            }
+        } else {
+            vec3 fwd = vec3(uInvRot[0][2], uInvRot[1][2], uInvRot[2][2]);
+            float center = atan(fwd.y, fwd.x) + uHudOffset;
+            float ang = atan(p.y, p.x);
+            float dd  = mod(ang - center + 3.14159265, 6.28318531) - 3.14159265;
+            if (r >= 1.0 - band && abs(dd) <= halfArc) {
+                u  = dd / halfArc * 0.5 + 0.5;
+                vv = (r - (1.0 - band)) / band;            // 0 inner .. 1 rim
+            }
+        }
+        if (u >= 0.0) {
             if (uHudFlip.x > 0.5) u = 1.0 - u;
             float crop = uHudParams.w;
             float texU = crop + u * (1.0 - 2.0 * crop);    // crop both sides
-            float vv = (r - (1.0 - band)) / band;          // 0 inner .. 1 rim
             if (uHudFlip.y > 0.5) vv = 1.0 - vv;
             FragColor = vec4(texture(uHud, vec2(texU, vv * uHudParams.z)).rgb, 1.0);
         }

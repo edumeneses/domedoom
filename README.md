@@ -64,7 +64,14 @@ equirectangular warp (`r_cubemap_mode 2`), which has its own rotation:
 | `r_cubemap_dome_swap_ud` | `true` | Swap up/down faces |
 | `r_cubemap_dome_lock_yaw` | `false` | Lock the scene to a fixed dome heading. The domemaster output is counter-rotated by the player's yaw change (latched on enable), so the projected world stays still while the weapon orbits around the dome to show the player's aim. Domemaster and equirect. |
 
-### Rim HUD (domemaster only)
+### HUD band (domemaster rim / equirect bottom)
+
+On the domemaster the status bar is warped into a band along the front rim;
+in equirectangular mode the same strip is drawn as a screen-space band at the
+bottom of the panorama, centred on the front azimuth. All parameters below —
+including enable/hide (`r_cubemap_dome_hud`) and the horizontal side crop
+(`r_cubemap_dome_hud_crop`) — apply to both projections. The cubemap strip
+keeps baking the HUD onto the front face instead.
 
 The status bar / HUD is drawn as a band along the front rim of the dome so it
 stays readable in fisheye output. Auto-follows the forward view.

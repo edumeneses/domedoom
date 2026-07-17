@@ -428,11 +428,13 @@ void CubemapRenderer::BlitHUD(F2DDrawer* drawer)
 {
 	if (!mInitialized || !drawer) return;
 
-	if (OutputMode() == CUBE_OUT_DOME)
+	if (OutputMode() != CUBE_OUT_STRIP)
 	{
-		// Render the 2D HUD into its own texture; RenderDomemaster overlays the
-		// status bar (the bottom strip) as a band along the dome rim. The status
-		// bar fully repaints its strip each frame, so no clear is needed.
+		// Domemaster and equirect: render the 2D HUD into its own texture; the
+		// warp pass overlays the status bar (the bottom strip) as a band along
+		// the dome rim / the bottom of the panorama, honouring the shared
+		// arc/crop/hide parameters. The status bar fully repaints its strip
+		// each frame, so no clear is needed.
 		if (r_cubemap_dome_hud && mHudTex)
 		{
 			screen->RenderTextureView(mHudTex, [&](IntRect& bounds) {
@@ -442,7 +444,7 @@ void CubemapRenderer::BlitHUD(F2DDrawer* drawer)
 	}
 	else
 	{
-		// Strip and equirect: bake the HUD straight onto the front face.
+		// Strip: bake the HUD straight onto the front face.
 		BlitHUDToFrontFace(drawer);
 	}
 }
@@ -528,8 +530,10 @@ void CubemapRenderer::CompositeAndStream()
 	}
 	else if (mode == CUBE_OUT_EQUI)
 	{
-		// Warp the 6 faces into a 2:1 equirectangular panorama. HUD and menu
-		// are already baked onto the front face (see BlitHUD), so no rim HUD.
+		// Warp the 6 faces into a 2:1 equirectangular panorama. The HUD is
+		// overlaid as a band at the bottom of the panorama using the same
+		// parameters (enable, arc, crop, ...) as the domemaster rim HUD; the
+		// menu is baked onto the front face (see BlitMenuToFrontFace).
 		DomemasterParams ep;
 		ep.equirect = true;
 		BuildInvRot(r_cubemap_equi_yaw + lockYawOffset,
@@ -539,6 +543,14 @@ void CubemapRenderer::CompositeAndStream()
 		ep.flipV = r_cubemap_equi_flip_v;
 		ep.flipUpDown = r_cubemap_dome_flip_ud;
 		ep.swapUpDownFaces = r_cubemap_dome_swap_ud;
+		ep.hudTex    = (r_cubemap_dome_hud && mHudTex && mFacesThisFrame) ? mHudTex : nullptr;
+		ep.hudArcDeg = r_cubemap_dome_hud_arc;
+		ep.hudBand   = r_cubemap_dome_hud_band;
+		ep.hudStrip  = r_cubemap_dome_hud_strip;
+		ep.hudOffsetDeg = r_cubemap_dome_hud_offset;
+		ep.hudCrop   = r_cubemap_dome_hud_crop;
+		ep.hudFlipH  = r_cubemap_dome_hud_flip_h;
+		ep.hudFlipV  = r_cubemap_dome_hud_flip_v;
 		screen->RenderDomemaster(mFaceTex, FACE_SIZE, mEquiTex, EQUI_W, EQUI_H, ep);
 	}
 	else

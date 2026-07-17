@@ -420,8 +420,8 @@ OptionMenu "FulldomeOutputOptions" protected
 	Option    "Equirect flip vertical", "r_cubemap_equi_flip_v", "OnOff"
 
 	StaticText " "
-	StaticText "Domemaster Rim HUD", 1
-	Option    "Rim HUD (status bar on rim)", "r_cubemap_dome_hud", "OnOff"
+	StaticText "HUD Band (domemaster rim / equirect bottom)", 1
+	Option    "HUD band (status bar overlay)", "r_cubemap_dome_hud", "OnOff"
 	Slider    "HUD arc width (degrees)", "r_cubemap_dome_hud_arc", 20, 360, 5
 	TextField "  Arc (type value)", "r_cubemap_dome_hud_arc"
 	Slider    "HUD band thickness", "r_cubemap_dome_hud_band", 0.02, 0.5, 0.01
