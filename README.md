@@ -1,11 +1,11 @@
 # DomeDoom — Fulldome Edition
 
-DomeDoom is a GZDoom fork that renders the scene as a 6-face cubemap and
-either streams the raw cubemap strip or warps it into a square fisheye
-**domemaster** image, feeding a fulldome planetarium pipeline (PipeWire,
-Sh4lt, NDI) for the Satosphère dome at the Société des Arts Technologiques
-(SAT). It also sends per-source 3D positions to SpatGRIS over OSC for
-object-based dome audio.
+DomeDoom is a GZDoom fork that renders the scene as a 6-face cubemap and either
+streams the raw cubemap strip or warps it into a square fisheye **domemaster**
+or a 2:1 **equirectangular** panorama, feeding a fulldome planetarium pipeline
+(PipeWire, Sh4lt, NDI) for the Satosphère dome at the Société des Arts
+Technologiques (SAT). It also sends per-source 3D positions to SpatGRIS over OSC
+for object-based dome audio.
 
 Both render backends are supported: the cubemap compositing, readback, and
 domemaster warp run on **OpenGL** and **Vulkan** (Vulkan uses `vkCmdBlitImage`
@@ -64,28 +64,38 @@ equirectangular warp (`r_cubemap_mode 2`), which has its own rotation:
 | `r_cubemap_dome_swap_ud` | `true` | Swap up/down faces |
 | `r_cubemap_dome_lock_yaw` | `false` | Lock the scene to a fixed dome heading. The domemaster output is counter-rotated by the player's yaw change (latched on enable), so the projected world stays still while the weapon orbits around the dome to show the player's aim. Domemaster and equirect. |
 
-### HUD band (domemaster rim / equirect bottom)
+### HUD — status bar & menu
 
-On the domemaster the status bar is warped into a band along the front rim;
-in equirectangular mode the same strip is drawn as a screen-space band at the
-bottom of the panorama, centred on the front azimuth. All parameters below —
-including enable/hide (`r_cubemap_dome_hud`) and the horizontal side crop
-(`r_cubemap_dome_hud_crop`) — apply to both projections. The cubemap strip
-keeps baking the HUD onto the front face instead.
+Each projection places the status bar differently so it stays readable:
 
-The status bar / HUD is drawn as a band along the front rim of the dome so it
-stays readable in fisheye output. Auto-follows the forward view.
+- **Domemaster** — the status bar is warped into a band along the front rim,
+  auto-following the forward view. The band shape is controlled by the
+  arc/band/strip/offset/crop/flip parameters below (all shader-driven).
+- **Equirectangular** — the status bar is baked onto the **front face**, where
+  the weapon is, so it warps through the panorama *with the gun* instead of
+  sitting flat at the bottom. Only `r_cubemap_dome_hud`,
+  `r_cubemap_dome_hud_scale`, and `r_cubemap_dome_hud_crop` apply here; the
+  arc/band/strip/offset/flip parameters are domemaster-only.
+- **Cubemap strip** — the status bar is baked full-size onto the face selected
+  by `r_cubemap_hud_face`.
 
-| CVar | Default | Description |
-|------|---------|-------------|
-| `r_cubemap_dome_hud` | `true` | Enable the rim HUD band |
-| `r_cubemap_dome_hud_arc` | `45` | Arc width of the band, degrees |
-| `r_cubemap_dome_hud_band` | `0.035` | Radial thickness of the band (fraction of radius) |
-| `r_cubemap_dome_hud_strip` | `0.07` | Source strip height sampled from the HUD |
-| `r_cubemap_dome_hud_offset` | `0` | Manual angular offset from the forward view, degrees |
-| `r_cubemap_dome_hud_crop` | `0.275` | Crop each side of the band (0 = full width, 0.49 = almost nothing) |
-| `r_cubemap_dome_hud_flip_h` | `false` | Flip the HUD band horizontally |
-| `r_cubemap_dome_hud_flip_v` | `true` | Flip the HUD band vertically |
+The 2D **menu / console** (and the no-scene screen: title, intermission) is
+baked onto the `r_cubemap_hud_face` face in every projection, so it is live
+from launch — before any level loads. On the equirect the menu uses the
+selected face; the status bar always stays on the front face with the weapon.
+
+| CVar | Default | Projection | Description |
+|------|---------|------------|-------------|
+| `r_cubemap_dome_hud` | `true` | all | Enable the status-bar overlay |
+| `r_cubemap_hud_face` | `0` (Front) | all | Face the 2D overlays (strip HUD, menu, no-scene screen) bake onto: `0`=Front `1`=Left `2`=Right `3`=Back `4`=Up `5`=Down. Equirect keeps the status bar on Front regardless. |
+| `r_cubemap_dome_hud_scale` | `1.0` | equirect | Status-bar size on the front face: `1` = full width, `<1` shrinks it and centres it (uniform, no stretch) |
+| `r_cubemap_dome_hud_crop` | `0.275` | equirect + domemaster | Trim each side (0 = full width, 0.49 = almost nothing). Equirect: clips the sides (no stretch); domemaster: crops the band source |
+| `r_cubemap_dome_hud_arc` | `45` | domemaster | Arc width of the rim band, degrees |
+| `r_cubemap_dome_hud_band` | `0.035` | domemaster | Radial thickness of the band (fraction of radius) |
+| `r_cubemap_dome_hud_strip` | `0.035` | domemaster | Source strip height sampled from the HUD |
+| `r_cubemap_dome_hud_offset` | `0` | domemaster | Manual angular offset from the forward view, degrees |
+| `r_cubemap_dome_hud_flip_h` | `false` | domemaster | Flip the HUD band horizontally |
+| `r_cubemap_dome_hud_flip_v` | `true` | domemaster | Flip the HUD band vertically |
 
 NDI is compiled in when the NDI SDK headers are present at build time (CI
 installs them); the `libndi.so.6` runtime is loaded via `dlopen` at first use,
@@ -197,10 +207,15 @@ tools/osc_test_sender.py 127.0.0.1 6666 /domedoom/rotate 90
 
 ## Notes & known issues
 
-**Recent fixes** — sprites no longer split across cube-face seams (billboards
-forced to face the camera); the GL dome pass fully saves/restores GL state
-(fixes a GL freeze); clean shutdown no longer crashes with "pure virtual method
-called"; FluidSynth "Not a RIFF file" soundfont spam silenced.
+**Recent changes** — equirectangular output mode (`r_cubemap_mode 2`) with a
+size/crop-controllable status bar baked onto the front face; the menu, console,
+and title/intermission screens are baked onto the `r_cubemap_hud_face` face so
+the stream is live from launch, not only in-level; parallel OSC/UDP game
+control (`/domedoom/*`). Earlier fixes: sprites no longer split across cube-face
+seams (billboards forced to face the camera); the GL dome pass fully
+saves/restores GL state (fixes a GL freeze); clean shutdown no longer crashes
+with "pure virtual method called"; FluidSynth "Not a RIFF file" soundfont spam
+silenced.
 
 **AppImage / NDI runtime** — NDI is compiled in when the SDK headers are
 present at build time (CI installs them), but `libndi.so.6` is *not* bundled;
