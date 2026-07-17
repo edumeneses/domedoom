@@ -583,17 +583,26 @@ layout(push_constant) uniform PC {
 	vec4 params;                     // x=halfFovRad y=flipX z=flipY w=hudEnable
 	vec4 hud;                        // x=halfArcRad y=band z=strip w=crop
 	vec4 hud2;                       // x=offsetRad y=hudFlipH z=flipUD w=hudFlipV
+	vec4 proj;                       // x=equirect(1/0)
 } pc;
 #define UV(c) (((c) * vec2(1.0, 1.0) + 1.0) * 0.5)
 void main() {
 	vec2 p = (vUV * 2.0 - 1.0) * vec2(pc.params.y, pc.params.z);
 	float r = length(p);
-	if (r > 1.0) { FragColor = vec4(0.0); return; }
-	vec2 az = (r > 1e-6) ? p / r : vec2(0.0);
-	float polar = r * pc.params.x;
-	float sp = sin(polar);
 	mat3 invRot = mat3(pc.rot0.xyz, pc.rot1.xyz, pc.rot2.xyz);
-	vec3 d = invRot * vec3(sp * az.x, sp * az.y, cos(polar));
+	vec3 d;
+	if (pc.proj.x > 0.5) {
+		// Equirectangular: x = azimuth (-pi..pi from the front), y = elevation.
+		float theta = p.x * 3.14159265359;
+		float phi   = p.y * 1.57079632679;
+		d = invRot * vec3(cos(phi) * sin(theta), sin(phi), cos(phi) * cos(theta));
+	} else {
+		if (r > 1.0) { FragColor = vec4(0.0); return; }
+		vec2 az = (r > 1e-6) ? p / r : vec2(0.0);
+		float polar = r * pc.params.x;
+		float sp = sin(polar);
+		d = invRot * vec3(sp * az.x, sp * az.y, cos(polar));
+	}
 	d.y *= pc.hud2.z;
 	vec3 a = abs(d); vec2 sc;
 	if (a.x >= a.y && a.x >= a.z) {
@@ -627,11 +636,29 @@ void main() {
 }
 )GLSL";
 
-struct DomePush { float rot0[4]; float rot1[4]; float rot2[4]; float params[4]; float hud[4]; float hud2[4]; };
+struct DomePush { float rot0[4]; float rot1[4]; float rot2[4]; float params[4]; float hud[4]; float hud2[4]; float proj[4]; };
 
-void VulkanRenderDevice::InitDomemasterResources(int domeSize)
+void VulkanRenderDevice::InitDomemasterResources(int outW, int outH)
 {
-	if (mDomeInit) return;
+	if (mDomeInit && outW == mDomeFbW && outH == mDomeFbH) return;
+
+	if (mDomeInit)
+	{
+		// Output dims changed (domemaster <-> equirect switch): rebuild the
+		// dim-dependent objects. Drain the GPU first so nothing is in flight.
+		mCommands->WaitForCommands(false);
+		mDomeFramebuffer.reset();
+		mDomePipeline.reset();
+		mDomeDescSet.reset();
+		mDomeDescPool.reset();
+		mDomeRenderPass.reset();
+		mDomePipelineLayout.reset();
+		mDomeSetLayout.reset();
+		mDomeSampler.reset();
+		mDomeFrag.reset();
+		mDomeVert.reset();
+		mDomeInit = false;
+	}
 
 	mDomeVert = ShaderBuilder()
 		.Type(ShaderType::Vertex)
@@ -683,8 +710,8 @@ void VulkanRenderDevice::InitDomemasterResources(int domeSize)
 	pb.AddVertexShader(mDomeVert.get());
 	pb.AddFragmentShader(mDomeFrag.get());
 	pb.Topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-	pb.Viewport(0.0f, 0.0f, (float)domeSize, (float)domeSize);
-	pb.Scissor(0, 0, domeSize, domeSize);
+	pb.Viewport(0.0f, 0.0f, (float)outW, (float)outH);
+	pb.Scissor(0, 0, outW, outH);
 	pb.Cull(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
 	pb.DepthStencilEnable(false, false, false);
 	pb.RasterizationSamples(VK_SAMPLE_COUNT_1_BIT);
@@ -701,25 +728,26 @@ void VulkanRenderDevice::InitDomemasterResources(int domeSize)
 		.Create(device.get());
 	mDomeDescSet = mDomeDescPool->allocate(mDomeSetLayout.get());
 
-	mDomeFbSize = domeSize;
+	mDomeFbW = outW;
+	mDomeFbH = outH;
 	mDomeInit = true;
 }
 
 void VulkanRenderDevice::RenderDomemaster(FCanvasTexture** faces, int N,
-                                          FCanvasTexture* domeTex, int domeSize,
+                                          FCanvasTexture* outTex, int outW, int outH,
                                           const DomemasterParams& params)
 {
-	InitDomemasterResources(domeSize);
+	InitDomemasterResources(outW, outH);
 
-	auto domeHW = static_cast<VkHardwareTexture*>(domeTex->GetHardwareTexture(0, 0));
-	VkTextureImage* dome = domeHW->GetImage(domeTex, 0, 0);
+	auto domeHW = static_cast<VkHardwareTexture*>(outTex->GetHardwareTexture(0, 0));
+	VkTextureImage* dome = domeHW->GetImage(outTex, 0, 0);
 
 	if (!mDomeFramebuffer)
 	{
 		mDomeFramebuffer = FramebufferBuilder()
 			.RenderPass(mDomeRenderPass.get())
 			.AddAttachment(dome->View.get())
-			.Size(domeSize, domeSize)
+			.Size(outW, outH)
 			.DebugName("DomemasterFramebuffer")
 			.Create(device.get());
 	}
@@ -787,10 +815,11 @@ void VulkanRenderDevice::RenderDomemaster(FCanvasTexture** faces, int N,
 	push.hud2[1] = params.hudFlipH ? 1.0f : 0.0f;
 	push.hud2[2] = params.flipUpDown ? -1.0f : 1.0f;
 	push.hud2[3] = params.hudFlipV ? 1.0f : 0.0f;
+	push.proj[0] = params.equirect ? 1.0f : 0.0f;
 
 	RenderPassBegin()
 		.RenderPass(mDomeRenderPass.get())
-		.RenderArea(0, 0, domeSize, domeSize)
+		.RenderArea(0, 0, outW, outH)
 		.Framebuffer(mDomeFramebuffer.get())
 		.AddClearColor(0.0f, 0.0f, 0.0f, 0.0f)
 		.Execute(cmd);
@@ -804,7 +833,7 @@ void VulkanRenderDevice::RenderDomemaster(FCanvasTexture** faces, int N,
 	// The render pass left the dome image in SHADER_READ_ONLY; sync the tracked
 	// layout so ReadCubemapCrossPixels transitions from the correct old layout.
 	dome->Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	domeTex->SetUpdated(true);
+	outTex->SetUpdated(true);
 }
 
 void VulkanRenderDevice::SetActiveRenderTarget()

@@ -26,7 +26,7 @@ or in a startup config file. Most are also exposed in-game under
 | CVar | Default | Description |
 |------|---------|-------------|
 | `r_cubemap` | `false` | Enable cubemap rendering pipeline |
-| `r_cubemap_domemaster` | `true` | Output square fisheye domemaster instead of the 6-face strip (needs restart — re-inits PipeWire + readback buffers) |
+| `r_cubemap_mode` | `1` | Output projection: `0` = 6-face strip (6144x1024), `1` = square fisheye domemaster (2048x2048), `2` = equirectangular panorama (4096x2048). Needs restart — re-inits PipeWire + readback buffers. Replaces the old `r_cubemap_domemaster` bool. |
 | `r_cubemap_pipewire` | `true` | PipeWire DMA-BUF output |
 | `r_cubemap_sh4lt` | `false` | Sh4lt video output |
 | `r_cubemap_sh4lt_label` | `"domedoom"` | Sh4lt video stream label |
@@ -38,10 +38,19 @@ or in a startup config file. Most are also exposed in-game under
 
 ### Domemaster warp / orientation
 
-Only active when `r_cubemap_domemaster` is `true`. The warp assembles the six
-cube faces into a fisheye; orientation and flips are exposed live because
+Only active when `r_cubemap_mode` is `1` (domemaster). The warp assembles the
+six cube faces into a fisheye; orientation and flips are exposed live because
 OpenGL and Vulkan differ in NDC and texture origin, so tuned values vary per
-machine/backend.
+machine/backend. The flip and face-swap toggles also apply to the
+equirectangular warp (`r_cubemap_mode 2`), which has its own rotation:
+
+| CVar | Default | Description |
+|------|---------|-------------|
+| `r_cubemap_equi_yaw` | `0` | Equirect content yaw, degrees |
+| `r_cubemap_equi_pitch` | `0` | Equirect content pitch, degrees |
+| `r_cubemap_equi_roll` | `0` | Equirect content roll, degrees |
+| `r_cubemap_equi_flip_h` | `false` | Flip equirect output horizontally |
+| `r_cubemap_equi_flip_v` | `true` | Flip equirect output vertically (correct for Vulkan) |
 
 | CVar | Default | Description |
 |------|---------|-------------|
@@ -53,7 +62,7 @@ machine/backend.
 | `r_cubemap_dome_flip_v` | `false` | Flip output vertically |
 | `r_cubemap_dome_flip_ud` | `false` | Swap ceiling/floor |
 | `r_cubemap_dome_swap_ud` | `true` | Swap up/down faces |
-| `r_cubemap_dome_lock_yaw` | `false` | Lock the scene to a fixed dome heading. The domemaster output is counter-rotated by the player's yaw change (latched on enable), so the projected world stays still while the weapon orbits around the dome to show the player's aim. Domemaster only. |
+| `r_cubemap_dome_lock_yaw` | `false` | Lock the scene to a fixed dome heading. The domemaster output is counter-rotated by the player's yaw change (latched on enable), so the projected world stays still while the weapon orbits around the dome to show the player's aim. Domemaster and equirect. |
 
 ### Rim HUD (domemaster only)
 

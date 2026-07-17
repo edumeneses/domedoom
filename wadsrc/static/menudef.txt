@@ -375,6 +375,13 @@ OptionMenu "OptionsMenu" protected
 //
 //-------------------------------------------------------------------------------------------
 
+OptionValue "CubemapOutputMode"
+{
+	0, "Cubemap strip"
+	1, "Domemaster (fisheye)"
+	2, "Equirectangular"
+}
+
 OptionMenu "FulldomeOutputOptions" protected
 {
 	Title "FULLDOME OUTPUT"
@@ -384,8 +391,9 @@ OptionMenu "FulldomeOutputOptions" protected
 
 	StaticText " "
 	StaticText "Projection Format", 1
-	Option "Domemaster (fisheye) output", "r_cubemap_domemaster", "OnOff"
-	StaticText "Legend: cubemap strip = 6144x1024, domemaster = 2048x2048.", 1
+	Option "Output projection", "r_cubemap_mode", "CubemapOutputMode"
+	StaticText "Strip = 6144x1024, domemaster = 2048x2048, equirect = 4096x2048.", 1
+	StaticText "Switching projection needs a restart (re-inits streaming buffers).", 1
 	Slider    "Domemaster FOV (degrees)", "r_cubemap_dome_fov", 120, 300, 5
 	TextField "  FOV (type value)", "r_cubemap_dome_fov"
 	Slider    "Content yaw (degrees)", "r_cubemap_dome_yaw", -180, 180, 1
@@ -399,6 +407,17 @@ OptionMenu "FulldomeOutputOptions" protected
 	Option    "Swap ceiling/floor", "r_cubemap_dome_flip_ud", "OnOff"
 	Option    "Swap up/down faces", "r_cubemap_dome_swap_ud", "OnOff"
 	Option    "Lock dome heading (player moves, world fixed)", "r_cubemap_dome_lock_yaw", "OnOff"
+
+	StaticText " "
+	StaticText "Equirectangular", 1
+	Slider    "Equirect yaw (degrees)", "r_cubemap_equi_yaw", -180, 180, 1
+	TextField "  Yaw (type value)", "r_cubemap_equi_yaw"
+	Slider    "Equirect pitch (degrees)", "r_cubemap_equi_pitch", -180, 180, 1
+	TextField "  Pitch (type value)", "r_cubemap_equi_pitch"
+	Slider    "Equirect roll (degrees)", "r_cubemap_equi_roll", -180, 180, 1
+	TextField "  Roll (type value)", "r_cubemap_equi_roll"
+	Option    "Equirect flip horizontal", "r_cubemap_equi_flip_h", "OnOff"
+	Option    "Equirect flip vertical", "r_cubemap_equi_flip_v", "OnOff"
 
 	StaticText " "
 	StaticText "Domemaster Rim HUD", 1

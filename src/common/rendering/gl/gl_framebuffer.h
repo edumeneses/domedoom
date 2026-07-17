@@ -65,7 +65,7 @@ public:
 	void Draw2D() override;
 	void PostProcessScene(bool swscene, int fixedcm, float flash, const std::function<void()> &afterBloomDrawEndScene2D) override;
 	void CompositeCubemapFaces(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* crossTex) override;
-	void RenderDomemaster(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* domeTex, int domeSize, const struct DomemasterParams& params) override;
+	void RenderDomemaster(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* outTex, int outW, int outH, const struct DomemasterParams& params) override;
 	void ReadCubemapCrossPixels(class FCanvasTexture* crossTex, uint8_t* buf, int w, int h) override;
 	int  ExportCubemapCrossAsDmaBuf(class FCanvasTexture* crossTex, int* outStride) override;
 

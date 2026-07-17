@@ -124,11 +124,15 @@ protected:
 class IHardwareTexture;
 class FTexture;
 
-// Parameters for the fulldome domemaster warp pass (see RenderDomemaster).
+// Parameters for the fulldome warp pass (see RenderDomemaster). The same
+// pass produces either a square fisheye domemaster or a 2:1 equirectangular
+// panorama, selected by `equirect` — only the per-pixel ray generation
+// differs; face selection and sampling are shared.
 struct DomemasterParams
 {
 	float fovDeg = 180.f;
 	float invRot[9] = { 1,0,0, 0,1,0, 0,0,1 }; // column-major inverse content rotation
+	bool  equirect = false;   // false = fisheye domemaster, true = equirectangular
 	bool  flipH = false;
 	bool  flipV = false;
 	bool  flipUpDown = false; // swap ceiling/floor (negates sampled vertical)
@@ -297,7 +301,7 @@ public:
 	// domeTex via a single fullscreen pass. invRot is a column-major 3x3 inverse
 	// content rotation (built CPU-side). fovDeg is the output dome FOV.
 	// Default no-op; overridden by the OpenGL backend.
-	virtual void RenderDomemaster(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* domeTex, int domeSize, const struct DomemasterParams& params) {}
+	virtual void RenderDomemaster(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* outTex, int outW, int outH, const struct DomemasterParams& params) {}
 
 	// Read the composited cross texture into a CPU buffer using double-PBO
 	// async readback (1-frame latency, no GPU stall after the first call).

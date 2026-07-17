@@ -96,10 +96,10 @@ public:
 	// Fulldome cubemap pipeline (Vulkan implementation; OpenGL has its own).
 	void CompositeCubemapFaces(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* crossTex) override;
 	void ReadCubemapCrossPixels(class FCanvasTexture* crossTex, uint8_t* buf, int w, int h) override;
-	void RenderDomemaster(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* domeTex, int domeSize, const struct DomemasterParams& params) override;
+	void RenderDomemaster(class FCanvasTexture** faces, int faceSize, class FCanvasTexture* outTex, int outW, int outH, const struct DomemasterParams& params) override;
 
 private:
-	void InitDomemasterResources(int domeSize);
+	void InitDomemasterResources(int outW, int outH);
 	void RenderTextureView(FCanvasTexture* tex, std::function<void(IntRect &)> renderFunc) override;
 	void PrintStartupLog();
 	void CopyScreenToBuffer(int w, int h, uint8_t *data) override;
@@ -124,7 +124,7 @@ private:
 
 	// Fulldome domemaster warp pass (Vulkan). Built lazily on first use.
 	bool mDomeInit = false;
-	int  mDomeFbSize = 0;
+	int  mDomeFbW = 0, mDomeFbH = 0;
 	std::unique_ptr<VulkanShader>              mDomeVert;
 	std::unique_ptr<VulkanShader>              mDomeFrag;
 	std::unique_ptr<VulkanSampler>             mDomeSampler;

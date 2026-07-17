@@ -24,11 +24,12 @@
 #include <cstring>
 #include <cmath>
 
-// Output format: false = horizontal cubemap strip (6144x1024),
-//                true  = square fisheye domemaster (DOME_SIZE^2).
+// Output projection: 0 = horizontal cubemap strip (6144x1024),
+//                    1 = square fisheye domemaster (2048x2048),
+//                    2 = equirectangular panorama (4096x2048).
 // NOTE: PipeWire init and the readback PBO size on the first frame; switching
 // this at runtime needs a restart to re-init those paths cleanly.
-CVAR(Bool,   r_cubemap_domemaster,      true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Int,    r_cubemap_mode,            CUBE_OUT_DOME,  CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_fov,        270.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_yaw,        180.f,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_pitch,      90.f,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -54,6 +55,14 @@ CVAR(Float,  r_cubemap_dome_hud_offset, 0.f,            CVAR_ARCHIVE | CVAR_GLOB
 CVAR(Float,  r_cubemap_dome_hud_crop,   0.275f,         CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_hud_flip_h, false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_dome_hud_flip_v, true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+// Equirectangular content rotation (defaults keep the front view centred).
+CVAR(Float,  r_cubemap_equi_yaw,        0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_equi_pitch,      0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Float,  r_cubemap_equi_roll,       0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+// Equirect output flips, separate from the dome's (each projection is tuned
+// per machine/backend; flip_v=true is correct for Vulkan on the SAT box).
+CVAR(Bool,   r_cubemap_equi_flip_h,     false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool,   r_cubemap_equi_flip_v,     true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 CVAR(Bool,   r_cubemap_pipewire,        true,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_sh4lt,           false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -135,6 +144,8 @@ void CubemapRenderer::Shutdown()
 	mCrossTex = nullptr;
 	delete mDomeTex;
 	mDomeTex = nullptr;
+	delete mEquiTex;
+	mEquiTex = nullptr;
 	delete mHudTex;
 	mHudTex = nullptr;
 
@@ -142,11 +153,43 @@ void CubemapRenderer::Shutdown()
 }
 
 // -------------------------------------------------------------------------
-// Output selection: cubemap strip vs domemaster.
+// Output selection: cubemap strip vs domemaster vs equirect.
 
-int CubemapRenderer::OutW() const { return r_cubemap_domemaster ? DOME_SIZE : CROSS_W; }
-int CubemapRenderer::OutH() const { return r_cubemap_domemaster ? DOME_SIZE : CROSS_H; }
-FCanvasTexture* CubemapRenderer::OutTex() { return r_cubemap_domemaster ? mDomeTex : mCrossTex; }
+static int OutputMode()
+{
+	const int m = r_cubemap_mode;
+	return (m < CUBE_OUT_STRIP || m > CUBE_OUT_EQUI) ? CUBE_OUT_DOME : m;
+}
+
+int CubemapRenderer::OutW() const
+{
+	switch (OutputMode())
+	{
+	case CUBE_OUT_DOME: return DOME_SIZE;
+	case CUBE_OUT_EQUI: return EQUI_W;
+	default:            return CROSS_W;
+	}
+}
+
+int CubemapRenderer::OutH() const
+{
+	switch (OutputMode())
+	{
+	case CUBE_OUT_DOME: return DOME_SIZE;
+	case CUBE_OUT_EQUI: return EQUI_H;
+	default:            return CROSS_H;
+	}
+}
+
+FCanvasTexture* CubemapRenderer::OutTex()
+{
+	switch (OutputMode())
+	{
+	case CUBE_OUT_DOME: return mDomeTex;
+	case CUBE_OUT_EQUI: return mEquiTex;
+	default:            return mCrossTex;
+	}
+}
 
 // Build the inverse content rotation as a column-major 3x3 for
 // glUniformMatrix3fv(transpose=GL_FALSE). The shader computes
@@ -155,7 +198,7 @@ FCanvasTexture* CubemapRenderer::OutTex() { return r_cubemap_domemaster ? mDomeT
 //
 // Let M be the ISF forward rotation (math) matrix. We want G = transpose(M).
 // glUniformMatrix3fv column-major means data[col*3+row] = G(row,col) = M(col,row).
-static void BuildInvRot(float yawDeg, float pitchDeg, float rollDeg, float out[9])
+static void BuildInvRot(float yawDeg, float pitchDeg, float rollDeg, bool flipPolar, float out[9])
 {
 	const float d2r = 3.14159265359f / 180.0f;
 	float cy = cosf(yawDeg   * d2r), sy = sinf(yawDeg   * d2r);
@@ -174,8 +217,12 @@ static void BuildInvRot(float yawDeg, float pitchDeg, float rollDeg, float out[9
 	// Flip the fisheye polar axis (column 2) so the dome centre points to engine
 	// UP, not down. Without this the zenith shows the floor. Folding it here
 	// (instead of negating the ray's z in each shader) keeps the azimuth framing
-	// and fixes both GL and Vulkan from one place.
-	out[6] = -out[6];  out[7] = -out[7];  out[8] = -out[8];
+	// and fixes both GL and Vulkan from one place. The equirect projection has
+	// no polar axis to fix (its forward ray is +Z, not up), so it skips this.
+	if (flipPolar)
+	{
+		out[6] = -out[6];  out[7] = -out[7];  out[8] = -out[8];
+	}
 }
 
 // -------------------------------------------------------------------------
@@ -286,6 +333,7 @@ void CubemapRenderer::Init()
 		mFaceTex[i] = new FCanvasTexture(FACE_SIZE, FACE_SIZE);
 	mCrossTex = new FCanvasTexture(CROSS_W, CROSS_H);
 	mDomeTex  = new FCanvasTexture(DOME_SIZE, DOME_SIZE);
+	mEquiTex  = new FCanvasTexture(EQUI_W, EQUI_H);
 	mHudTex   = new FCanvasTexture(HUD_W, HUD_H);
 	mInitialized = true;
 }
@@ -380,7 +428,7 @@ void CubemapRenderer::BlitHUD(F2DDrawer* drawer)
 {
 	if (!mInitialized || !drawer) return;
 
-	if (r_cubemap_domemaster)
+	if (OutputMode() == CUBE_OUT_DOME)
 	{
 		// Render the 2D HUD into its own texture; RenderDomemaster overlays the
 		// status bar (the bottom strip) as a band along the dome rim. The status
@@ -394,6 +442,7 @@ void CubemapRenderer::BlitHUD(F2DDrawer* drawer)
 	}
 	else
 	{
+		// Strip and equirect: bake the HUD straight onto the front face.
 		BlitHUDToFrontFace(drawer);
 	}
 }
@@ -442,23 +491,25 @@ void CubemapRenderer::CompositeAndStream()
 {
 	if (!mInitialized) return;
 
-	if (r_cubemap_domemaster)
+	const int mode = OutputMode();
+
+	// Yaw lock (dome + equirect): counter-rotate the output by the player's
+	// yaw change since the reference. The scene is captured in the player's
+	// frame, so adding the player yaw to the warp yaw cancels the scene's
+	// rotation (world stays fixed on the output) while orbiting the
+	// front-face weapon to the aim direction. See mDomeLock* in the header.
+	float lockYawOffset = 0.f;
+	if (r_cubemap_dome_lock_yaw && mDomeLockValid)
+		lockYawOffset = (float)(mCurViewYaw - mDomeLockYaw);
+
+	if (mode == CUBE_OUT_DOME)
 	{
 		// Warp the 6 faces into a square fisheye domemaster.
 		DomemasterParams dp;
 		dp.fovDeg = r_cubemap_dome_fov;
-
-		// Yaw lock: counter-rotate the output by the player's yaw change since
-		// the reference. The scene is captured in the player's frame, so adding
-		// the player yaw to the warp yaw cancels the scene's rotation (world
-		// stays fixed on the dome) while orbiting the front-face weapon to the
-		// aim direction. See the mDomeLock* comment in the header.
-		float domeYaw = r_cubemap_dome_yaw;
-		if (r_cubemap_dome_lock_yaw && mDomeLockValid)
-			domeYaw += (float)(mCurViewYaw - mDomeLockYaw);
-
-		BuildInvRot(domeYaw, r_cubemap_dome_pitch, r_cubemap_dome_roll,
-		            dp.invRot);
+		BuildInvRot(r_cubemap_dome_yaw + lockYawOffset,
+		            r_cubemap_dome_pitch, r_cubemap_dome_roll,
+		            true, dp.invRot);
 		dp.flipH = r_cubemap_dome_flip_h;
 		dp.flipV = r_cubemap_dome_flip_v;
 		dp.flipUpDown = r_cubemap_dome_flip_ud;
@@ -473,7 +524,22 @@ void CubemapRenderer::CompositeAndStream()
 		dp.hudCrop   = r_cubemap_dome_hud_crop;
 		dp.hudFlipH  = r_cubemap_dome_hud_flip_h;
 		dp.hudFlipV  = r_cubemap_dome_hud_flip_v;
-		screen->RenderDomemaster(mFaceTex, FACE_SIZE, mDomeTex, DOME_SIZE, dp);
+		screen->RenderDomemaster(mFaceTex, FACE_SIZE, mDomeTex, DOME_SIZE, DOME_SIZE, dp);
+	}
+	else if (mode == CUBE_OUT_EQUI)
+	{
+		// Warp the 6 faces into a 2:1 equirectangular panorama. HUD and menu
+		// are already baked onto the front face (see BlitHUD), so no rim HUD.
+		DomemasterParams ep;
+		ep.equirect = true;
+		BuildInvRot(r_cubemap_equi_yaw + lockYawOffset,
+		            r_cubemap_equi_pitch, r_cubemap_equi_roll,
+		            false, ep.invRot);
+		ep.flipH = r_cubemap_equi_flip_h;
+		ep.flipV = r_cubemap_equi_flip_v;
+		ep.flipUpDown = r_cubemap_dome_flip_ud;
+		ep.swapUpDownFaces = r_cubemap_dome_swap_ud;
+		screen->RenderDomemaster(mFaceTex, FACE_SIZE, mEquiTex, EQUI_W, EQUI_H, ep);
 	}
 	else
 	{

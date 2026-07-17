@@ -28,6 +28,13 @@ enum CubeFaceIndex {
 	CUBE_FACE_COUNT
 };
 
+// Output projection, selected by r_cubemap_mode.
+enum CubemapOutputMode {
+	CUBE_OUT_STRIP = 0,   // horizontal 6-face strip (6144x1024)
+	CUBE_OUT_DOME  = 1,   // square fisheye domemaster (2048x2048)
+	CUBE_OUT_EQUI  = 2,   // 2:1 equirectangular panorama (4096x2048)
+};
+
 class CubemapRenderer
 {
 public:
@@ -37,6 +44,8 @@ public:
 	static constexpr int CROSS_W    = FACE_SIZE * CROSS_COLS; // 6144
 	static constexpr int CROSS_H    = FACE_SIZE * CROSS_ROWS; // 1024
 	static constexpr int DOME_SIZE  = 2048;                  // square domemaster
+	static constexpr int EQUI_W     = 4096;                  // equirect: 4*FACE_SIZE at the equator
+	static constexpr int EQUI_H     = 2048;                  // 2:1 panorama
 	static constexpr int HUD_W      = 2048;                  // rim-HUD source tex
 	static constexpr int HUD_H      = 2048;                  // square: avoids vertical squish
 
@@ -92,7 +101,7 @@ private:
 	void UpdateSh4ltAudio();   // install/remove audio tap based on CVAR
 	void UpdateNdiVideo();     // (re)init NDI sender when label/dims change
 
-	// Selected output (cubemap strip vs domemaster) — depends on r_cubemap_domemaster.
+	// Selected output (strip / domemaster / equirect) — follows r_cubemap_mode.
 	int             OutW() const;
 	int             OutH() const;
 	FCanvasTexture* OutTex();
@@ -100,6 +109,7 @@ private:
 	FCanvasTexture*       mFaceTex[CUBE_FACE_COUNT] = {};
 	FCanvasTexture*       mCrossTex                 = nullptr;
 	FCanvasTexture*       mDomeTex                  = nullptr;
+	FCanvasTexture*       mEquiTex                  = nullptr;
 	FCanvasTexture*       mHudTex                   = nullptr;
 	bool                  mInitialized              = false;
 	bool                  mFacesThisFrame           = false;

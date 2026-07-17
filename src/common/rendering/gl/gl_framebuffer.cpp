@@ -344,11 +344,12 @@ void OpenGLFrameBuffer::CompositeCubemapFaces(FCanvasTexture** faces, int N, FCa
 //
 // RenderDomemaster
 //
-// Warps the 6 face textures into a square fisheye domemaster via a single
-// fullscreen pass. Samples the 6 face textures directly (no cube map) using
-// the same projection math as the ossia score domemaster ISF, so the result
-// matches the proven shader. invRot is a column-major 3x3 inverse content
-// rotation built CPU-side, so the fragment shader does no trig per pixel.
+// Warps the 6 face textures into a square fisheye domemaster — or, with
+// params.equirect, a 2:1 equirectangular panorama — via a single fullscreen
+// pass. Samples the 6 face textures directly (no cube map) using the same
+// projection math as the ossia score domemaster / cubemap_to_equirectangular
+// ISFs, so the result matches the proven shaders. invRot is a column-major
+// 3x3 inverse content rotation built CPU-side.
 //
 //===========================================================================
 
@@ -370,6 +371,7 @@ out vec4 FragColor;
 uniform sampler2D facePosX, faceNegX, facePosY, faceNegY, facePosZ, faceNegZ;
 uniform mat3  uInvRot;
 uniform float uHalfFovRad;
+uniform float uEquirect;    // >0.5 = equirectangular ray-gen, else fisheye
 uniform vec2  uFlip;        // per-axis output flip: (+1 or -1, +1 or -1)
 uniform float uFlipUD;      // +1 or -1: swap ceiling/floor (sampled vertical)
 uniform sampler2D uHud;     // full 2D HUD; bottom strip = status bar
@@ -381,11 +383,19 @@ uniform vec2  uHudFlip;     // x=flipH(1/0) y=flipV(1/0)
 void main() {
     vec2 p = (vUV * 2.0 - 1.0) * uFlip;
     float r = length(p);
-    if (r > 1.0) { FragColor = vec4(0.0); return; }
-    vec2 az = (r > 1e-6) ? p / r : vec2(0.0);
-    float polar = r * uHalfFovRad;
-    float sp = sin(polar);
-    vec3 d = uInvRot * vec3(sp * az.x, sp * az.y, cos(polar));
+    vec3 d;
+    if (uEquirect > 0.5) {
+        // Equirectangular: x = azimuth (-pi..pi from the front), y = elevation.
+        float theta = p.x * 3.14159265359;
+        float phi   = p.y * 1.57079632679;
+        d = uInvRot * vec3(cos(phi) * sin(theta), sin(phi), cos(phi) * cos(theta));
+    } else {
+        if (r > 1.0) { FragColor = vec4(0.0); return; }
+        vec2 az = (r > 1e-6) ? p / r : vec2(0.0);
+        float polar = r * uHalfFovRad;
+        float sp = sin(polar);
+        d = uInvRot * vec3(sp * az.x, sp * az.y, cos(polar));
+    }
     d.y *= uFlipUD;
     vec3 a = abs(d); vec2 sc;
     if (a.x >= a.y && a.x >= a.z) {
@@ -435,11 +445,11 @@ static GLuint CompileDomeShader(GLenum type, const char* src)
 }
 
 void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
-                                         FCanvasTexture* domeTex, int domeSize,
+                                         FCanvasTexture* outTex, int outW, int outH,
                                          const DomemasterParams& params)
 {
 	static GLuint sFBO = 0, sProg = 0, sVAO = 0;
-	static GLint  uInvRot = -1, uHalfFov = -1, uFlip = -1, uFlipUD = -1, uHudEnable = -1, uHudParams = -1, uHudOffset = -1, uHudFlip = -1;
+	static GLint  uInvRot = -1, uHalfFov = -1, uEquirect = -1, uFlip = -1, uFlipUD = -1, uHudEnable = -1, uHudParams = -1, uHudOffset = -1, uHudFlip = -1;
 	if (!sFBO)
 	{
 		glGenFramebuffers(1, &sFBO);
@@ -462,6 +472,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		glUniform1i(glGetUniformLocation(sProg, "uHud"), 6);
 		uInvRot    = glGetUniformLocation(sProg, "uInvRot");
 		uHalfFov   = glGetUniformLocation(sProg, "uHalfFovRad");
+		uEquirect  = glGetUniformLocation(sProg, "uEquirect");
 		uFlip      = glGetUniformLocation(sProg, "uFlip");
 		uFlipUD    = glGetUniformLocation(sProg, "uFlipUD");
 		uHudEnable = glGetUniformLocation(sProg, "uHudEnable");
@@ -495,8 +506,8 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		glGetIntegerv(GL_SAMPLER_BINDING, &savedSamp[u]);
 	}
 
-	auto* domeHW = static_cast<FHardwareTexture*>(domeTex->GetHardwareTexture(0, 0));
-	domeHW->BindOrCreate(domeTex, 0, 0, 0, 0);
+	auto* domeHW = static_cast<FHardwareTexture*>(outTex->GetHardwareTexture(0, 0));
+	domeHW->BindOrCreate(outTex, 0, 0, 0, 0);
 	FHardwareTexture::Unbind(0);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, sFBO);
@@ -506,7 +517,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 	glDisable(GL_SCISSOR_TEST); glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND);
 	glDisable(GL_STENCIL_TEST); glDisable(GL_CULL_FACE);
 
-	glViewport(0, 0, domeSize, domeSize);
+	glViewport(0, 0, outW, outH);
 	glClearColor(0, 0, 0, 0);
 	glClear(GL_COLOR_BUFFER_BIT);
 
@@ -518,7 +529,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 			GLenum st = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 			fprintf(stderr, "[domedoom/dbg] dome FBO %s, %dx%d\n",
 			        st == GL_FRAMEBUFFER_COMPLETE ? "complete" : "INCOMPLETE",
-			        domeSize, domeSize);
+			        outW, outH);
 		}
 	}
 
@@ -558,6 +569,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 	glUseProgram(sProg);
 	glUniformMatrix3fv(uInvRot, 1, GL_FALSE, params.invRot);
 	glUniform1f(uHalfFov, params.fovDeg * (3.14159265359f / 360.0f));
+	glUniform1f(uEquirect, params.equirect ? 1.0f : 0.0f);
 	glUniform2f(uFlip, params.flipH ? -1.0f : 1.0f, params.flipV ? -1.0f : 1.0f);
 	glUniform1f(uFlipUD, params.flipUpDown ? -1.0f : 1.0f);
 	glUniform1f(uHudEnable, hudOn ? 1.0f : 0.0f);
@@ -576,7 +588,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		{
 			GLenum err = glGetError();
 			uint8_t c[4] = {0,0,0,0};
-			glReadPixels(domeSize/2, domeSize/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, c);
+			glReadPixels(outW/2, outH/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, c);
 			GLint curProg = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &curProg);
 			fprintf(stderr, "[domedoom/dbg] dome draw: prog=%u glErr=0x%x "
 			        "centerRGBA=%u,%u,%u,%u\n",
@@ -584,7 +596,7 @@ void OpenGLFrameBuffer::RenderDomemaster(FCanvasTexture** faces, int N,
 		}
 	}
 
-	domeTex->SetUpdated(true);
+	outTex->SetUpdated(true);
 
 	// Restore the full GL state exactly as we found it.
 	for (int u = 0; u < 7; u++)
