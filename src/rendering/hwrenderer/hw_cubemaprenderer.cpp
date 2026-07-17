@@ -50,6 +50,9 @@ CVAR(Bool,   r_cubemap_dome_hud,        true,           CVAR_ARCHIVE | CVAR_GLOB
 CVAR(Float,  r_cubemap_dome_hud_arc,    45.f,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_hud_band,   0.035f,         CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_hud_strip,  0.035f,         CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+// Equirect front-face HUD size: 1 = full face width (baseline), <1 shrinks the
+// baked status bar and centres it on the front face. Strip/dome ignore this.
+CVAR(Float,  r_cubemap_dome_hud_scale,   1.0f,           CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float,  r_cubemap_dome_hud_offset, 0.f,            CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 // Crop each side of the HUD band (0 = full width, 0.49 = almost nothing).
 CVAR(Float,  r_cubemap_dome_hud_crop,   0.275f,         CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -420,7 +423,7 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 
 // -------------------------------------------------------------------------
 
-void CubemapRenderer::BlitHUDToFace(F2DDrawer* drawer, int face, float crop)
+void CubemapRenderer::BlitHUDToFace(F2DDrawer* drawer, int face, float crop, float scale)
 {
 	if (!mInitialized || face < 0 || face >= CUBE_FACE_COUNT ||
 	    !mFaceTex[face] || !drawer)
@@ -428,27 +431,40 @@ void CubemapRenderer::BlitHUDToFace(F2DDrawer* drawer, int face, float crop)
 
 	if (crop < 0.f)    crop = 0.f;
 	if (crop > 0.49f)  crop = 0.49f;
+	if (scale < 0.05f) scale = 0.05f;
+	if (scale > 1.f)   scale = 1.f;
 
 	// Re-bind the given face's FBO and overlay the 2D HUD (statusbar, etc.) on
-	// top of the already-rendered 3D scene.  Draw2D scales the drawer's logical
-	// coordinate space (screen resolution) into the face viewport.
+	// top of the already-rendered 3D scene. Draw2D maps the drawer's logical
+	// coordinate space into the viewport.
 	//
-	// crop > 0 widens the viewport and shifts it left so only the HUD's centre
-	// [crop, 1-crop] lands on the face, the sides spilling off its edges. This
-	// matches the domemaster/equirect band shader's hudCrop
-	// (texU = crop + u*(1-2*crop)); at crop == 0 it is the plain full-face bake.
+	// scale shrinks the HUD uniformly and centres it on the face (no aspect
+	// change → no stretch); at scale == 1 the HUD fills the face as before.
+	// crop then trims each side by clipping (not scaling), so the status bar
+	// gets narrower and stays centred rather than stretching to fill.
 	screen->RenderTextureView(mFaceTex[face], [&](IntRect& bounds) {
-		const float denom = 1.0f - 2.0f * crop;
-		const int vpW = (int)lroundf(bounds.width / denom);
-		const int vpX = bounds.left + (int)lroundf(-crop * bounds.width / denom);
-		Draw2D(drawer, *screen->RenderState(), vpX, bounds.top, vpW, bounds.height);
+		const int vpW = (int)lroundf(scale * bounds.width);
+		const int vpH = (int)lroundf(scale * bounds.height);
+		const int vpX = bounds.left + (bounds.width  - vpW) / 2;
+		const int vpY = bounds.top  + (bounds.height - vpH) / 2;
+
+		// Clip the cropped sides (window coords). Vertical centring is
+		// symmetric, so the scissor's y need not track the FBO origin.
+		IntRect clip;
+		clip.left   = vpX + (int)lroundf(crop * vpW);
+		clip.top    = vpY;
+		clip.width  = (int)lroundf((1.0f - 2.0f * crop) * vpW);
+		clip.height = vpH;
+
+		Draw2D(drawer, *screen->RenderState(), vpX, vpY, vpW, vpH, 0, &clip);
 	});
 }
 
 void CubemapRenderer::BlitHUDToFrontFace(F2DDrawer* drawer)
 {
-	// Bake onto the selected overlay face (r_cubemap_hud_face, front by default).
-	BlitHUDToFace(drawer, HudFace(), 0.f);
+	// Bake onto the selected overlay face (r_cubemap_hud_face, front by default),
+	// full size and uncropped — strip mode keeps its original look.
+	BlitHUDToFace(drawer, HudFace(), 0.f, 1.f);
 }
 
 // -------------------------------------------------------------------------
@@ -477,10 +493,12 @@ void CubemapRenderer::BlitHUD(F2DDrawer* drawer)
 		// sitting as a flat band at the bottom. Always the front face (not
 		// r_cubemap_hud_face) so the HUD stays with the hand/gun; the menu
 		// still honours the selected face via BlitMenuToFrontFace.
-		// The side crop (r_cubemap_dome_hud_crop) trims the status bar's sides
-		// just as it did for the old bottom band.
+		// r_cubemap_dome_hud_scale shrinks/centres the status bar on the front
+		// face; r_cubemap_dome_hud_crop then trims its sides (by clipping, no
+		// stretch) — like the domemaster's small centred HUD.
 		if (r_cubemap_dome_hud)
-			BlitHUDToFace(drawer, CUBE_FRONT, r_cubemap_dome_hud_crop);
+			BlitHUDToFace(drawer, CUBE_FRONT,
+			              r_cubemap_dome_hud_crop, r_cubemap_dome_hud_scale);
 	}
 	else
 	{

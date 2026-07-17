@@ -339,4 +339,4 @@ public:
 void Draw2D(F2DDrawer* drawer, FRenderState& state);
 // firstCommand skips the drawer's first N render commands, so a caller can
 // replay only the commands added after a known point (e.g. just the menu).
-void Draw2D(F2DDrawer* drawer, FRenderState& state, int x, int y, int width, int height, int firstCommand = 0);
+void Draw2D(F2DDrawer* drawer, FRenderState& state, int x, int y, int width, int height, int firstCommand = 0, const IntRect* clip = nullptr);

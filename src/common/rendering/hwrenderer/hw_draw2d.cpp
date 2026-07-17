@@ -58,7 +58,7 @@ void Draw2D(F2DDrawer* drawer, FRenderState& state)
 	Draw2D(drawer, state, mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
 }
 
-void Draw2D(F2DDrawer* drawer, FRenderState& state, int x, int y, int width, int height, int firstCommand)
+void Draw2D(F2DDrawer* drawer, FRenderState& state, int x, int y, int width, int height, int firstCommand, const IntRect* clip)
 {
 	twoD.Clock();
 
@@ -140,6 +140,28 @@ void Draw2D(F2DDrawer* drawer, FRenderState& state, int x, int y, int width, int
 		else
 		{
 			sciX = sciY = sciW = sciH = -1;
+		}
+		// Optional caller clip (window coords): intersect it with the command's
+		// own scissor, or use it directly when the command has none. Lets a
+		// caller crop the whole drawer to a sub-rect (e.g. the cubemap HUD bake
+		// trimming the status bar's sides without stretching it).
+		if (clip)
+		{
+			if (sciW < 0)
+			{
+				sciX = clip->left; sciY = clip->top;
+				sciW = clip->width; sciH = clip->height;
+			}
+			else
+			{
+				const int nx = sciX > clip->left ? sciX : clip->left;
+				const int ny = sciY > clip->top  ? sciY : clip->top;
+				const int nr = (sciX + sciW < clip->left + clip->width) ? sciX + sciW : clip->left + clip->width;
+				const int nb = (sciY + sciH < clip->top + clip->height) ? sciY + sciH : clip->top + clip->height;
+				sciX = nx; sciY = ny;
+				sciW = nr > nx ? nr - nx : 0;
+				sciH = nb > ny ? nb - ny : 0;
+			}
 		}
 		state.SetScissor(sciX, sciY, sciW, sciH);
 

@@ -438,6 +438,8 @@ OptionMenu "FulldomeOutputOptions" protected
 	TextField "  Band (type value)", "r_cubemap_dome_hud_band"
 	Slider    "HUD source strip", "r_cubemap_dome_hud_strip", 0.01, 0.5, 0.01
 	TextField "  Strip (type value)", "r_cubemap_dome_hud_strip"
+	Slider    "HUD size (equirect front face)", "r_cubemap_dome_hud_scale", 0.05, 1.0, 0.05
+	TextField "  Size (type value)", "r_cubemap_dome_hud_scale"
 	Option    "HUD/menu face (bake target)", "r_cubemap_hud_face", "CubemapHudFace"
 	Slider    "HUD angle offset (degrees)", "r_cubemap_dome_hud_offset", -180, 180, 5
 	TextField "  Angle offset (type value)", "r_cubemap_dome_hud_offset"
