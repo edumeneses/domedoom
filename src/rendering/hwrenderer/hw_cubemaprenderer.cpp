@@ -420,24 +420,35 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 
 // -------------------------------------------------------------------------
 
-void CubemapRenderer::BlitHUDToFace(F2DDrawer* drawer, int face)
+void CubemapRenderer::BlitHUDToFace(F2DDrawer* drawer, int face, float crop)
 {
 	if (!mInitialized || face < 0 || face >= CUBE_FACE_COUNT ||
 	    !mFaceTex[face] || !drawer)
 		return;
 
+	if (crop < 0.f)    crop = 0.f;
+	if (crop > 0.49f)  crop = 0.49f;
+
 	// Re-bind the given face's FBO and overlay the 2D HUD (statusbar, etc.) on
 	// top of the already-rendered 3D scene.  Draw2D scales the drawer's logical
 	// coordinate space (screen resolution) into the face viewport.
+	//
+	// crop > 0 widens the viewport and shifts it left so only the HUD's centre
+	// [crop, 1-crop] lands on the face, the sides spilling off its edges. This
+	// matches the domemaster/equirect band shader's hudCrop
+	// (texU = crop + u*(1-2*crop)); at crop == 0 it is the plain full-face bake.
 	screen->RenderTextureView(mFaceTex[face], [&](IntRect& bounds) {
-		Draw2D(drawer, *screen->RenderState(), 0, 0, bounds.width, bounds.height);
+		const float denom = 1.0f - 2.0f * crop;
+		const int vpW = (int)lroundf(bounds.width / denom);
+		const int vpX = bounds.left + (int)lroundf(-crop * bounds.width / denom);
+		Draw2D(drawer, *screen->RenderState(), vpX, bounds.top, vpW, bounds.height);
 	});
 }
 
 void CubemapRenderer::BlitHUDToFrontFace(F2DDrawer* drawer)
 {
 	// Bake onto the selected overlay face (r_cubemap_hud_face, front by default).
-	BlitHUDToFace(drawer, HudFace());
+	BlitHUDToFace(drawer, HudFace(), 0.f);
 }
 
 // -------------------------------------------------------------------------
@@ -466,8 +477,10 @@ void CubemapRenderer::BlitHUD(F2DDrawer* drawer)
 		// sitting as a flat band at the bottom. Always the front face (not
 		// r_cubemap_hud_face) so the HUD stays with the hand/gun; the menu
 		// still honours the selected face via BlitMenuToFrontFace.
+		// The side crop (r_cubemap_dome_hud_crop) trims the status bar's sides
+		// just as it did for the old bottom band.
 		if (r_cubemap_dome_hud)
-			BlitHUDToFace(drawer, CUBE_FRONT);
+			BlitHUDToFace(drawer, CUBE_FRONT, r_cubemap_dome_hud_crop);
 	}
 	else
 	{

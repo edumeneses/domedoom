@@ -66,8 +66,10 @@ public:
 	void CompositeAndStream();
 
 	// Render the contents of `drawer` (HUD/statusbar) into the given face's FBO,
-	// compositing on top of the already-rendered 3D scene.
-	void BlitHUDToFace(F2DDrawer* drawer, int face);
+	// compositing on top of the already-rendered 3D scene. `crop` (0..0.49)
+	// trims each side of the HUD, mapping only its centre across the face —
+	// matching the domemaster/equirect band shader's hudCrop.
+	void BlitHUDToFace(F2DDrawer* drawer, int face, float crop = 0.f);
 
 	// Render the contents of `drawer` (HUD/statusbar) into the FBO of the face
 	// selected by r_cubemap_hud_face (front by default), compositing on top of
