@@ -272,7 +272,10 @@ public:
 		return mData.Size();
 	}
 
-	bool mIsFirstPass = true;
+	// Number of vertices already converted BGRA->RGBA by Draw2D. Draw2D may run
+	// several times per frame (cubemap HUD/menu passes before the screen pass),
+	// with more vertices added in between; only unconverted ones get swapped.
+	unsigned mVertsSwapped = 0;
 };
 
 // DCanvas is already taken so using FCanvas instead.

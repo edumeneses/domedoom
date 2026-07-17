@@ -354,6 +354,7 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 	}
 
 	gCubemapFaceRender = false;
+	mFacesThisFrame = true;
 
 	// Restore player camera so the game stays unaffected.
 	camera->Angles = savedAngles;
@@ -399,6 +400,44 @@ void CubemapRenderer::BlitHUD(F2DDrawer* drawer)
 
 // -------------------------------------------------------------------------
 
+void CubemapRenderer::BlitMenuToFrontFace(F2DDrawer* drawer, int firstCommand)
+{
+	if (!mInitialized || !mFaceTex[CUBE_FRONT] || !drawer) return;
+	if (firstCommand >= drawer->DrawCount()) return;   // no menu this frame
+
+	screen->RenderTextureView(mFaceTex[CUBE_FRONT], [&](IntRect& bounds) {
+		Draw2D(drawer, *screen->RenderState(), 0, 0, bounds.width, bounds.height,
+		       firstCommand);
+	});
+}
+
+// -------------------------------------------------------------------------
+
+void CubemapRenderer::BlitScreenToFrontFace(F2DDrawer* drawer)
+{
+	if (!mInitialized) Init();
+	if (!drawer) return;
+
+	// Blank all faces so stale scene content (or uninitialized texture memory)
+	// doesn't surround the 2D screen on the dome/strip; the front face gets
+	// the full 2D screen (title pic, console, menu) on top of the clear.
+	F2DDrawer clear;
+	clear.Begin(screen->GetWidth(), screen->GetHeight());
+	clear.ClearScreen();
+	clear.End();
+
+	for (int i = 0; i < CUBE_FACE_COUNT; i++)
+	{
+		screen->RenderTextureView(mFaceTex[i], [&](IntRect& bounds) {
+			Draw2D(&clear, *screen->RenderState(), 0, 0, bounds.width, bounds.height);
+			if (i == CUBE_FRONT)
+				Draw2D(drawer, *screen->RenderState(), 0, 0, bounds.width, bounds.height);
+		});
+	}
+}
+
+// -------------------------------------------------------------------------
+
 void CubemapRenderer::CompositeAndStream()
 {
 	if (!mInitialized) return;
@@ -424,7 +463,9 @@ void CubemapRenderer::CompositeAndStream()
 		dp.flipV = r_cubemap_dome_flip_v;
 		dp.flipUpDown = r_cubemap_dome_flip_ud;
 		dp.swapUpDownFaces = r_cubemap_dome_swap_ud;
-		dp.hudTex    = (r_cubemap_dome_hud && mHudTex) ? mHudTex : nullptr;
+		// Rim HUD only when a scene was rendered — with no level the whole 2D
+		// screen is already baked onto the front face and mHudTex is stale.
+		dp.hudTex    = (r_cubemap_dome_hud && mHudTex && mFacesThisFrame) ? mHudTex : nullptr;
 		dp.hudArcDeg = r_cubemap_dome_hud_arc;
 		dp.hudBand   = r_cubemap_dome_hud_band;
 		dp.hudStrip  = r_cubemap_dome_hud_strip;
@@ -501,10 +542,11 @@ void CubemapRenderer::CompositeAndStream()
 					        nonzero, (unsigned)mx);
 				}
 
-				// One-shot: dump the readback buffer to a viewable PPM so the
-				// render/readback stage can be inspected without any PipeWire/
-				// Sh4lt/NDI receiver. RGBA->RGB, flipped to top-down.
-				if (!dbgDumped)
+				// Dump the readback buffer to a viewable PPM so the render/
+				// readback stage can be inspected without any PipeWire/Sh4lt/
+				// NDI receiver. Refreshed every 120 frames so late overlays
+				// (menu, console) show up. RGBA->RGB, flipped to top-down.
+				if (!dbgDumped || (dbgFrame % 120) == 1)
 				{
 					dbgDumped = true;
 					const char* path = "/tmp/domedoom-readback.ppm";
@@ -539,4 +581,6 @@ void CubemapRenderer::CompositeAndStream()
 
 	// ---- Sh4lt audio tap ------------------------------------------------
 	UpdateSh4ltAudio();
+
+	mFacesThisFrame = false;   // consumed; next frame decides scene vs 2D-only
 }

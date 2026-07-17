@@ -65,6 +65,23 @@ public:
 	// strip keeps baking it onto the front face.
 	void BlitHUD(F2DDrawer* drawer);
 
+	// Bake the drawer's commands from `firstCommand` onward (menu/console,
+	// drawn after BlitHUD) onto the front face in BOTH output modes. The front
+	// face also holds the weapon, so on the domemaster the menu lands on top
+	// of the gun at the dome's front; the cube strip shows it on the front
+	// face. Must run before CompositeAndStream. No-op when nothing was added.
+	void BlitMenuToFrontFace(F2DDrawer* drawer, int firstCommand);
+
+	// No-scene fallback (title screen, intermission, full console): blank all
+	// faces and bake the entire 2D screen onto the front face, so the
+	// streaming outputs are live from launch — before any level is loaded.
+	// Initializes the renderer (and thus the outputs) on first use.
+	void BlitScreenToFrontFace(F2DDrawer* drawer);
+
+	// True when RenderFacesToTextures ran this frame (a 3D scene exists).
+	// Cleared by CompositeAndStream after the frame is pushed out.
+	bool FacesRenderedThisFrame() const { return mFacesThisFrame; }
+
 	FCanvasTexture* FaceTex(int i)  { return mFaceTex[i]; }
 	FCanvasTexture* CrossTex()      { return mCrossTex; }
 
@@ -85,6 +102,7 @@ private:
 	FCanvasTexture*       mDomeTex                  = nullptr;
 	FCanvasTexture*       mHudTex                   = nullptr;
 	bool                  mInitialized              = false;
+	bool                  mFacesThisFrame           = false;
 
 	// Dome yaw lock: when r_cubemap_dome_lock_yaw is set, the domemaster OUTPUT
 	// is counter-rotated by the player's yaw change since the reference latched

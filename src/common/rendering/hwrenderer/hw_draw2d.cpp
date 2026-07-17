@@ -58,7 +58,7 @@ void Draw2D(F2DDrawer* drawer, FRenderState& state)
 	Draw2D(drawer, state, mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
 }
 
-void Draw2D(F2DDrawer* drawer, FRenderState& state, int x, int y, int width, int height)
+void Draw2D(F2DDrawer* drawer, FRenderState& state, int x, int y, int width, int height, int firstCommand)
 {
 	twoD.Clock();
 
@@ -78,27 +78,28 @@ void Draw2D(F2DDrawer* drawer, FRenderState& state, int x, int y, int width, int
 	auto &indices = drawer->mIndices;
 	auto &commands = drawer->mData;
 
-	if (commands.Size() == 0)
+	if (commands.Size() == 0 || (unsigned)firstCommand >= commands.Size())
 	{
 		twoD.Unclock();
 		return;
 	}
 
-	if (drawer->mIsFirstPass)
+	// Change from BGRA to RGBA. Only vertices not yet converted by an earlier
+	// pass this frame — Draw2D can run multiple times per frame with vertices
+	// added in between (cubemap HUD/menu passes before the final screen pass).
+	for (unsigned vi = drawer->mVertsSwapped; vi < vertices.Size(); vi++)
 	{
-		for (auto &v : vertices)
-		{
-			// Change from BGRA to RGBA
-			std::swap(v.color0.r, v.color0.b);
-		}
+		std::swap(vertices[vi].color0.r, vertices[vi].color0.b);
 	}
+	drawer->mVertsSwapped = vertices.Size();
 	F2DVertexBuffer vb;
 	vb.UploadData(&vertices[0], vertices.Size(), &indices[0], indices.Size());
 	state.SetVertexBuffer(&vb);
 	state.EnableFog(false);
 
-	for(auto &cmd : commands)
+	for (unsigned ci = (unsigned)firstCommand; ci < commands.Size(); ci++)
 	{
+		auto &cmd = commands[ci];
 		if (cmd.isSpecial != SpecialDrawCommand::NotSpecial)
 		{
 			if (cmd.isSpecial == SpecialDrawCommand::EnableStencil)
@@ -261,6 +262,5 @@ void Draw2D(F2DDrawer* drawer, FRenderState& state, int x, int y, int width, int
 	state.SetScreenFade(1);
 	state.SetSoftLightLevel(255);
 	state.ResetColor();
-	drawer->mIsFirstPass = false;
 	twoD.Unclock();
 }

@@ -1084,6 +1084,13 @@ void D_Display ()
 				D_PageDrawer();
 				C_DrawConsole ();
 				M_Drawer ();
+				if (r_cubemap)
+				{
+					// Keep the streaming outputs alive on the full console
+					// (startup, errors) — front face carries the 2D screen.
+					gCubemapRenderer.BlitScreenToFrontFace(twod);
+					gCubemapRenderer.CompositeAndStream();
+				}
 				End2DAndUpdate ();
 				return;
 				
@@ -1183,24 +1190,52 @@ void D_Display ()
 		}
 	}
 
-	if (r_cubemap)
-	{
-		// HUD is now in twod; route it to the front face (cube strip) or a
-		// dedicated rim-band texture (domemaster), then composite all faces and
-		// push to streaming outputs.
-		gCubemapRenderer.BlitHUD(twod);
-		gCubemapRenderer.CompositeAndStream();
-	}
-
 	if (!wipestart || NoWipe < 0 || wipe_type == wipe_None || hud_toggled)
 	{
 		if (wipestart != nullptr) wipestart->DecRef();
 		wipestart = nullptr;
-		DrawOverlays();
+		if (r_cubemap)
+		{
+			if (gCubemapRenderer.FacesRenderedThisFrame())
+			{
+				// HUD is now in twod; route it to the front face (cube strip) or a
+				// dedicated rim-band texture (domemaster). The menu/console are drawn
+				// by DrawOverlays afterwards and baked onto the front face in both
+				// modes — on the domemaster this puts the menu on top of the weapon
+				// at the dome's front. Composite and stream once everything is in.
+				gCubemapRenderer.BlitHUD(twod);
+				const int menuFirstCmd = twod->DrawCount();
+				DrawOverlays();
+				gCubemapRenderer.BlitMenuToFrontFace(twod, menuFirstCmd);
+			}
+			else
+			{
+				// No 3D scene this frame (title screen, intermission, ...): bake
+				// the whole 2D screen onto the front face so the streaming
+				// outputs are live from launch.
+				DrawOverlays();
+				gCubemapRenderer.BlitScreenToFrontFace(twod);
+			}
+			gCubemapRenderer.CompositeAndStream();
+		}
+		else
+		{
+			DrawOverlays();
+		}
 		End2DAndUpdate ();
 	}
 	else
 	{
+		// Wipes replay DrawOverlays per wipe frame; keep the streaming outputs
+		// updating with the pre-overlay composite during the transition.
+		if (r_cubemap)
+		{
+			if (gCubemapRenderer.FacesRenderedThisFrame())
+				gCubemapRenderer.BlitHUD(twod);
+			else
+				gCubemapRenderer.BlitScreenToFrontFace(twod);
+			gCubemapRenderer.CompositeAndStream();
+		}
 		PerformWipe(wipestart, screen->WipeEndScreen(), wipe_type, false, DrawOverlays);
 	}
 	cycles.Unclock();

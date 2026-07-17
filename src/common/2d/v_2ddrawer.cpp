@@ -1202,7 +1202,7 @@ void F2DDrawer::Clear()
 		mVertices.Clear();
 		mIndices.Clear();
 		mData.Clear();
-		mIsFirstPass = true;
+		mVertsSwapped = 0;
 	}
 	screenFade = 1.f;
 }
