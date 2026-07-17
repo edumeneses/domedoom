@@ -65,6 +65,10 @@ public:
 	// streaming outputs (PipeWire, Sh4lt, NDI). Call after BlitHUDToFrontFace.
 	void CompositeAndStream();
 
+	// Render the contents of `drawer` (HUD/statusbar) into the given face's FBO,
+	// compositing on top of the already-rendered 3D scene.
+	void BlitHUDToFace(F2DDrawer* drawer, int face);
+
 	// Render the contents of `drawer` (HUD/statusbar) into the FBO of the face
 	// selected by r_cubemap_hud_face (front by default), compositing on top of
 	// the already-rendered 3D scene.

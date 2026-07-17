@@ -420,17 +420,24 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 
 // -------------------------------------------------------------------------
 
-void CubemapRenderer::BlitHUDToFrontFace(F2DDrawer* drawer)
+void CubemapRenderer::BlitHUDToFace(F2DDrawer* drawer, int face)
 {
-	if (!mInitialized || !mFaceTex[HudFace()] || !drawer) return;
+	if (!mInitialized || face < 0 || face >= CUBE_FACE_COUNT ||
+	    !mFaceTex[face] || !drawer)
+		return;
 
-	// Re-bind the selected face FBO (r_cubemap_hud_face, front by default) and
-	// overlay the 2D HUD (statusbar, etc.) on top of the already-rendered 3D
-	// scene.  Draw2D scales the drawer's logical coordinate space (screen
-	// resolution) into the face viewport.
-	screen->RenderTextureView(mFaceTex[HudFace()], [&](IntRect& bounds) {
+	// Re-bind the given face's FBO and overlay the 2D HUD (statusbar, etc.) on
+	// top of the already-rendered 3D scene.  Draw2D scales the drawer's logical
+	// coordinate space (screen resolution) into the face viewport.
+	screen->RenderTextureView(mFaceTex[face], [&](IntRect& bounds) {
 		Draw2D(drawer, *screen->RenderState(), 0, 0, bounds.width, bounds.height);
 	});
+}
+
+void CubemapRenderer::BlitHUDToFrontFace(F2DDrawer* drawer)
+{
+	// Bake onto the selected overlay face (r_cubemap_hud_face, front by default).
+	BlitHUDToFace(drawer, HudFace());
 }
 
 // -------------------------------------------------------------------------
@@ -439,13 +446,12 @@ void CubemapRenderer::BlitHUD(F2DDrawer* drawer)
 {
 	if (!mInitialized || !drawer) return;
 
-	if (OutputMode() != CUBE_OUT_STRIP)
+	if (OutputMode() == CUBE_OUT_DOME)
 	{
-		// Domemaster and equirect: render the 2D HUD into its own texture; the
-		// warp pass overlays the status bar (the bottom strip) as a band along
-		// the dome rim / the bottom of the panorama, honouring the shared
-		// arc/crop/hide parameters. The status bar fully repaints its strip
-		// each frame, so no clear is needed.
+		// Domemaster: render the 2D HUD into its own texture; the warp pass
+		// overlays the status bar (the bottom strip) as a band along the dome
+		// rim, honouring the shared arc/crop/hide parameters. The status bar
+		// fully repaints its strip each frame, so no clear is needed.
 		if (r_cubemap_dome_hud && mHudTex)
 		{
 			screen->RenderTextureView(mHudTex, [&](IntRect& bounds) {
@@ -453,9 +459,19 @@ void CubemapRenderer::BlitHUD(F2DDrawer* drawer)
 			});
 		}
 	}
+	else if (OutputMode() == CUBE_OUT_EQUI)
+	{
+		// Equirect: bake the HUD onto the FRONT face — where the weapon is
+		// drawn — so it warps through the panorama with the gun instead of
+		// sitting as a flat band at the bottom. Always the front face (not
+		// r_cubemap_hud_face) so the HUD stays with the hand/gun; the menu
+		// still honours the selected face via BlitMenuToFrontFace.
+		if (r_cubemap_dome_hud)
+			BlitHUDToFace(drawer, CUBE_FRONT);
+	}
 	else
 	{
-		// Strip: bake the HUD straight onto the front face.
+		// Strip: bake the HUD straight onto the selected overlay face.
 		BlitHUDToFrontFace(drawer);
 	}
 }
@@ -542,9 +558,9 @@ void CubemapRenderer::CompositeAndStream()
 	else if (mode == CUBE_OUT_EQUI)
 	{
 		// Warp the 6 faces into a 2:1 equirectangular panorama. The HUD is
-		// overlaid as a band at the bottom of the panorama using the same
-		// parameters (enable, arc, crop, ...) as the domemaster rim HUD; the
-		// menu is baked onto the front face (see BlitMenuToFrontFace).
+		// baked onto the front face (see BlitHUD), so it warps through the
+		// panorama with the weapon — no separate overlay band here. The menu
+		// is likewise baked onto a face (see BlitMenuToFrontFace).
 		DomemasterParams ep;
 		ep.equirect = true;
 		BuildInvRot(r_cubemap_equi_yaw + lockYawOffset,
@@ -554,14 +570,7 @@ void CubemapRenderer::CompositeAndStream()
 		ep.flipV = r_cubemap_equi_flip_v;
 		ep.flipUpDown = r_cubemap_dome_flip_ud;
 		ep.swapUpDownFaces = r_cubemap_dome_swap_ud;
-		ep.hudTex    = (r_cubemap_dome_hud && mHudTex && mFacesThisFrame) ? mHudTex : nullptr;
-		ep.hudArcDeg = r_cubemap_dome_hud_arc;
-		ep.hudBand   = r_cubemap_dome_hud_band;
-		ep.hudStrip  = r_cubemap_dome_hud_strip;
-		ep.hudOffsetDeg = r_cubemap_dome_hud_offset;
-		ep.hudCrop   = r_cubemap_dome_hud_crop;
-		ep.hudFlipH  = r_cubemap_dome_hud_flip_h;
-		ep.hudFlipV  = r_cubemap_dome_hud_flip_v;
+		ep.hudTex    = nullptr;   // HUD baked on the front face, not overlaid
 		screen->RenderDomemaster(mFaceTex, FACE_SIZE, mEquiTex, EQUI_W, EQUI_H, ep);
 	}
 	else
