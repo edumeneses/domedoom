@@ -116,6 +116,17 @@ each Doom sound object independently.
 | `r_cubemap_spatgris_stereo` | `false` | Stereo-only mode — disables OSC, uses OpenAL mix |
 | `r_cubemap_spatgris_sources` | `32` | Source pool size (max 128; set before launch) |
 | `r_cubemap_spatgris_mute3d` | `true` | Mute a 3D sound's stereo-mix copy once it plays on its own SpatGRIS channel — the stereo bed then carries only music + menu/UI sounds. Turn off to keep the full mix in stereo as well |
+| `r_cubemap_spatgris_bed` | `true` | Reserve SpatGRIS channels 1/2 for the music + menu/UI mix ("stereo bed"), positioned like a pair of stereo speakers: channel 1 at 45° left of the gun, channel 2 at 45° right, at the dome edge. World sounds then use IDs 3+. Restart to re-slot |
+| `r_cubemap_spatgris_gun_dist` | `0.5` | SpatGRIS distance for the player's own sounds (gunfire, pickups): 0 = dome centre, 1 = dome edge. They play at the gun's azimuth at this radius |
+
+Turning `r_cubemap_spatgris` off (or `r_cubemap_spatgris_stereo` on) restores
+plain stereo output at any time — live muted sounds get their gains back —
+so a normal stereo mix for screen recording is always one toggle away.
+
+With `r_cubemap_dome_lock_yaw` the audio follows the dome behaviour: world
+sounds keep their azimuth relative to the locked heading (fixed on the dome,
+like the image) while the player's own sounds and the stereo-bed pair follow
+the orbiting gun.
 
 **OSC message format** (SpatGRIS dome mode, degrees):
 ```
@@ -133,10 +144,13 @@ released when it stops. IDs are reused in FIFO order.
 
 | SpatGRIS ID | Doom sound | Notes |
 |-------------|-----------|-------|
-| 1 | first active 3D sound | reassigned each time a new sound claims an empty slot |
-| 2 | second active 3D sound | |
+| 1 | stereo bed LEFT (music + UI) | reserved while `r_cubemap_spatgris_bed` is on; 45° left of the gun |
+| 2 | stereo bed RIGHT (music + UI) | reserved while `r_cubemap_spatgris_bed` is on; 45° right of the gun |
+| 3 | first active 3D sound | reassigned each time a new sound claims an empty slot |
 | … | … | |
-| N | Nth active 3D sound | N = `r_cubemap_spatgris_sources` (default 32) |
+| N | last active 3D sound | N = `r_cubemap_spatgris_sources` (default 32) |
+
+With the bed disabled, 3D sounds start at ID 1.
 
 2D sounds (UI, menus, HUD) use `StartSound`, not `StartSound3D`, and are never
 sent to SpatGRIS — they remain in the OpenAL stereo mix.
