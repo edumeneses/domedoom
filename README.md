@@ -115,6 +115,7 @@ each Doom sound object independently.
 | `r_cubemap_spatgris_port` | `18032` | SpatGRIS OSC UDP port |
 | `r_cubemap_spatgris_stereo` | `false` | Stereo-only mode — disables OSC, uses OpenAL mix |
 | `r_cubemap_spatgris_sources` | `32` | Source pool size (max 128; set before launch) |
+| `r_cubemap_spatgris_mute3d` | `true` | Mute a 3D sound's stereo-mix copy once it plays on its own SpatGRIS channel — the stereo bed then carries only music + menu/UI sounds. Turn off to keep the full mix in stereo as well |
 
 **OSC message format** (SpatGRIS dome mode, degrees):
 ```
