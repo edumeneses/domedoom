@@ -64,6 +64,14 @@ CVARD(Bool, gl_weapon_purelightlevel, false, CVAR_GLOBALCONFIG | CVAR_ARCHIVE, "
 //
 //==========================================================================
 
+// Cubemap side-face psprite continuation: the cubemap renderer sets this to
+// +1 (left face) / -1 (right face) while rendering those faces, so the
+// weapon is re-drawn shifted one face width and the part overhanging the
+// front face's vertical edge lands on the neighbouring face — wide
+// animations (e.g. the shotgun pump) continue across the seam instead of
+// being cropped. 0 everywhere else.
+float gCubemapPSpriteXShift = 0.f;
+
 void HWDrawInfo::DrawPSprite(HUDSprite *huds, FRenderState &state)
 {
 	if (huds->RenderStyle.BlendOp == STYLEOP_Shadow)
@@ -127,6 +135,9 @@ void HWDrawInfo::DrawPlayerSprites(bool hudModelStep, FRenderState &state)
 	if (!hudModelStep && isSoftwareLighting(oldlightmode)) SetFallbackLightMode();	// Software lighting cannot handle 2D content.
 	for (auto &hudsprite : hudsprites)
 	{
+		// 3D weapon models can't be re-projected onto a side face with a 2D
+		// shift — they are drawn on the front face only.
+		if (gCubemapPSpriteXShift != 0.f && hudsprite.mframe) continue;
 		if ((!!hudsprite.mframe) == hudModelStep)
 			DrawPSprite(&hudsprite, state);
 	}
@@ -533,6 +544,14 @@ bool HUDSprite::GetWeaponRect(HWDrawInfo *di, DPSprite *psp, float sx, float sy,
 	x2 = tx * scalex + vw / 2;
 	//if (x2 < 0) return false; // off the left side
 	x2 += viewwindowx;
+
+	// Cubemap left/right faces: shift one face width so only the part of the
+	// weapon overhanging the front face's edge lands on this face.
+	if (gCubemapPSpriteXShift != 0.f)
+	{
+		x1 += gCubemapPSpriteXShift * vw;
+		x2 += gCubemapPSpriteXShift * vw;
+	}
 
 	// killough 12/98: fix psprite positioning problem
 	ftextureadj = (120.0f / psp->baseScale.Y) - 100.0f; // [XA] scale relative to weapon baseline

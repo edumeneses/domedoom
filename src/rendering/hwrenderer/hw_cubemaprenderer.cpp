@@ -99,6 +99,10 @@ CVAR(Int,    r_cubemap_spatgris_sources,32,             CVAR_ARCHIVE | CVAR_GLOB
 // Defined in r_utility.cpp, also extern'd in hw_entrypoint.cpp
 extern bool NoInterpolateView;
 
+// Defined in hw_weapon.cpp: horizontal psprite shift in face widths, used to
+// continue the weapon across the front face's edges on the side faces.
+extern float gCubemapPSpriteXShift;
+
 // True while rendering the 6 cube faces. Sprite billboarding reads this to
 // face the camera POSITION (view-direction-independent) so billboards line up
 // across face seams instead of splitting. See hw_sprites.cpp.
@@ -407,7 +411,15 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 		// Force no angle interpolation so rotated direction is used exactly.
 		NoInterpolateView = true;
 
+		// The weapon lives on the front face, but wide animations (the
+		// shotgun pump swinging left, muzzle flash offsets) overhang its
+		// vertical edges. Re-draw the psprites on the left/right faces
+		// shifted one face width so the overhang continues across the seam
+		// instead of being cropped (see gCubemapPSpriteXShift).
 		const bool isFront = (i == CUBE_FRONT);
+		const bool psprites = isFront || i == CUBE_LEFT || i == CUBE_RIGHT;
+		gCubemapPSpriteXShift = (i == CUBE_LEFT)  ?  1.f :
+		                        (i == CUBE_RIGHT) ? -1.f : 0.f;
 		screen->RenderTextureView(mFaceTex[i], [&](IntRect& bounds)
 		{
 			FRenderViewpoint facevp;
@@ -417,9 +429,10 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 			                1.f,     // fovratio — square
 			                false,   // mainview — no SSAO / no scene FBO rebind
 			                false,   // toscreen — render to bound FBO, not screen
-			                isFront);// drawPSprites — weapons on front face only
+			                psprites);// drawPSprites — front + seam continuation
 		});
 	}
+	gCubemapPSpriteXShift = 0.f;
 
 	gCubemapFaceRender = false;
 	mFacesThisFrame = true;
