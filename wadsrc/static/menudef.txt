@@ -472,6 +472,8 @@ OptionMenu "FulldomeOutputOptions" protected
 	StaticText "SpatGRIS Spatial Audio", 1
 	Option "Object-based audio (OSC)", "r_cubemap_spatgris", "YesNo"
 	Option "Stereo-only mode (disables OSC)", "r_cubemap_spatgris_stereo", "YesNo"
+	Option "Mute spatialized sounds in stereo mix", "r_cubemap_spatgris_mute3d", "YesNo"
+	StaticText "  (stereo bed keeps music + menu/UI sounds only)", 1
 	TextField "SpatGRIS host IP", "r_cubemap_spatgris_ip"
 	TextField "SpatGRIS OSC port", "r_cubemap_spatgris_port"
 	Slider "Source pool size", "r_cubemap_spatgris_sources", 1, 128, 1

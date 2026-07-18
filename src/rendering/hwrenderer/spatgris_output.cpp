@@ -12,12 +12,17 @@
 #include <cstdio>
 #include <cmath>
 #include <unordered_map>
+#include <unordered_set>
 
 EXTERN_CVAR(Bool,   r_cubemap_spatgris)
 EXTERN_CVAR(String, r_cubemap_spatgris_ip)
 EXTERN_CVAR(Int,    r_cubemap_spatgris_port)
 EXTERN_CVAR(Bool,   r_cubemap_spatgris_stereo)
 EXTERN_CVAR(Int,    r_cubemap_spatgris_sources)
+
+// Mute 3D world sounds in the OpenAL stereo mix once their PCM plays on a
+// per-source SpatGRIS channel, leaving music + 2D/UI sounds as the stereo bed.
+CVAR(Bool, r_cubemap_spatgris_mute3d, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 // Doom units past which a source sits at the dome edge (distance = 1.0).
 static constexpr float SPAT_MAX_DIST = 2048.f;
@@ -30,6 +35,10 @@ static float        g_lx = 0.f, g_ly = 0.f, g_lz = 0.f, g_la = 0.f;
 static std::unordered_map<uint32_t, int> g_srcMap;
 static bool g_slotFree[128] = {};
 static int  g_numSlots = 0;
+
+// AL sources whose stereo-mix copy is muted because their PCM plays on a
+// per-source PipeWire channel instead (see SpatGRIS_AllocSource).
+static std::unordered_set<uint32_t> g_mutedSrc;
 
 // Per-source PipeWire audio — single N-channel stream, inited at CVAR enable.
 static PipeWireAudioOutput g_pwAudio;
@@ -66,6 +75,7 @@ void SpatGRIS_ShutdownAudio()
     g_pwAudio.Shutdown();
     if (g_sock >= 0) { close(g_sock); g_sock = -1; }
     g_srcMap.clear();
+    g_mutedSrc.clear();
     for (int i = 0; i < g_numSlots; ++i) g_slotFree[i] = true;
 }
 
@@ -97,18 +107,22 @@ struct OscBuf {
 
 static void SendPos(int spatId, float sx, float sy, float sz)
 {
-    // Listener-relative vector in Doom world space (X=east, Y=north, Z=up).
+    // Listener-relative vector in the engine's SOUND space: X=east, Y=UP,
+    // Z=north (see OpenALSoundRenderer::UpdateListener — its orientation
+    // vectors are forward=(cos a, 0, -sin a), up=(0,1,0)). The positions the
+    // OpenAL layer hands us are in this space, NOT Doom world x/y/z.
     float dx = sx - g_lx, dy = sy - g_ly, dz = sz - g_lz;
 
-    // Project onto listener's forward/right axes.
-    // Forward at angle a: (cos a, sin a). Right: (sin a, -cos a).
-    float fwd = dx * cosf(g_la) + dy * sinf(g_la);
-    float rgt = dx * sinf(g_la) - dy * cosf(g_la);
+    // Project onto the listener's forward/right axes in the horizontal (X,Z)
+    // plane. Forward at angle a: (cos a, -sin a). Right = forward x up =
+    // (sin a, cos a).
+    float fwd = dx * cosf(g_la) - dz * sinf(g_la);
+    float rgt = dx * sinf(g_la) + dz * cosf(g_la);
 
     float dist  = sqrtf(dx*dx + dy*dy + dz*dz);
     float az    = atan2f(rgt, fwd) * (180.f / (float)M_PI);   // clockwise from front, degrees
     float horiz = sqrtf(fwd*fwd + rgt*rgt);
-    float el    = atan2f(dz, horiz) * (180.f / (float)M_PI);  // positive = up, degrees
+    float el    = atan2f(dy, horiz) * (180.f / (float)M_PI);  // positive = up, degrees
     float nd    = dist / SPAT_MAX_DIST;
     if (nd > 1.f) nd = 1.f;
 
@@ -134,25 +148,37 @@ void SpatGRIS_UpdateListener(float x, float y, float z, float angleRad)
     g_lx = x; g_ly = y; g_lz = z; g_la = angleRad;
 }
 
-void SpatGRIS_AllocSource(uint32_t alSrc, uint32_t alBuf, float sx, float sy, float sz)
+bool SpatGRIS_AllocSource(uint32_t alSrc, uint32_t alBuf, float sx, float sy, float sz)
 {
-    if (!(bool)r_cubemap_spatgris || (bool)r_cubemap_spatgris_stereo) return;
-    if (g_sock < 0) return;  // not inited — SpatGRIS_InitAudio not called yet
+    if (!(bool)r_cubemap_spatgris || (bool)r_cubemap_spatgris_stereo) return false;
+    if (g_sock < 0) return false;  // not inited — SpatGRIS_InitAudio not called yet
     UpdateDest();
 
     int id = -1;
     for (int i = 0; i < g_numSlots; ++i) {
         if (g_slotFree[i]) { id = i + 1; g_slotFree[i] = false; break; }
     }
-    if (id < 0) return;  // all slots busy — drop
+    if (id < 0) return false;  // all slots busy — drop (sound stays in the stereo mix)
 
     g_srcMap[alSrc] = id;
     SendPos(id, sx, sy, sz);
 
     OALPCMView pcm;
     if (g_pwAudio.IsRunning() && OAL_GetSFXPCM(alBuf, &pcm))
+    {
         g_pwAudio.AllocSlot(id - 1, pcm.data, pcm.bytes,
                             pcm.sampleRate, pcm.bits, pcm.channels);
+        // The sound now plays on its own SpatGRIS channel; mute its stereo-mix
+        // copy so the stereo bed carries only music + 2D/UI sounds. Skipped
+        // when muting is disabled or the PCM couldn't be tapped — then the
+        // stereo copy is the only audio and must stay audible.
+        if (r_cubemap_spatgris_mute3d)
+        {
+            g_mutedSrc.insert(alSrc);
+            return true;
+        }
+    }
+    return false;
 }
 
 void SpatGRIS_UpdateSource(uint32_t alSrc, float sx, float sy, float sz)
@@ -164,8 +190,14 @@ void SpatGRIS_UpdateSource(uint32_t alSrc, float sx, float sy, float sz)
     SendPos(it->second, sx, sy, sz);
 }
 
+bool SpatGRIS_SourceSpatialized(uint32_t alSrc)
+{
+    return g_mutedSrc.find(alSrc) != g_mutedSrc.end();
+}
+
 void SpatGRIS_FreeSource(uint32_t alSrc)
 {
+    g_mutedSrc.erase(alSrc);
     auto it = g_srcMap.find(alSrc);
     if (it == g_srcMap.end()) return;
     int id = it->second;

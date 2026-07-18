@@ -1029,7 +1029,8 @@ void OpenALSoundRenderer::SetSfxVolume(float volume)
 
 			alDeferUpdatesSOFT();
 			alSourcef(source, AL_MAX_GAIN, volume);
-			alSourcef(source, AL_GAIN, volume * schan->Volume);
+			if (!SpatGRIS_SourceSpatialized(source))
+				alSourcef(source, AL_GAIN, volume * schan->Volume);
 		}
 		schan = schan->NextChan;
 	}
@@ -1556,7 +1557,10 @@ FISoundChannel *OpenALSoundRenderer::StartSound3D(SoundHandle sfx, SoundListener
 	chan->DistanceSqr = dist_sqr;
 	chan->ManualRolloff = manualRolloff;
 
-	SpatGRIS_AllocSource(source, buffer, pos.X, pos.Y, pos.Z);
+	// When the sound got its own SpatGRIS per-source channel, mute its copy in
+	// the OpenAL stereo mix — the stereo bed keeps only music + 2D/UI sounds.
+	if (SpatGRIS_AllocSource(source, buffer, pos.X, pos.Y, pos.Z))
+		alSourcef(source, AL_GAIN, 0.f);
 
 	return chan;
 }
@@ -1569,6 +1573,8 @@ void OpenALSoundRenderer::ChannelVolume(FISoundChannel *chan, float volume)
 	alDeferUpdatesSOFT();
 
 	ALuint source = GET_PTRID(chan->SysChannel);
+	if (SpatGRIS_SourceSpatialized(source))
+		return;   // plays on its SpatGRIS channel — keep the stereo copy muted
 	alSourcef(source, AL_GAIN, SfxVolume * volume);
 }
 
