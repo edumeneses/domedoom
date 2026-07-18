@@ -11,6 +11,21 @@ void SpatGRIS_InitAudio();
 void SpatGRIS_ShutdownAudio();
 
 void SpatGRIS_UpdateListener(float x, float y, float z, float angleRad);
+
+// Dome yaw-lock state, pushed each frame by the cubemap renderer. When the
+// lock is active the world image is frozen at lockYawDeg and the gun orbits
+// to curYawDeg; SpatGRIS azimuths follow the same rule — world sounds are
+// computed against the locked heading (stay fixed on the dome) and the
+// player's own sounds / the stereo-bed pair follow the gun.
+void SpatGRIS_SetGunYaw(bool lockActive, float lockYawDeg, float curYawDeg);
+
+// Route a 2D/UI sound into the stereo bed (SpatGRIS channels 1/2). Returns
+// true when the sound was taken — the caller should mute its stereo copy.
+bool SpatGRIS_Start2DSound(uint32_t alSrc, uint32_t alBuf, float gain);
+
+// Clear all stereo-mix mutes and restore OpenAL gains — called when
+// spatialization is turned off mid-game so live sounds become audible again.
+void SpatGRIS_UnmuteAll();
 // Returns true when the sound's PCM was routed to a per-source PipeWire
 // channel AND r_cubemap_spatgris_mute3d is set — the caller should then mute
 // the source in the OpenAL stereo mix so it plays only on its SpatGRIS

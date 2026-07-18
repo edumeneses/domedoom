@@ -526,14 +526,29 @@ public:
 			{
 				alBufferData(bufid, Format, &Data[0], Data.Size(), SampleRate);
 				alSourceQueueBuffers(Source, 1, &bufid);
-				if (g_oalAudioTap)
+				if (g_oalAudioTap || g_oalMusicTap)
 				{
 					int ch = (Format == AL_FORMAT_STEREO8 ||
 					          Format == AL_FORMAT_STEREO16 ||
 					          Format == AL_FORMAT_STEREO_FLOAT32) ? 2 : 1;
 					bool flt = (Format == AL_FORMAT_MONO_FLOAT32 ||
 					            Format == AL_FORMAT_STEREO_FLOAT32);
-					g_oalAudioTap(&Data[0], (size_t)Data.Size(), SampleRate, ch, flt);
+					const float gain = Renderer->MusicVolume * Volume;
+					bool consumed = false;
+					if (g_oalAudioTap)
+						consumed |= g_oalAudioTap(&Data[0], (size_t)Data.Size(),
+						                          SampleRate, ch, flt, gain);
+					if (g_oalMusicTap)
+						consumed |= g_oalMusicTap(&Data[0], (size_t)Data.Size(),
+						                          SampleRate, ch, flt, gain);
+					// A consuming tap (SpatGRIS stereo bed) plays this batch on
+					// its own output — mute the local source so it isn't heard
+					// twice. Re-applied per batch so toggling the tap recovers.
+					alSourcef(Source, AL_GAIN, consumed ? 0.f : gain);
+				}
+				else
+				{
+					alSourcef(Source, AL_GAIN, Renderer->MusicVolume * Volume);
 				}
 			}
 		}
@@ -1387,6 +1402,12 @@ FISoundChannel *OpenALSoundRenderer::StartSound(SoundHandle sfx, float vol, floa
 	chan->Rolloff.MinDistance = 1.f;
 	chan->DistanceSqr = 0.f;
 	chan->ManualRolloff = false;
+
+	// Route 2D/UI sounds into the SpatGRIS stereo bed when it is active (the
+	// bed pair follows the gun on the dome); mute the local stereo copy like
+	// spatialized 3D sounds.
+	if (SpatGRIS_Start2DSound(source, buffer, SfxVolume * vol))
+		alSourcef(source, AL_GAIN, 0.f);
 
 	return chan;
 }

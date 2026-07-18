@@ -88,7 +88,11 @@ CUSTOM_CVAR(Bool, r_cubemap_spatgris, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 }
 CVAR(String, r_cubemap_spatgris_ip,     "127.0.0.1",   CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Int,    r_cubemap_spatgris_port,   18032,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Bool,   r_cubemap_spatgris_stereo, false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CUSTOM_CVAR(Bool, r_cubemap_spatgris_stereo, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+{
+    // Switching to stereo-only mid-game: give live sounds their gains back.
+    if (self) SpatGRIS_UnmuteAll();
+}
 CVAR(Int,    r_cubemap_spatgris_sources,32,             CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 // r_cubemap_spatgris_mute3d lives in spatgris_output.cpp with its logic.
 
@@ -603,6 +607,11 @@ void CubemapRenderer::CompositeAndStream()
 	float lockYawOffset = 0.f;
 	if (r_cubemap_dome_lock_yaw && mDomeLockValid)
 		lockYawOffset = (float)(mCurViewYaw - mDomeLockYaw);
+
+	// Mirror the lock/gun state to SpatGRIS: world sounds stay fixed on the
+	// dome like the image, self sounds and the stereo bed follow the gun.
+	SpatGRIS_SetGunYaw(r_cubemap_dome_lock_yaw && mDomeLockValid,
+	                   (float)mDomeLockYaw, (float)mCurViewYaw);
 
 	if (mode == CUBE_OUT_DOME)
 	{

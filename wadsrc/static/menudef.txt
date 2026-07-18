@@ -474,6 +474,10 @@ OptionMenu "FulldomeOutputOptions" protected
 	Option "Stereo-only mode (disables OSC)", "r_cubemap_spatgris_stereo", "YesNo"
 	Option "Mute spatialized sounds in stereo mix", "r_cubemap_spatgris_mute3d", "YesNo"
 	StaticText "  (stereo bed keeps music + menu/UI sounds only)", 1
+	Option "Stereo bed on channels 1/2 (music + UI)", "r_cubemap_spatgris_bed", "YesNo"
+	StaticText "  (pair at +/-45 degrees around the gun; restart to re-slot)", 1
+	Slider "Own-sound distance (gun, pickups)", "r_cubemap_spatgris_gun_dist", 0.0, 1.0, 0.05
+	TextField "  Distance (type value)", "r_cubemap_spatgris_gun_dist"
 	TextField "SpatGRIS host IP", "r_cubemap_spatgris_ip"
 	TextField "SpatGRIS OSC port", "r_cubemap_spatgris_port"
 	Slider "Source pool size", "r_cubemap_spatgris_sources", 1, 128, 1

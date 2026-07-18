@@ -121,11 +121,12 @@ Sh4ltAudioOutput::~Sh4ltAudioOutput() { Shutdown(); }
 static std::atomic<Sh4ltAudioOutput*> gAudioTapOutput{nullptr};
 static std::mutex gAudioInitMtx;
 
-static void AudioTapCallback(const void* data, size_t bytes,
-                              int rate, int channels, bool isFloat)
+static bool AudioTapCallback(const void* data, size_t bytes,
+                              int rate, int channels, bool isFloat,
+                              float /*gain*/)
 {
     auto* out = gAudioTapOutput.load(std::memory_order_relaxed);
-    if (!out) return;
+    if (!out) return false;
     if (!out->IsRunning()) {
         std::lock_guard<std::mutex> lk(gAudioInitMtx);
         if (!out->IsRunning()) {
@@ -135,6 +136,7 @@ static void AudioTapCallback(const void* data, size_t bytes,
         }
     }
     out->PushSamples(data, bytes);
+    return false;   // mirror only — the stream keeps playing locally
 }
 
 void Sh4ltInstallAudioTap(Sh4ltAudioOutput* output) {
@@ -149,6 +151,7 @@ void Sh4ltRemoveAudioTap() {
 
 #endif // HAVE_SH4LT
 
-// g_oalAudioTap lives here regardless of HAVE_SH4LT so oalsound.cpp
-// can always reference it without #ifdefs.
+// The tap pointers live here regardless of HAVE_SH4LT so oalsound.cpp
+// can always reference them without #ifdefs.
 OALAudioTapFn g_oalAudioTap = nullptr;
+OALAudioTapFn g_oalMusicTap = nullptr;
