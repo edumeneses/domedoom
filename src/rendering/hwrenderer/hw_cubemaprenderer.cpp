@@ -18,6 +18,8 @@
 #include "scene/hw_drawinfo.h"  // RenderViewpoint declaration
 #include "c_cvars.h"
 #include "v_draw.h"
+#include "v_palette.h"   // V_CalcBlend
+#include "renderstyle.h"
 #include "spatgris_output.h"
 
 #include <cstdio>
@@ -88,6 +90,7 @@ CVAR(String, r_cubemap_spatgris_ip,     "127.0.0.1",   CVAR_ARCHIVE | CVAR_GLOBA
 CVAR(Int,    r_cubemap_spatgris_port,   18032,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool,   r_cubemap_spatgris_stereo, false,          CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Int,    r_cubemap_spatgris_sources,32,             CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+// r_cubemap_spatgris_mute3d lives in spatgris_output.cpp with its logic.
 
 // Defined in r_utility.cpp, also extern'd in hw_entrypoint.cpp
 extern bool NoInterpolateView;
@@ -423,7 +426,44 @@ void CubemapRenderer::RenderFacesToTextures(player_t* player)
 
 // -------------------------------------------------------------------------
 
-void CubemapRenderer::BlitHUDToFace(F2DDrawer* drawer, int face, float crop, float scale)
+void CubemapRenderer::BlitBlendToFaces(sector_t* viewsector)
+{
+	if (!mInitialized || !mFacesThisFrame) return;
+
+	PalEntry modulateColor;
+	const FVector4 blend = V_CalcBlend(viewsector, &modulateColor);
+	const bool hasMod   = modulateColor != 0xffffffff;
+	const bool hasBlend = blend.W > 0.f;
+	if (!hasMod && !hasBlend) return;
+
+	// Fullscreen tints (damage/pickup flashes, special colormaps) as a small
+	// dedicated drawer applied to every face, so the whole dome / panorama /
+	// strip flashes — not just the face that carries the baked HUD. The HUD
+	// bake skips these commands in twod (see D_Display's hud-bake index).
+	F2DDrawer blender;
+	blender.Begin(screen->GetWidth(), screen->GetHeight());
+	if (hasMod)
+		Dim(&blender, modulateColor, 1.f, 0, 0,
+		    blender.GetWidth(), blender.GetHeight(),
+		    &LegacyRenderStyles[STYLE_Multiply]);
+	if (hasBlend)
+	{
+		const PalEntry bcolor(255, uint8_t(blend.X), uint8_t(blend.Y), uint8_t(blend.Z));
+		Dim(&blender, bcolor, blend.W, 0, 0, blender.GetWidth(), blender.GetHeight());
+	}
+	blender.End();
+
+	for (int i = 0; i < CUBE_FACE_COUNT; i++)
+	{
+		screen->RenderTextureView(mFaceTex[i], [&](IntRect& bounds) {
+			Draw2D(&blender, *screen->RenderState(), 0, 0, bounds.width, bounds.height);
+		});
+	}
+}
+
+// -------------------------------------------------------------------------
+
+void CubemapRenderer::BlitHUDToFace(F2DDrawer* drawer, int face, float crop, float scale, int firstCommand)
 {
 	if (!mInitialized || face < 0 || face >= CUBE_FACE_COUNT ||
 	    !mFaceTex[face] || !drawer)
@@ -456,20 +496,20 @@ void CubemapRenderer::BlitHUDToFace(F2DDrawer* drawer, int face, float crop, flo
 		clip.width  = (int)lroundf((1.0f - 2.0f * crop) * vpW);
 		clip.height = vpH;
 
-		Draw2D(drawer, *screen->RenderState(), vpX, vpY, vpW, vpH, 0, &clip);
+		Draw2D(drawer, *screen->RenderState(), vpX, vpY, vpW, vpH, firstCommand, &clip);
 	});
 }
 
-void CubemapRenderer::BlitHUDToFrontFace(F2DDrawer* drawer)
+void CubemapRenderer::BlitHUDToFrontFace(F2DDrawer* drawer, int firstCommand)
 {
 	// Bake onto the selected overlay face (r_cubemap_hud_face, front by default),
 	// full size and uncropped — strip mode keeps its original look.
-	BlitHUDToFace(drawer, HudFace(), 0.f, 1.f);
+	BlitHUDToFace(drawer, HudFace(), 0.f, 1.f, firstCommand);
 }
 
 // -------------------------------------------------------------------------
 
-void CubemapRenderer::BlitHUD(F2DDrawer* drawer)
+void CubemapRenderer::BlitHUD(F2DDrawer* drawer, int firstCommand)
 {
 	if (!mInitialized || !drawer) return;
 
@@ -482,7 +522,8 @@ void CubemapRenderer::BlitHUD(F2DDrawer* drawer)
 		if (r_cubemap_dome_hud && mHudTex)
 		{
 			screen->RenderTextureView(mHudTex, [&](IntRect& bounds) {
-				Draw2D(drawer, *screen->RenderState(), 0, 0, bounds.width, bounds.height);
+				Draw2D(drawer, *screen->RenderState(), 0, 0, bounds.width, bounds.height,
+				       firstCommand);
 			});
 		}
 	}
@@ -498,12 +539,13 @@ void CubemapRenderer::BlitHUD(F2DDrawer* drawer)
 		// stretch) — like the domemaster's small centred HUD.
 		if (r_cubemap_dome_hud)
 			BlitHUDToFace(drawer, CUBE_FRONT,
-			              r_cubemap_dome_hud_crop, r_cubemap_dome_hud_scale);
+			              r_cubemap_dome_hud_crop, r_cubemap_dome_hud_scale,
+			              firstCommand);
 	}
 	else
 	{
 		// Strip: bake the HUD straight onto the selected overlay face.
-		BlitHUDToFrontFace(drawer);
+		BlitHUDToFrontFace(drawer, firstCommand);
 	}
 }
 

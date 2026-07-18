@@ -912,6 +912,9 @@ void D_Display ()
 	FTexture *wipestart = nullptr;
 	int wipe_type;
 	sector_t *viewsec;
+	// First twod command the cubemap HUD bake should draw — set past the
+	// fullscreen blend commands, which BlitBlendToFaces applies to all faces.
+	int cubemapHudFirstCmd = 0;
 
 	GC::CheckGC();
 
@@ -1033,7 +1036,14 @@ void D_Display ()
 		twod->Begin(screen->GetWidth(), screen->GetHeight());
 		if (!hud_toggled)
 		{
+			// Cubemap: tint every face directly so the whole dome/panorama
+			// flashes (damage/pickup blends), and exclude the blend commands
+			// from the HUD bake below (cubemapHudFirstCmd) — twod still gets
+			// them for the desktop window.
+			if (r_cubemap && gCubemapRenderer.FacesRenderedThisFrame())
+				gCubemapRenderer.BlitBlendToFaces(viewsec);
 			V_DrawBlend(viewsec);
+			cubemapHudFirstCmd = twod->DrawCount();
 			if (automapactive)
 			{
 				primaryLevel->automap->Drawer ((hud_althud && viewheight == SCREENHEIGHT) ? viewheight : StatusBar->GetTopOfStatusbar());
@@ -1203,7 +1213,7 @@ void D_Display ()
 				// by DrawOverlays afterwards and baked onto the front face in both
 				// modes — on the domemaster this puts the menu on top of the weapon
 				// at the dome's front. Composite and stream once everything is in.
-				gCubemapRenderer.BlitHUD(twod);
+				gCubemapRenderer.BlitHUD(twod, cubemapHudFirstCmd);
 				const int menuFirstCmd = twod->DrawCount();
 				DrawOverlays();
 				gCubemapRenderer.BlitMenuToFrontFace(twod, menuFirstCmd);
@@ -1231,7 +1241,7 @@ void D_Display ()
 		if (r_cubemap)
 		{
 			if (gCubemapRenderer.FacesRenderedThisFrame())
-				gCubemapRenderer.BlitHUD(twod);
+				gCubemapRenderer.BlitHUD(twod, cubemapHudFirstCmd);
 			else
 				gCubemapRenderer.BlitScreenToFrontFace(twod);
 			gCubemapRenderer.CompositeAndStream();

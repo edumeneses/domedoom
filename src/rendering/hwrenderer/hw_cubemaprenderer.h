@@ -65,21 +65,30 @@ public:
 	// streaming outputs (PipeWire, Sh4lt, NDI). Call after BlitHUDToFrontFace.
 	void CompositeAndStream();
 
+	// Apply the fullscreen blend (damage/pickup flashes, special colormaps —
+	// V_CalcBlend) to ALL cube faces, so the whole dome/panorama/strip tints,
+	// not just the HUD face. Call after the faces are rendered and before the
+	// HUD bake. No-op when there is no blend this frame.
+	void BlitBlendToFaces(sector_t* viewsector);
+
 	// Render the contents of `drawer` (HUD/statusbar) into the given face's FBO,
 	// compositing on top of the already-rendered 3D scene. `scale` (0.05..1)
 	// shrinks the HUD uniformly and centres it (no stretch); `crop` (0..0.49)
 	// then trims each side by clipping, so the HUD narrows and stays centred.
-	void BlitHUDToFace(F2DDrawer* drawer, int face, float crop = 0.f, float scale = 1.f);
+	// `firstCommand` skips the drawer's first N commands (the screen blend).
+	void BlitHUDToFace(F2DDrawer* drawer, int face, float crop = 0.f, float scale = 1.f,
+	                   int firstCommand = 0);
 
 	// Render the contents of `drawer` (HUD/statusbar) into the FBO of the face
 	// selected by r_cubemap_hud_face (front by default), compositing on top of
 	// the already-rendered 3D scene.
-	void BlitHUDToFrontFace(F2DDrawer* drawer);
+	void BlitHUDToFrontFace(F2DDrawer* drawer, int firstCommand = 0);
 
 	// Dispatch HUD handling by output mode: domemaster renders the HUD into a
 	// dedicated texture (overlaid as a rim band by RenderDomemaster); the cube
-	// strip keeps baking it onto the front face.
-	void BlitHUD(F2DDrawer* drawer);
+	// strip keeps baking it onto the front face. `firstCommand` skips the
+	// drawer's first N commands (the screen blend, handled by BlitBlendToFaces).
+	void BlitHUD(F2DDrawer* drawer, int firstCommand = 0);
 
 	// Bake the drawer's commands from `firstCommand` onward (menu/console,
 	// drawn after BlitHUD) onto the face selected by r_cubemap_hud_face in
