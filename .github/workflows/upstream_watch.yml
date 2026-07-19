@@ -1,0 +1,73 @@
+name: Upstream Watch
+
+# Weekly check for new commits on UZDoom trunk (our engine upstream).
+# Opens/updates an issue labelled `upstream-sync` when we are behind, so a
+# sync merge can be planned. Manual runs via workflow_dispatch.
+
+on:
+  schedule:
+    - cron: '0 13 * * 1'   # Mondays 13:00 UTC (~09:00 Montreal)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (commit graph only)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+
+      - name: Fetch UZDoom trunk
+        run: |
+          git remote add upstream https://github.com/UZDoom/UZDoom.git
+          git fetch --filter=blob:none --no-tags upstream trunk
+
+      - name: Compare and report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          count=$(git rev-list --count HEAD..upstream/trunk)
+          echo "UZDoom trunk is $count commit(s) ahead of master"
+          if [ "$count" -eq 0 ]; then
+            echo "::notice::Up to date with UZDoom trunk"
+            exit 0
+          fi
+
+          head_sha=$(git rev-parse --short upstream/trunk)
+          {
+            echo "UZDoom trunk is **$count commit(s)** ahead of \`master\` (as of $(date -u +%F), trunk @ \`$head_sha\`)."
+            echo
+            echo "Latest upstream commits:"
+            echo '```'
+            git log --oneline -15 HEAD..upstream/trunk
+            echo '```'
+            echo
+            echo "To sync locally:"
+            echo '```'
+            echo "git fetch upstream && git merge upstream/trunk"
+            echo '```'
+            echo "_Automated report from the Upstream Watch workflow._"
+          } > body.md
+
+          gh label create upstream-sync --color 1d76db \
+            --description "UZDoom upstream has new commits" 2>/dev/null || true
+
+          existing=$(gh issue list --label upstream-sync --state open \
+            --json number --jq '.[0].number' || true)
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" \
+              --title "Upstream sync: UZDoom trunk is $count commits ahead" \
+              --body-file body.md
+            echo "::notice::Updated issue #$existing"
+          else
+            gh issue create \
+              --title "Upstream sync: UZDoom trunk is $count commits ahead" \
+              --label upstream-sync \
+              --body-file body.md
+          fi
