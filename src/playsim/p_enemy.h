@@ -1,3 +1,24 @@
+/*
+** p_enemy.h
+**
+** Enemy thinking, AI.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #ifndef __P_ENEMY_H__
 #define __P_ENEMY_H__
 
@@ -33,7 +54,7 @@ enum LO_Flags
 	LOF_DONTCHASEGOAL = 4,
 	LOF_NOSEESOUND = 8,
 	LOF_FULLVOLSEESOUND = 16,
-    LOF_NOJUMP = 32,
+	LOF_NOJUMP = 32,
 };
 
 struct FLookExParams

@@ -1,8 +1,26 @@
+/*
+** statscreen_sp.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 class DoomStatusScreen : StatusScreen
 {
 	int intermissioncounter;
-	
+
 	override void initStats ()
 	{
 		intermissioncounter = gameinfo.intermissioncounter;
@@ -12,7 +30,7 @@ class DoomStatusScreen : StatusScreen
 		cnt_kills[0] = cnt_items[0] = cnt_secret[0] = -1;
 		cnt_time = cnt_par = -1;
 		cnt_pause = GameTicRate;
-	
+
 		cnt_total_time = -1;
 	}
 
@@ -137,8 +155,8 @@ class DoomStatusScreen : StatusScreen
 		int lh = IntermissionFont.GetHeight() * 3 / 2;
 
 		drawLF();
-		
-	
+
+
 		// For visual consistency, only use the patches here if all are present.
 		bool useGfx = TexMan.OkForLocalization(Kills, "$TXT_IMKILLS")
 			&& TexMan.OkForLocalization(Items, "$TXT_IMITEMS")
@@ -188,15 +206,15 @@ class DoomStatusScreen : StatusScreen
 			DrawText (textFont, tcolor, SP_TIMEX, timey, "$TXT_IMTIME");
 			if (wbs.partime) DrawText (textFont, tcolor, 160 + SP_TIMEX, timey, "$TXT_IMPAR");
 		}
-			 
+
 		drawPercent (printFont, 320 - statsx, SP_STATSY, cnt_kills[0], wbs.maxkills, true, tcolor);
 		drawPercent (printFont, 320 - statsx, SP_STATSY+lh, cnt_items[0], wbs.maxitems, true, tcolor);
 		drawPercent (printFont, 320 - statsx, SP_STATSY+2*lh, cnt_secret[0], wbs.maxsecret, true, tcolor);
 		drawTimeFont (printFont, 160 - SP_TIMEX, timey, cnt_time, tcolor);
-			 
+
 		// This really sucks - not just by its message - and should have been removed long ago!
 		// To avoid problems here, the "sucks" text only gets printed if the lump is present, this even applies to the text replacement.
-			 
+
 		if (cnt_time >= wbs.sucktime * 60 * 60 && wbs.sucktime > 0 && Sucks.IsValid())
 		{ // "sucks"
 			int x = 160 - SP_TIMEX;

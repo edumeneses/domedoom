@@ -1,67 +1,35 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1994-1996 Raven Software
-// Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2017 Christoph Oelckers
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-// DESCRIPTION:
-//		Movement/collision utility functions,
-//		as used by function in p_map.c. 
-//		BLOCKMAP Iterator functions,
-//		and some PIT_* functions to use for iteration.
-//
-//-----------------------------------------------------------------------------
-
-/* For code that originates from ZDoom the following applies:
+/*
+** p_maputl.cpp
+**
+** Movement/collision utility functions
 **
 **---------------------------------------------------------------------------
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2017 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **---------------------------------------------------------------------------
 **
+** For code that originates from ZDoom the following applies:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+** Movement/collision utility functions,
+** as used by function in p_map.c.
+** BLOCKMAP Iterator functions,
+** and some PIT_* functions to use for iteration.
 */
 
-
 #include <stdlib.h>
-
 
 #include "m_bbox.h"
 
@@ -75,6 +43,7 @@
 #include "r_utility.h"
 #include "actor.h"
 #include "actorinlines.h"
+#include "m_round.h"
 
 // State.
 #include "po_man.h"
@@ -88,7 +57,7 @@ int P_VanillaPointOnDivlineSide(double x, double y, const divline_t* line);
 // P_AproxDistance
 //
 // Gives an estimation of distance (not exact)
-// 
+//
 //==========================================================================
 
 int P_AproxDistance (int dx, int dy)
@@ -201,7 +170,7 @@ void P_LineOpening (FLineOpening &open, AActor *actor, const line_t *linedef, co
 				usefront = !P_PointOnLineSide (*ref, linedef);
 		}
 
-		open.lowfloorthroughportal = false;
+		open.lowfloorthroughportal = 0;
 		if (usefront)
 		{
 			open.bottom = ff;
@@ -245,6 +214,7 @@ void P_LineOpening (FLineOpening &open, AActor *actor, const line_t *linedef, co
 		open.lowfloor = LINEOPEN_MAX;
 		open.frontfloorplane.SetAtHeight(LINEOPEN_MIN, sector_t::floor);
 		open.backfloorplane.SetAtHeight(LINEOPEN_MIN, sector_t::floor);
+		open.lowfloorthroughportal = 0;
 	}
 
 	open.topffloor = open.bottomffloor = nullptr;
@@ -254,7 +224,7 @@ void P_LineOpening (FLineOpening &open, AActor *actor, const line_t *linedef, co
 		P_LineOpening_XFloors(open, actor, linedef, pos.X, pos.Y, !!(flags & FFCF_3DRESTRICT));
 	}
 
-	if (actor != NULL && linedef->frontsector != NULL && linedef->backsector != NULL && 
+	if (actor != NULL && linedef->frontsector != NULL && linedef->backsector != NULL &&
 		linedef->flags & ML_3DMIDTEX)
 	{
 		open.touchmidtex = P_LineOpening_3dMidtex(actor, linedef, open, !!(flags & FFCF_3DRESTRICT));
@@ -325,7 +295,7 @@ void AActor::UnlinkFromWorld (FLinkContext *ctx)
 		touching_sectorlist = nullptr; //to be restored by P_SetThingPosition
 		touching_rendersectors = nullptr;
 	}
-		
+
 	if (!(flags & MF_NOBLOCKMAP))
 	{
 		// [RH] Unlink from all blocks this actor uses
@@ -623,10 +593,10 @@ FBlockLinesIterator::FBlockLinesIterator(FLevelLocals *l, const FBoundingBox &bo
 //
 //===========================================================================
 
-void FBlockLinesIterator::StartBlock(int x, int y) 
-{ 
-	curx = x; 
-	cury = y; 
+void FBlockLinesIterator::StartBlock(int x, int y)
+{
+	curx = x;
+	cury = y;
 	if (Level->blockmap.isValidBlock(x, y))
 	{
 		unsigned offset = y*Level->blockmap.bmapwidth + x;
@@ -791,7 +761,7 @@ bool FMultiBlockLinesIterator::GoDown(double x, double y)
 
 //===========================================================================
 //
-// Gets the next line - also manages switching between portal groups 
+// Gets the next line - also manages switching between portal groups
 //
 //===========================================================================
 
@@ -862,7 +832,7 @@ bool FMultiBlockLinesIterator::startIteratorForGroup(int group)
 	offset.X += checkpoint.X;
 	offset.Y += checkpoint.Y;
 	cursector = group == startsector->PortalGroup ? startsector : blockIterator.Level->PointInSector(offset);
-	// If we ended up in a different group, 
+	// If we ended up in a different group,
 	// presumably because the spot to be checked is too far outside the actual portal group,
 	// the search needs to abort.
 	if (cursector->PortalGroup != group) return false;
@@ -982,6 +952,7 @@ AActor *FBlockThingsIterator::Next(bool centeronly)
 	{
 		while (block != NULL)
 		{
+			PrefetchL3(block->NextActor);
 			AActor *me = block->Me;
 			FBlockNode *mynode = block;
 			HashEntry *entry;
@@ -1089,7 +1060,7 @@ FMultiBlockThingsIterator::FMultiBlockThingsIterator(FPortalGroupArray &check, F
 
 //===========================================================================
 //
-// Gets the next line - also manages switching between portal groups 
+// Gets the next line - also manages switching between portal groups
 //
 //===========================================================================
 
@@ -1194,15 +1165,15 @@ void FPathTraverse::AddLineIntercepts(int bx, int by)
 
 		s1 = P_PointOnDivlineSide (ld->v1->fX(), ld->v1->fY(), &trace);
 		s2 = P_PointOnDivlineSide (ld->v2->fX(), ld->v2->fY(), &trace);
-		
+
 		if (s1 == s2) continue;	// line isn't crossed
-		
+
 		// hit the line
 		P_MakeDivline (ld, &dl);
 		frac = P_InterceptVector (&trace, &dl);
 
 		if (frac < Startfrac || frac > 1.) continue;	// behind source or beyond end point
-			
+
 		intercept_t newintercept;
 
 		newintercept.frac = frac;
@@ -1342,27 +1313,27 @@ void FPathTraverse::AddThingIntercepts (int bx, int by, FBlockThingsIterator &it
 			int 			s1, s2;
 			divline_t		dl;
 			double 		frac;
-				
+
 			bool tracepositive = (trace.dx * trace.dy)>0;
-						
+
 			// check a corner to corner crossection for hit
 			if (tracepositive)
 			{
 				x1 = thing->X() - thing->radius;
 				y1 = thing->Y() + thing->radius;
-						
+
 				x2 = thing->X() + thing->radius;
-				y2 = thing->Y() - thing->radius;					
+				y2 = thing->Y() - thing->radius;
 			}
 			else
 			{
 				x1 = thing->X() - thing->radius;
 				y1 = thing->Y() - thing->radius;
-						
+
 				x2 = thing->X() + thing->radius;
-				y2 = thing->Y() + thing->radius;					
+				y2 = thing->Y() + thing->radius;
 			}
-			
+
 			s1 = P_PointOnDivlineSide (x1, y1, &trace);
 			s2 = P_PointOnDivlineSide (x2, y2, &trace);
 
@@ -1372,7 +1343,7 @@ void FPathTraverse::AddThingIntercepts (int bx, int by, FBlockThingsIterator &it
 				dl.y = y1;
 				dl.dx = x2-x1;
 				dl.dy = y2-y1;
-				
+
 				frac = P_InterceptVector (&trace, &dl);
 
 				if (frac >= Startfrac)
@@ -1393,7 +1364,7 @@ void FPathTraverse::AddThingIntercepts (int bx, int by, FBlockThingsIterator &it
 //===========================================================================
 //
 // FPathTraverse :: Next
-// 
+//
 //===========================================================================
 
 intercept_t *FPathTraverse::Next()
@@ -1410,8 +1381,8 @@ intercept_t *FPathTraverse::Next()
 			in = scan;
 		}
 	}
-	
-	if (dist > 1. || in == NULL) return NULL;	// checked everything in range			
+
+	if (dist > 1. || in == NULL) return NULL;	// checked everything in range
 	in->done = true;
 	return in;
 }
@@ -1423,16 +1394,16 @@ intercept_t *FPathTraverse::Next()
 //
 //===========================================================================
 
-void FPathTraverse::init(double x1, double y1, double x2, double y2, int flags, double startfrac) 
+void FPathTraverse::init(double x1, double y1, double x2, double y2, int flags, double startfrac)
 {
 	double xt1, yt1, xt2, yt2;
 	double xstep, ystep;
 	double partialx, partialy;
 	double xintercept, yintercept;
-	
+
 	int 		mapx;
 	int 		mapy;
-	
+
 	int 		mapxstep;
 	int 		mapystep;
 
@@ -1482,22 +1453,22 @@ void FPathTraverse::init(double x1, double y1, double x2, double y2, int flags, 
 	xt2 = x2 / FBlockmap::MAPBLOCKUNITS;
 	yt2 = y2 / FBlockmap::MAPBLOCKUNITS;
 
-	mapx = xs_FloorToInt(xt1);
-	mapy = xs_FloorToInt(yt1);
-	int mapex = xs_FloorToInt(xt2);
-	int mapey = xs_FloorToInt(yt2);
+	mapx = RoundDown(xt1);
+	mapy = RoundDown(yt1);
+	int mapex = RoundDown(xt2);
+	int mapey = RoundDown(yt2);
 
 
 	if (mapex > mapx)
 	{
 		mapxstep = 1;
-		partialx = 1. - xt1 + xs_FloorToInt(xt1);
+		partialx = 1. - xt1 + RoundDown(xt1);
 		ystep = (y2 - y1) / fabs(x2 - x1);
 	}
 	else if (mapex < mapx)
 	{
 		mapxstep = -1;
-		partialx = xt1 - xs_FloorToInt(xt1);
+		partialx = xt1 - RoundDown(xt1);
 		ystep = (y2 - y1) / fabs(x2 - x1);
 	}
 	else
@@ -1511,13 +1482,13 @@ void FPathTraverse::init(double x1, double y1, double x2, double y2, int flags, 
 	if (mapey > mapy)
 	{
 		mapystep = 1;
-		partialy = 1. - yt1 + xs_FloorToInt(yt1);
+		partialy = 1. - yt1 + RoundDown(yt1);
 		xstep = (x2 - x1) / fabs(y2 - y1);
 	}
 	else if (mapey < mapy)
 	{
 		mapystep = -1;
-		partialy = yt1 - xs_FloorToInt(yt1);
+		partialy = yt1 - RoundDown(yt1);
 		xstep = (x2 - x1) / fabs(y2 - y1);
 	}
 	else
@@ -1554,7 +1525,7 @@ void FPathTraverse::init(double x1, double y1, double x2, double y2, int flags, 
 	// from skipping the break statement.
 
 	bool compatible = (flags & PT_COMPATIBLE) && (Level->i_compatflags & COMPATF_HITSCAN);
-		
+
 	// we want to use one list of checked actors for the entire operation
 	FBlockThingsIterator btit(Level);
 	for (count = 0 ; count < 1000 ; count++)
@@ -1563,19 +1534,19 @@ void FPathTraverse::init(double x1, double y1, double x2, double y2, int flags, 
 		{
 			AddLineIntercepts(mapx, mapy);
 		}
-		
+
 		if (flags & PT_ADDTHINGS)
 		{
 			AddThingIntercepts(mapx, mapy, btit, compatible);
 		}
-				
+
 		// both coordinates reached the end, so end the traversing.
 		if ((mapxstep | mapystep) == 0)
 			break;
 
 
 		// [RH] Handle corner cases properly instead of pretending they don't exist.
-		switch (((xs_FloorToInt(yintercept) == mapy) << 1) | (xs_FloorToInt(xintercept) == mapx))
+		switch (((RoundDown(yintercept) == mapy) << 1) | (RoundDown(xintercept) == mapx))
 		{
 		case 0:		// neither xintercept nor yintercept match!
 			count = 1000;	// Stop traversing, because somebody screwed up.
@@ -1608,7 +1579,7 @@ void FPathTraverse::init(double x1, double y1, double x2, double y2, int flags, 
 					AddLineIntercepts(mapx + mapxstep, mapy);
 					AddLineIntercepts(mapx, mapy + mapystep);
 				}
-				
+
 				if (flags & PT_ADDTHINGS)
 				{
 					AddThingIntercepts(mapx + mapxstep, mapy, btit, false);
@@ -1647,7 +1618,7 @@ int FPathTraverse::PortalRelocate(intercept_t *in, int flags, DVector3 *optpos)
 	double hity = trace.y;
 	double endx = trace.x + trace.dx;
 	double endy = trace.y + trace.dy;
-	
+
 	P_TranslatePortalXY(in->d.line, hitx, hity);
 	P_TranslatePortalXY(in->d.line, endx, endy);
 	if (optpos != NULL)
@@ -1727,7 +1698,7 @@ AActor *P_BlockmapSearch (AActor *mo, int distance, AActor *(*check)(AActor*, in
 	startX = Level->blockmap.GetBlockX(mo->X());
 	startY = Level->blockmap.GetBlockY(mo->Y());
 	validcount++;
-	
+
 	if (Level->blockmap.isValidBlock(startX, startY))
 	{
 		if ( (target = check (mo, startY*bmapwidth+startX, params)) )
@@ -1762,7 +1733,7 @@ AActor *P_BlockmapSearch (AActor *mo, int distance, AActor *(*check)(AActor*, in
 		thirdStop = secondStop*bmapwidth+blockX;
 		secondStop = secondStop*bmapwidth+firstStop;
 		firstStop += blockY*bmapwidth;
-		finalStop = blockIndex;		
+		finalStop = blockIndex;
 
 		// Trace the first block section (along the top)
 		for (; blockIndex <= firstStop; blockIndex++)
@@ -1779,7 +1750,7 @@ AActor *P_BlockmapSearch (AActor *mo, int distance, AActor *(*check)(AActor*, in
 			{
 				return target;
 			}
-		}		
+		}
 		// Trace the third block section (bottom edge)
 		for (blockIndex -= bmapwidth; blockIndex >= thirdStop; blockIndex--)
 		{
@@ -1797,7 +1768,7 @@ AActor *P_BlockmapSearch (AActor *mo, int distance, AActor *(*check)(AActor*, in
 			}
 		}
 	}
-	return NULL;	
+	return NULL;
 }
 
 struct BlockCheckInfo
@@ -1951,7 +1922,7 @@ int P_VanillaPointOnLineSide(double x, double y, const line_t* line)
 		return delta.X > 0;
 	}
 
-	// Note: This cannot really be converted to floating point 
+	// Note: This cannot really be converted to floating point
 	// without breaking the intended use of this function
 	// (i.e. to emulate the horrible imprecision of the entire method)
 
@@ -2029,20 +2000,20 @@ subsector_t *FLevelLocals::PointInRenderSubsector (fixed_t x, fixed_t y)
 {
 	node_t *node;
 	int side;
-	
+
 	// single subsector is a special case
 	if (nodes.Size() == 0)
 		return &subsectors[0];
-	
+
 	node = HeadNode();
-	
+
 	do
 	{
 		side = R_PointOnSide (x, y, node);
 		node = (node_t *)node->children[side];
 	}
 	while (!((size_t)node & 1));
-	
+
 	return (subsector_t *)((uint8_t *)node - 1);
 }
 
@@ -2133,4 +2104,3 @@ DEFINE_ACTION_FUNCTION(FLevelLocals, BoxOnLineSide)
 	FBoundingBox box(x, y, radius);
 	ACTION_RETURN_INT(BoxOnLineSide(box, l));
 }
-

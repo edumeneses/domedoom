@@ -1,24 +1,21 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1994-1996 Raven Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2018 Christoph Oelckers
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
+/*
+** polyobjects.cpp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2018 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // HEADER FILES ------------------------------------------------------------
 
@@ -181,7 +178,7 @@ void MapLoader::SpawnPolyobj (int index, int tag, int type, int damage)
 		po->bHasPortals = 0;
 
 		side_t *sd = &Level->sides[i];
-		
+
 		if (sd->linedef->special == Polyobj_StartLine &&
 			sd->linedef->args[0] == tag)
 		{
@@ -210,7 +207,7 @@ void MapLoader::SpawnPolyobj (int index, int tag, int type, int damage)
 		}
 	}
 	if (po->Sidedefs.Size() == 0)
-	{ 
+	{
 		// didn't find a polyobj through PO_LINE_START
 		TArray<side_t *> polySideList;
 		unsigned int psIndexOld;
@@ -251,7 +248,7 @@ void MapLoader::SpawnPolyobj (int index, int tag, int type, int damage)
 		}
 	}
 
-	validcount++;	
+	validcount++;
 	for(unsigned int i=0; i<po->Sidedefs.Size(); i++)
 	{
 		line_t *l = po->Sidedefs[i]->linedef;
@@ -378,18 +375,18 @@ void MapLoader::PO_Init (void)
 		// 9301 (3001) = no crush, 9302 (3002) = crushing, 9303 = hurting touch, Health = crusher/hurter damage
 		int type = polythings[i]->info->Special;
 		if (type >= SMT_PolySpawn && type <= SMT_PolySpawnHurt)
-		{ 
+		{
 			// Polyobj StartSpot Pt.
 			Level->Polyobjects[polyIndex].StartSpot.pos = polythings[i]->pos.XY();
 			SpawnPolyobj(polyIndex, polythings[i]->angle, type, polythings[i]->Health);
 			polyIndex++;
-		} 
+		}
 	}
 	for (int i = polythings.Size() - 1; i >= 0; i--)
 	{
 		int type = polythings[i]->info->Special;
 		if (type == SMT_PolyAnchor)
-		{ 
+		{
 			// Polyobj Anchor Pt.
 			TranslateToStartSpot (polythings[i]->angle, polythings[i]->pos.XY());
 		}

@@ -1,35 +1,23 @@
 /*
 ** multipatchtexture.cpp
+**
 ** Texture class for standard Doom multipatch textures
 **
 **---------------------------------------------------------------------------
-** Copyright 2004-2006 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 2004-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **---------------------------------------------------------------------------
 **
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
 **
 */
 
@@ -114,7 +102,7 @@ static uint8_t *GetBlendMap(PalEntry blend, uint8_t *blendwork)
 		{
 			return DesaturateColormap[blend - BLEND_DESATURATE1];
 		}
-		else 
+		else
 		{
 			blendwork[0]=0;
 			if (blend.a == 255)
@@ -148,7 +136,7 @@ static uint8_t *GetBlendMap(PalEntry blend, uint8_t *blendwork)
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -232,7 +220,7 @@ PalettedPixels FMultiPatchTexture::CreatePalettedPixels(int conversion, int fram
 	}
 
 	if (!buildrgb)
-	{	
+	{
 		for (int i = 0; i < NumParts; ++i)
 		{
 			uint8_t *trans = Parts[i].Translation? Parts[i].Translation->Remap : nullptr;
@@ -355,5 +343,3 @@ void FMultiPatchTexture::CollectForPrecache(PrecacheInfo &info, bool requiretrue
 		Parts[i].Image->CollectForPrecache(info, requiretruecolor);
 	}
 }
-
-

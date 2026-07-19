@@ -1,34 +1,24 @@
 /*
 ** r_draw_pal.cpp
 **
+**
+**
 **---------------------------------------------------------------------------
-** Copyright 1998-2016 Randy Heit
+**
+** Copyright 1998-2016 Marisa Heit
 ** Copyright 2016 Magnus Norddahl
 ** Copyright 2016 Rachael Alexanderson
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -817,7 +807,7 @@ namespace swrenderer
 		//		has a better chance of optimizing this well.
 		const uint8_t *colormap = args.Colormap(args.Viewport());
 		const uint8_t *source = args.TexturePixels();
-		
+
 		uint32_t dynlight = args.DynamicLight();
 		if (dynlight == 0)
 		{
@@ -842,7 +832,7 @@ namespace swrenderer
 			lit_r = lit_r - light;
 			lit_g = lit_g - light;
 			lit_b = lit_b - light;
-			
+
 			do
 			{
 				auto material = source[frac >> FRACBITS];
@@ -2584,7 +2574,7 @@ namespace swrenderer
 						uint32_t fg = num_dynlights != 0 ? AddLightsSpan(dynlights, num_dynlights, viewpos_x, colormap[texdata], texdata) : colormap[texdata];
 						uint32_t a = fg2rgb[fg] + bg2rgb[*dest];
 						uint32_t b = a;
-	
+
 						a |= 0x01f07c1f;
 						b &= 0x40100400;
 						a &= 0x3fffffff;
@@ -2614,7 +2604,7 @@ namespace swrenderer
 						uint32_t fg = num_dynlights != 0 ? AddLightsSpan(dynlights, num_dynlights, viewpos_x, colormap[texdata], texdata) : colormap[texdata];
 						uint32_t a = fg2rgb[fg] + bg2rgb[*dest];
 						uint32_t b = a;
-	
+
 						a |= 0x01f07c1f;
 						b &= 0x40100400;
 						a &= 0x3fffffff;
@@ -2991,7 +2981,7 @@ namespace swrenderer
 			dest[x] = colormap[dest[x]];
 		} while (++x <= x2);
 	}
-	
+
 	/////////////////////////////////////////////////////////////////////////////
 
 	void SWPalDrawers::DrawParticleColumn(int x, int _dest_y, int _count, uint32_t _fg, uint32_t _alpha, uint32_t _fracposx)

@@ -1,35 +1,26 @@
 /*
+** p_destructible.cpp
+**
 **
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2018 ZZYZX
-** All rights reserved.
+** Copyright 2018-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
+
 #include "p_spec.h"
 #include "g_levellocals.h"
 #include "p_destructible.h"
@@ -97,13 +88,13 @@ void P_DamageHealthGroup(FHealthGroup* grp, void* object, AActor* source, int da
 	for (unsigned i = 0; i < grp->sectors.Size(); i++)
 	{
 		sector_t* lsector = grp->sectors[i];
-		
+
 		if (lsector->healthceilinggroup == group && (lsector != object || part != SECPART_Ceiling))
 		{
 			lsector->healthceiling = grp->health + damage;
 			P_DamageSector(lsector, source, damage, damagetype, SECPART_Ceiling, position, isradius, false);
 		}
-		
+
 		if (lsector->healthfloorgroup == group && (lsector != object || part != SECPART_Floor))
 		{
 			lsector->healthfloor = grp->health + damage;
@@ -197,7 +188,7 @@ void P_DamageSector(sector_t* sector, AActor* source, int damage, FName damagety
 
 	int newhealth = *sectorhealth - damage;
 	if (newhealth < 0) newhealth = 0;
-	
+
 	*sectorhealth = newhealth;
 
 	// callbacks here
@@ -312,7 +303,7 @@ void P_InitHealthGroups(FLevelLocals *Level)
 void P_GeometryLineAttack(FTraceResults& trace, AActor* thing, int damage, FName damageType)
 {
 	// [ZZ] hitscan geometry damage logic
-	//      
+	//
 
 	// check 3d floor, but still allow the wall to take generic damage
 	if (trace.HitType == TRACE_HitWall && trace.Tier == TIER_FFloor)
@@ -320,7 +311,7 @@ void P_GeometryLineAttack(FTraceResults& trace, AActor* thing, int damage, FName
 		if (trace.ffloor && trace.ffloor->model && trace.ffloor->model->health3d)
 			P_DamageSector(trace.ffloor->model, thing, damage, damageType, SECPART_3D, trace.HitPos, false, true);
 	}
-	
+
 	if (trace.HitType == TRACE_HitWall && P_CheckLinedefVulnerable(trace.Line, trace.Side))
 	{
 		if (trace.Tier == TIER_Lower || trace.Tier == TIER_Upper) // process back sector health if any
@@ -501,7 +492,7 @@ void P_GeometryRadiusAttack(AActor* bombspot, AActor* bombsource, int bombdamage
 			grp = 0x20000000 | (f->model->sectornum & 0x0FFFFFFF);
 
 		DVector3 spotTo;
-		
+
 		if (bombspot->Z() < ff_bottom) // use bottom plane
 		{
 			double dst = f->bottom.plane->Normal() | (bombspot->Pos() + f->bottom.plane->Normal()*f->bottom.plane->D);
@@ -774,7 +765,7 @@ bool P_ProjectileHitPlane(AActor* mo, int part)
 			P_DamageSector(mo->Blocking3DFloor, mo, mo->GetMissileDamage((mo->flags4 & MF4_STRIFEDAMAGE) ? 3 : 7, 1), mo->DamageType, SECPART_3D, mo->Pos(), false, true);
 			return true;
 		}
-		
+
 		return false;
 	}
 
@@ -797,7 +788,7 @@ bool P_ProjectileHitPlane(AActor* mo, int part)
 // P_CheckLinedefVulnerable
 //
 // If sectorpart is <0: returns if linedef is damageable directly
-// If sectorpart is valid (SECPART_ enum): returns if sector on sidedef is 
+// If sectorpart is valid (SECPART_ enum): returns if sector on sidedef is
 //  damageable through this line at specified sectorpart
 //==========================================================================
 
@@ -877,7 +868,7 @@ void P_SerializeHealthGroups(FLevelLocals *Level, FSerializer& arc)
 }
 
 // ===================== zscript interface =====================
-// 
+//
 // =============================================================
 
 DEFINE_FIELD_X(HealthGroup, FHealthGroup, id)

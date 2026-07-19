@@ -1,4 +1,19 @@
-//created by Evil Space Tomato
+/*
+** fuzz_software.fp
+**
+** Fuzz effect as rendered by the software renderer
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2013-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 vec4 ProcessTexel()
 {
@@ -16,6 +31,6 @@ vec4 ProcessTexel()
 
 	basicColor.a = basicColor.a * test;
 	basicColor.r = basicColor.g = basicColor.b = 0.0;
-	
+
 	return basicColor;
 }

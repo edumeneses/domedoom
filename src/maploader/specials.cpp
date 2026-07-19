@@ -1,72 +1,40 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1994-1996 Raven Software
-// Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2016 Christoph Oelckers
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-// DESCRIPTION:
-//		Implements special effects:
-//		Texture animation, height or lighting changes
-//		 according to adjacent sectors, respective
-//		 utility functions, etc.
-//		Line Tag handling. Line and Sector triggers.
-//		Implements donut linedef triggers
-//		Initializes and implements BOOM linedef triggers for
-//			Scrollers/Conveyors
-//			Friction
-//			Wind/Current
-//
-//-----------------------------------------------------------------------------
-
-/* For code that originates from ZDoom the following applies:
+/*
+** specials.cpp
+**
+** Implements special effects
 **
 **---------------------------------------------------------------------------
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **---------------------------------------------------------------------------
 **
+** For code that originates from ZDoom the following applies:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+** Implements special effects:
+** - Texture animation, height or lighting changes according to adjacent
+**   sectors, respective utility functions, etc.
+** - Line Tag handling. Line and Sector triggers.
+** - Implements donut linedef triggers
+** - Initializes and implements BOOM linedef triggers for
+**   - Scrollers/Conveyors
+**   - Friction
+**   - Wind/Current
 */
 
 #include <stdlib.h>
-
 
 #include "doomdef.h"
 #include "doomstat.h"
@@ -237,7 +205,7 @@ void MapLoader::SetupCeilingPortal (AActor *point)
 
 //-----------------------------------------------------------------------------
 //
-// 
+//
 //
 //-----------------------------------------------------------------------------
 
@@ -484,12 +452,11 @@ void MapLoader::InitSectorSpecial(sector_t *sector, int special)
 	{
 		sector->Flags |= SECF_PUSH;
 	}
-	// Nom MBF21 compatibility needs to be checked here, because after this point there is no longer any context in which it can be done.
-	if ((sector->special & KILL_MONSTERS_MASK) && Level->MBF21Enabled())
+	if (sector->special & KILL_MONSTERS_MASK)
 	{
 		sector->Flags |= SECF_KILLMONSTERS;
 	}
-	if (!(sector->special & DEATH_MASK) || !Level->MBF21Enabled())
+	if (!(sector->special & DEATH_MASK))
 	{
 		if ((sector->special & DAMAGE_MASK) == 0x100)
 		{
@@ -545,7 +512,7 @@ void MapLoader::InitSectorSpecial(sector_t *sector, int special)
 	case dSector_DoorCloseIn30:
 		Level->CreateThinker<DDoor>(sector, DDoor::doorWaitClose, 2, 0, 0, 30 * TICRATE);
 		break;
-			
+
 	case dDamage_End:
 		SetupSectorDamage(sector, 20, 32, 256, NAME_None, SECF_ENDGODMODE|SECF_ENDLEVEL);
 		break;
@@ -627,14 +594,14 @@ void MapLoader::InitSectorSpecial(sector_t *sector, int special)
 				{  1, -1 }, {  2, -2 }, {  4, -4 }
 			};
 
-			
+
 			int i = sector->special - Scroll_North_Slow;
 			double dx = hexenScrollies[i][0] / 2.;
 			double dy = hexenScrollies[i][1] / 2.;
 			CreateScroller(EScroll::sc_floor, dx, dy, sector, nullptr, 0);
 		}
 		else if (sector->special >= Carry_East5 && sector->special <= Carry_East35)
-		{ 
+		{
 			// Heretic scroll special
 			// Only east scrollers also scroll the texture
 			CreateScroller(EScroll::sc_floor,	-0.5 * (1 << ((sector->special & 0xff) - Carry_East5)),	0, sector, nullptr, 0);
@@ -666,7 +633,7 @@ void MapLoader::SpawnSpecials ()
 	}
 
 	ProcessEDSectors();
-	
+
 	// Init other misc stuff
 
 	SpawnScrollers(); // killough 3/7/98: Add generalized scrollers
@@ -692,7 +659,7 @@ void MapLoader::SpawnSpecials ()
 		case Transfer_Heights:
 			{
 				sec = line.frontsector;
-				
+
 				if (line.args[1] & 2)
 				{
 					sec->MoreFlags |= SECMF_FAKEFLOORONLY;
@@ -790,7 +757,7 @@ void MapLoader::SpawnSpecials ()
 
 			// partial support for MBF's stay-on-lift feature.
 			// Unlike MBF we cannot scan all lines for a proper special each time because it'd take too long.
-			// So instead, set the info here, but only for repeatable lifts to keep things simple. 
+			// So instead, set the info here, but only for repeatable lifts to keep things simple.
 			// This also cannot consider lifts triggered by scripts etc.
 		case Generic_Lift:
 			if (line.args[3] != 1) continue;
@@ -926,12 +893,12 @@ int MapLoader::Set3DFloor(line_t * line, int param, int param2, int alpha)
 	int flags;
 	int tag = line->args[0];
 	sector_t * sec = line->frontsector, *ss;
-	
+
 	auto itr = Level->GetSectorTagIterator(tag);
 	while ((s = itr.Next()) >= 0)
 	{
 		ss = &Level->sectors[s];
-		
+
 		if (param == 0)
 		{
 			flags = FF_EXISTS | FF_RENDERALL | FF_SOLID | FF_INVERTSECTOR;
@@ -956,7 +923,7 @@ int MapLoader::Set3DFloor(line_t * line, int param, int param2, int alpha)
 							VC_WATER, VC_LAVA, VC_NUKAGE, VC_SLIME, VC_HELLSLIME,
 							VC_BLOOD, VC_SLUDGE, VC_HAZARD, VC_BOOMWATER };
 						flags |= FF_SWIMMABLE | FF_BOTHPLANES | FF_ALLSIDES | FF_FLOOD;
-						
+
 						l->frontsector->Colormap.FadeColor = vavoomcolors[l->args[0]] & VC_COLORMASK;
 						l->frontsector->Colormap.FogDensity = 0;
 					}
@@ -978,13 +945,13 @@ int MapLoader::Set3DFloor(line_t * line, int param, int param2, int alpha)
 				FF_SWIMMABLE | FF_BOTHPLANES | FF_ALLSIDES | FF_SHOOTTHROUGH | FF_SEETHROUGH,
 				FF_SHOOTTHROUGH | FF_SEETHROUGH,
 			};
-			
+
 			flags = defflags[param & 3] | FF_EXISTS | FF_RENDERALL;
-			
+
 			if (param & 4) flags |= FF_ALLSIDES | FF_BOTHPLANES;
 			if (param & 16) flags ^= FF_SEETHROUGH;
 			if (param & 32) flags ^= FF_SHOOTTHROUGH;
-			
+
 			if (param2 & 1) flags |= FF_NOSHADE;
 			if (param2 & 2) flags |= FF_DOUBLESHADOW;
 			if (param2 & 4) flags |= FF_FOG;
@@ -1005,7 +972,7 @@ int MapLoader::Set3DFloor(line_t * line, int param, int param2, int alpha)
 			alpha = clamp(alpha, 0, 255);
 			if (alpha == 0) flags &= ~(FF_RENDERALL | FF_BOTHPLANES | FF_ALLSIDES);
 			else if (alpha != 255) flags |= FF_TRANSLUCENT;
-			
+
 		}
 		P_Add3DFloor(ss, sec, line, flags, alpha);
 	}
@@ -1470,4 +1437,3 @@ void MapLoader::CreateScroller(EScroll type, double dx, double dy, sector_t *sec
 {
 	Level->CreateThinker<DScroller>(type, dx, dy, nullptr, sect, side, accel, scrollpos, scrollmode);
 }
-

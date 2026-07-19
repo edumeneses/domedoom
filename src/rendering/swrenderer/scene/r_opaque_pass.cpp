@@ -1,30 +1,22 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2006-2016 Christoph Oelckers
-// Copyright 2016 Magnus Norddahl
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-// DESCRIPTION:
-//		BSP traversal, handling of LineSegs for rendering.
-//
-//-----------------------------------------------------------------------------
-
+/*
+** r_opaque_pass.cpp
+**
+** BSP traversal, handling of LineSegs for rendering.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2016 Magnus Norddahl
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include <stdlib.h>
 
@@ -60,6 +52,7 @@
 #include "p_effect.h"
 #include "c_console.h"
 #include "p_maputl.h"
+#include "m_round.h"
 
 // State.
 #include "doomstat.h"
@@ -110,7 +103,7 @@ CUSTOM_CVAR(Float, r_line_distance_cull, 0.f, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 	}
 }
 
-CUSTOM_CVAR(Float, r_model_distance_cull, 1024.f, 0/*CVAR_ARCHIVE | CVAR_GLOBALCONFIG*/) // Experimental for the moment until a good default is chosen 
+CUSTOM_CVAR(Float, r_model_distance_cull, 1024.f, 0/*CVAR_ARCHIVE | CVAR_GLOBALCONFIG*/) // Experimental for the moment until a good default is chosen
 {
 	if (r_model_distance_cull > 0.0)
 	{
@@ -247,7 +240,7 @@ namespace swrenderer
 				tempsec->floorplane = sec->floorplane;
 				tempsec->ceilingplane = s->floorplane;
 				tempsec->ceilingplane.FlipVert();
-				tempsec->ceilingplane.ChangeHeight(-1 / 65536.);
+				tempsec->ceilingplane.ChangeHeight(-EQUAL_EPSILON);
 				tempsec->Colormap = s->Colormap;
 			}
 
@@ -259,12 +252,12 @@ namespace swrenderer
 
 				tempsec->ceilingplane = s->floorplane;
 				tempsec->ceilingplane.FlipVert();
-				tempsec->ceilingplane.ChangeHeight(-1 / 65536.);
+				tempsec->ceilingplane.ChangeHeight(-EQUAL_EPSILON);
 				if (s->GetTexture(sector_t::ceiling) == skyflatnum)
 				{
 					tempsec->floorplane = tempsec->ceilingplane;
 					tempsec->floorplane.FlipVert();
-					tempsec->floorplane.ChangeHeight(+1 / 65536.);
+					tempsec->floorplane.ChangeHeight(EQUAL_EPSILON);
 					tempsec->SetTexture(sector_t::ceiling, tempsec->GetTexture(sector_t::floor), false);
 					tempsec->planes[sector_t::ceiling].xform = tempsec->planes[sector_t::floor].xform;
 				}
@@ -296,7 +289,7 @@ namespace swrenderer
 				tempsec->ceilingplane = s->ceilingplane;
 				tempsec->floorplane = s->ceilingplane;
 				tempsec->floorplane.FlipVert();
-				tempsec->floorplane.ChangeHeight(+1 / 65536.);
+				tempsec->floorplane.ChangeHeight(EQUAL_EPSILON);
 				tempsec->Colormap = s->Colormap;
 
 				tempsec->SetTexture(sector_t::ceiling, diffTex ? sec->GetTexture(sector_t::ceiling) : s->GetTexture(sector_t::ceiling), false);
@@ -403,14 +396,14 @@ namespace swrenderer
 			rx2 = t;
 			std::swap(ry1, ry2);
 		}
-		
+
 		auto viewport = Thread->Viewport.get();
 
 		if (rx1 >= -ry1)
 		{
 			if (rx1 > ry1) return false;	// left edge is off the right side
 			if (ry1 == 0) return false;
-			sx1 = xs_RoundToInt(viewport->CenterX + rx1 * viewport->CenterX / ry1);
+			sx1 = RoundHalfUp(viewport->CenterX + rx1 * viewport->CenterX / ry1);
 		}
 		else
 		{
@@ -423,7 +416,7 @@ namespace swrenderer
 		{
 			if (rx2 < -ry2) return false;	// right edge is off the left side
 			if (ry2 == 0) return false;
-			sx2 = xs_RoundToInt(viewport->CenterX + rx2 * viewport->CenterX / ry2);
+			sx2 = RoundHalfUp(viewport->CenterX + rx2 * viewport->CenterX / ry2);
 		}
 		else
 		{
@@ -784,14 +777,14 @@ namespace swrenderer
 						position = sector_t::ceiling;
 					}
 
-					tempsec.ceilingplane.ChangeHeight(-1 / 65536.);
+					tempsec.ceilingplane.ChangeHeight(-EQUAL_EPSILON);
 					if (cameraLight->FixedLightLevel() < 0 && sub->sector->e->XFloor.lightlist.Size())
 					{
 						lightlist_t *light = P_GetPlaneLight(sub->sector, &tempsec.ceilingplane, false);
 						basecolormap = GetColorTable(light->extra_colormap);
 						ceilinglightlevel = *light->p_lightlevel;
 					}
-					tempsec.ceilingplane.ChangeHeight(1 / 65536.);
+					tempsec.ceilingplane.ChangeHeight(EQUAL_EPSILON);
 
 					VisiblePlane *ceilingplane3d = Thread->PlaneList->FindPlane(
 						tempsec.ceilingplane,
@@ -927,7 +920,7 @@ namespace swrenderer
 				}
 			}
 
-			if (IsPotentiallyVisible(thing))
+			if (IsPotentiallyVisible(thing, Thread->Viewport->viewpoint.TicFrac))
 			{
 				ThingSprite sprite;
 				int spritenum = thing->sprite;
@@ -940,7 +933,7 @@ namespace swrenderer
 					{
 						thinglightlevel = thing->Sector->GetTexture(sector_t::ceiling) == skyflatnum ? thing->Sector->GetCeilingLight() : thing->Sector->GetFloorLight();
 						auto nc = !!(thing->Level->flags3 & LEVEL3_NOCOLOREDSPRITELIGHTING);
-						thingColormap = GetSpriteColorTable(thing->Sector->Colormap, thing->Sector->SpecialColors[sector_t::sprites], nc);					
+						thingColormap = GetSpriteColorTable(thing->Sector->Colormap, thing->Sector->SpecialColors[sector_t::sprites], nc);
 					}
 					if (thing->LightLevel > -1)
 					{
@@ -988,13 +981,13 @@ namespace swrenderer
 		}
 	}
 
-	bool RenderOpaquePass::IsPotentiallyVisible(AActor *thing)
+	bool RenderOpaquePass::IsPotentiallyVisible(AActor *thing, double ticFrac)
 	{
 		// Don't waste time projecting sprites that are definitely not visible.
 		if (thing == nullptr ||
 			(thing->renderflags & RF_INVISIBLE) ||
 			(thing->renderflags & RF_MAYBEINVISIBLE) ||
-			!thing->RenderStyle.IsVisible(thing->Alpha) ||
+			!thing->RenderStyle.IsVisible(thing->InterpolatedAlpha(ticFrac)) ||
 			!thing->IsVisibleToPlayer() ||
 			!thing->IsInsideVisibleAngles())
 		{
@@ -1050,7 +1043,7 @@ namespace swrenderer
 		sprite.spritenum = thing->sprite;
 		sprite.tex = nullptr;
 		sprite.voxel = nullptr;
-		sprite.spriteScale = DVector2(thing->Scale.X, thing->Scale.Y);
+		sprite.spriteScale = thing->InterpolatedScale(Thread->Viewport->viewpoint.TicFrac);
 		sprite.renderflags = thing->renderflags;
 
 		if (thing->player != nullptr)

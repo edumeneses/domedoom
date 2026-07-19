@@ -1,3 +1,24 @@
+/*
+** a_floor.h
+**
+** Floor animation: raising stairs.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 //
@@ -105,6 +126,13 @@ public:
 		elevateLower
 	};
 
+	EElevator	m_Type;
+	int			m_Direction;
+	double		m_FloorDestDist;
+	double		m_CeilingDestDist;
+	double		m_Speed;
+
+
 	void Construct(sector_t *sec);
 
 	void OnDestroy() override;
@@ -112,11 +140,6 @@ public:
 	void Tick ();
 
 protected:
-	EElevator	m_Type;
-	int			m_Direction;
-	double		m_FloorDestDist;
-	double		m_CeilingDestDist;
-	double		m_Speed;
 	TObjPtr<DInterpolation*> m_Interp_Ceiling;
 	TObjPtr<DInterpolation*> m_Interp_Floor;
 
@@ -170,4 +193,3 @@ enum EChange
 	trigChangeOnly,
 	numChangeOnly,
 };
-

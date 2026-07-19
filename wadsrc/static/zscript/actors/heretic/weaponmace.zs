@@ -1,3 +1,23 @@
+/*
+** weaponmace.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // The mace itself ----------------------------------------------------------
 
 class Mace : HereticWeapon
@@ -36,7 +56,7 @@ class Mace : HereticWeapon
 		MACE DEFB 4;
 		Goto Ready;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_FireMacePL1
@@ -103,14 +123,14 @@ class MacePowered : Mace
 	States
 	{
 	Fire:
-	Hold:	
+	Hold:
 		MACE B 4;
 		MACE D 4 A_FireMacePL2;
 		MACE B 4;
 		MACE A 8 A_ReFire;
 		Goto Ready;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_FireMacePL2
@@ -151,7 +171,7 @@ class MacePowered : Mace
 class MaceFX1 : Actor
 {
 	const MAGIC_JUNK = 1234;
-	
+
 	Default
 	{
 		Radius 8;
@@ -175,7 +195,7 @@ class MaceFX1 : Actor
 		FX02 GHIJ 4 BRIGHT;
 		Stop;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_MacePL1Check
@@ -244,7 +264,7 @@ class MaceFX2 : MaceFX1
 		FX02 F 4 A_MaceBallImpact2;
 		goto Super::Death+1;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_MaceBallImpact2
@@ -347,7 +367,7 @@ class MaceFX4 : Actor
 		FX02 GHIJ 4 BRIGHT;
 		Stop;
 	}
-	
+
 	//---------------------------------------------------------------------------
 	//
 	// FUNC P_AutoUseChaosDevice
@@ -366,7 +386,7 @@ class MaceFX4 : Actor
 		}
 		return false;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC DoSpecialDamage
@@ -469,6 +489,7 @@ class MaceSpawner : SpecialSpot
 	{
 		+NOSECTOR
 		+NOBLOCKMAP
+		+WEAPONSPAWN
 	}
 
 	States

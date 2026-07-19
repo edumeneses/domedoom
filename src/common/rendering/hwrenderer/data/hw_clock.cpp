@@ -1,33 +1,22 @@
 /*
-** 
-**  Hardware render profiling info
+** hw_clock.cpp
+**
+** Hardware render profiling info
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2007-2018 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -100,9 +89,9 @@ static void AppendRenderTimes(FString &str)
 		"Main thread total=%2.3f, Main thread waiting=%2.3f Worker thread total=%2.3f, Worker thread waiting=%2.3f\n"
 		"All=%2.3f, Render=%2.3f, Setup=%2.3f, Portal=%2.3f, Drawcalls=%2.3f, Postprocess=%2.3f, Finish=%2.3f\n",
 		bsp, clipwall,
-		RenderWall.TimeMS(), setupwall, 
+		RenderWall.TimeMS(), setupwall,
 		RenderFlat.TimeMS(), SetupFlat.TimeMS(),
-		RenderSprite.TimeMS(), SetupSprite.TimeMS(), 
+		RenderSprite.TimeMS(), SetupSprite.TimeMS(),
 		twoD.TimeMS(), Flush3D.TimeMS() - twoD.TimeMS(),
 		MTWait.TimeMS() + Bsp.TimeMS(), MTWait.TimeMS(), WTTotal.TimeMS(), WTTotal.TimeMS() - setupwall - SetupFlat.TimeMS() - SetupSprite.TimeMS(),
 		All.TimeMS() + Finish.TimeMS(), RenderAll.TimeMS(),	ProcessAll.TimeMS(), PortalAll.TimeMS(), drawcalls.TimeMS(), PostProcess.TimeMS(), Finish.TimeMS());
@@ -118,7 +107,7 @@ static void AppendRenderStats(FString &out)
 
 static void AppendLightStats(FString &out)
 {
-	out.AppendFormat("DLight - Walls: %d processed, %d rendered - Flats: %d processed, %d rendered\n", 
+	out.AppendFormat("DLight - Walls: %d processed, %d rendered - Flats: %d processed, %d rendered\n",
 		iter_dlight, draw_dlight, iter_dlightf, draw_dlightf );
 }
 
@@ -127,7 +116,7 @@ ADD_STAT(rendertimes)
 	static FString buff;
 	static int64_t lasttime=0;
 	int64_t t=I_msTime();
-	if (t-lasttime>1000) 
+	if (t-lasttime>1000)
 	{
 		buff.Truncate(0);
 		AppendRenderTimes(buff);
@@ -159,7 +148,7 @@ void CheckBench()
 {
 	if (printstats && ConsoleState == c_up)
 	{
-		// if we started the FPS counter ourselves or ran from the console 
+		// if we started the FPS counter ourselves or ran from the console
 		// we need to wait for it to stabilize before using it.
 		if (waitstart > 0 && I_msTime() - waitstart < 5000) return;
 
@@ -187,7 +176,7 @@ void CheckBench()
 CCMD(bench)
 {
 	printstats = true;
-	if (vid_fps == 0) 
+	if (vid_fps == 0)
 	{
 		vid_fps = 1;
 		waitstart = I_msTime();
@@ -208,4 +197,3 @@ void  checkBenchActive()
 	FStat *stat = FStat::FindStat("rendertimes");
 	glcycle_t::active = ((stat != NULL && stat->isActive()) || printstats);
 }
-

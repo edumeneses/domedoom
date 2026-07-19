@@ -1,47 +1,36 @@
 /*
-** zcc_expr.cpp
+** zcc_parser.cpp
+**
+**
 **
 **---------------------------------------------------------------------------
-** Copyright -2016 Randy Heit
+**
+** Copyright 2010-2016 Marisa Heit
 ** Copyright 2017-2025 GZDoom Maintainers and Contributors
-** All rights reserved.
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
 
-#include "dobject.h"
-#include "sc_man.h"
-#include "filesystem.h"
 #include "cmdlib.h"
+#include "dobject.h"
+#include "filesystem.h"
 #include "m_argv.h"
-#include "v_text.h"
+#include "printf.h"
+#include "sc_man.h"
 #include "version.h"
 #include "zcc_parser.h"
-#include "zcc_compile.h"
 
+#include "zcc_compile.h" // IWYU pragma: keep
 
 TArray<FString> Includes;
 TArray<FScriptPosition> IncludeLocs;
@@ -210,6 +199,7 @@ static void InitTokenMap()
 	TOKENDEF (TK_FlagDef,		ZCC_FLAGDEF);
 	TOKENDEF (TK_Mixin,			ZCC_MIXIN);
 	TOKENDEF (TK_Transient,		ZCC_TRANSIENT);
+	TOKENDEF (TK_NoRollback,	ZCC_NOROLLBACK);
 	TOKENDEF (TK_Enum,			ZCC_ENUM);
 	TOKENDEF2(TK_SByte,			ZCC_SBYTE,		NAME_sByte);
 	TOKENDEF2(TK_Byte,			ZCC_BYTE,		NAME_Byte);
@@ -294,7 +284,13 @@ static void InitTokenMap()
 #undef TOKENDEF
 #undef TOKENDEF2
 
-//**--------------------------------------------------------------------------
+FARG_ADVANCED(dumpast, "Debug", "",
+	"Writes ZScript AST in a LISP-like format to a file");
+FARG_ADVANCED(tracefile, "Debug", "",
+	"Invokes Lemon's debug tracer output to print messages for every change of the parser state."
+	" See https://sqlite.org/src/doc/trunk/doc/lemon.html");
+
+//**---------------------------------------------------------------------------
 
 static void ParseSingleFile(FScanner *pSC, const char *filename, int lump, void *parser, ZCCParseState &state)
 {
@@ -372,7 +368,7 @@ static void ParseSingleFile(FScanner *pSC, const char *filename, int lump, void 
 			sc.MustGetAnyToken();
 			// The oh so wonderful grammar has problems with the 'const' token thanks to the overly broad rule for constants,
 			// which effectively prevents use of this token nearly anywhere else. So in order to get 'static const' through
-			// on the class/struct level we have to muck around with the token type here so that both words get combined into 
+			// on the class/struct level we have to muck around with the token type here so that both words get combined into
 			// a single token that doesn't make the grammar throw a fit.
 			if (sc.TokenType == TK_Const)
 			{
@@ -409,7 +405,7 @@ parse_end:
 	state.sc = nullptr;
 }
 
-//**--------------------------------------------------------------------------
+//**---------------------------------------------------------------------------
 
 PNamespace *ParseOneScript(const int baselump, ZCCParseState &state)
 {
@@ -430,7 +426,7 @@ PNamespace *ParseOneScript(const int baselump, ZCCParseState &state)
 
 #ifndef NDEBUG
 	FILE *f = nullptr;
-	const char *tracefile = Args->CheckValue("-tracefile");
+	const char *tracefile = Args->CheckValue(FArg_tracefile);
 	if (tracefile != nullptr)
 	{
 		f = fopen(tracefile, "w");
@@ -449,6 +445,9 @@ PNamespace *ParseOneScript(const int baselump, ZCCParseState &state)
 		{
 			char *endp;
 			sc.MustGetString();
+
+			state.ParseVersion.distance = 0;
+
 			state.ParseVersion.major = (int16_t)clamp<unsigned long long>(strtoull(sc.String, &endp, 10), 0, USHRT_MAX);
 			if (*endp != '.')
 			{
@@ -524,7 +523,7 @@ PNamespace *ParseOneScript(const int baselump, ZCCParseState &state)
 #endif
 
 	// Make a dump of the AST before running the compiler for diagnostic purposes.
-	if (Args->CheckParm("-dumpast"))
+	if (Args->CheckParm(FArg_dumpast))
 	{
 		FString ast = ZCC_PrintAST(state.TopNode);
 		FString filename = fileSystem.GetFileFullPath(baselump).c_str();
@@ -618,7 +617,7 @@ void AppendTreeNodeSibling(ZCC_TreeNode *thisnode, ZCC_TreeNode *sibling)
 		siblingend->SiblingNext = thisnode;
 }
 
-//**--------------------------------------------------------------------------
+//**---------------------------------------------------------------------------
 
 const char *GetMixinTypeString(EZCCMixinType type) {
 	switch (type) {
@@ -631,7 +630,7 @@ const char *GetMixinTypeString(EZCCMixinType type) {
 	}
 }
 
-//**--------------------------------------------------------------------------
+//**---------------------------------------------------------------------------
 
 ZCC_TreeNode *TreeNodeDeepCopy_Internal(ZCC_AST *ast, ZCC_TreeNode *orig, bool copySiblings, TMap<ZCC_TreeNode *, ZCC_TreeNode *> *copiedNodesList);
 void TreeNodeDeepCopy_Base(ZCC_AST *ast, ZCC_TreeNode *orig, ZCC_TreeNode *copy, bool copySiblings, TMap<ZCC_TreeNode *, ZCC_TreeNode *> *copiedNodesList)
@@ -1445,7 +1444,7 @@ ZCC_TreeNode *TreeNodeDeepCopy_Internal(ZCC_AST *ast, ZCC_TreeNode *orig, bool c
 
 		break;
 	}
-	
+
 	case AST_FunctionPtrCast:
 	{
 		TreeNodeDeepCopy_Start(FunctionPtrCast);
@@ -1459,7 +1458,7 @@ ZCC_TreeNode *TreeNodeDeepCopy_Internal(ZCC_AST *ast, ZCC_TreeNode *orig, bool c
 
 		break;
 	}
-	
+
 	case AST_StaticArrayStatement:
 	{
 		TreeNodeDeepCopy_Start(StaticArrayStatement);

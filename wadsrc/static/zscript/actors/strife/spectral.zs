@@ -1,4 +1,22 @@
-
+/*
+** spectral.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Rogue Entertainment
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // base for all spectral monsters which hurt when being touched--------------
 
@@ -11,12 +29,12 @@ class SpectralMonster : Actor
 		+SPECTRAL
 		+NOICEDEATH
 	}
-	
+
 	override void Touch (Actor toucher)
 	{
 		toucher.DamageMobj (self, self, 5, 'Melee');
 	}
-	
+
 
 	//============================================================================
 
@@ -48,7 +66,7 @@ class SpectralMonster : Actor
 
 			t = random[SpectreChunk](0, 7);
 			foo.Vel.X = t - random[SpectreChunk](0, 15);
-			
+
 			t = random[SpectreChunk](0, 7);
 			foo.Vel.Y = t - random[SpectreChunk](0, 15);
 
@@ -78,7 +96,7 @@ class SpectralMonster : Actor
 		}
 		Angle -= 90.;
 	}
-	
+
 	//============================================================================
 	//
 	// A_SpotLightning
@@ -216,7 +234,7 @@ class SpectralLightningH1 : SpectralLightningBase
 		ZAP6 BC 4 Bright A_SpectralLightningTail;
 		Loop;
 	}
-	
+
 	void A_SpectralLightningTail ()
 	{
 		Actor foo = Spawn("SpectralLightningHTail", Vec3Offset(-Vel.X, -Vel.Y, 0.), ALLOW_REPLACE);
@@ -267,7 +285,7 @@ class SpectralLightningHTail : Actor
 		ZAP6 ABC 5 Bright;
 		Stop;
 	}
-}	
+}
 
 // Spectral Lightning (Big Ball #1) -----------------------------------------
 
@@ -290,7 +308,7 @@ class SpectralLightningBigBall1 : SpectralLightningDeath2
 		ZAP7 CDE 6 Bright A_SpectralBigBallLightning;
 		Loop;
 	}
-	
+
 	void A_SpectralBigBallLightning ()
 	{
 		Class<Actor> cls = "SpectralLightningH3";
@@ -304,7 +322,7 @@ class SpectralLightningBigBall1 : SpectralLightningDeath2
 			SpawnSubMissile (cls, target);
 		}
 	}
-	
+
 }
 
 
@@ -374,7 +392,7 @@ class SpectralLightningSpot : SpectralLightningDeath1
 		ZAP5 CD 4 Bright A_Countdown;
 		Loop;
 	}
-	
+
 	void A_SpectralLightning ()
 	{
 		if (threshold != 0)
@@ -385,7 +403,7 @@ class SpectralLightningSpot : SpectralLightningDeath1
 
 		double xo = random2[Zap5](3) * 50.;
 		double yo = random2[Zap5](3) * 50.;
-		
+
 		class<Actor> cls;
 		if (threshold > 25) cls = "SpectralLightningV2";
 		else cls = "SpectralLightningV1";
@@ -408,7 +426,7 @@ class SpectralLightningSpot : SpectralLightningDeath1
 			flash.FriendPlayer = FriendPlayer;
 		}
 	}
-	
+
 }
 
 // Sigil Lightning (Big Vertical #1) ----------------------------------------

@@ -3,7 +3,9 @@
 #include "widgets/scrollbar/scrollbar.h"
 #include "core/utf8reader.h"
 #include "core/colorf.h"
+
 #include <algorithm>
+#include <cmath>
 
 #ifdef _MSC_VER
 #pragma warning(disable: 4267) // warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
@@ -14,7 +16,7 @@ TextEdit::TextEdit(Widget* parent) : Widget(parent)
 	SetStyleClass("textedit");
 
 	selectionBG = GetStyleColor("selection-color");
-	selectionFG = GetStyleColor("color");
+	selectionFG = GetStyleColor("selection-text");
 
 	timer = new Timer(this);
 	timer->FuncExpired = [this]() { OnTimerExpired(); };
@@ -337,7 +339,7 @@ bool TextEdit::OnMouseUp(const Point& pos, InputKey key)
 
 void TextEdit::OnKeyChar(std::string chars)
 {
-	if (!chars.empty() && !(chars[0] >= 0 && chars[0] < 32))
+	if (!readonly && !chars.empty() && !(chars[0] >= 0 && chars[0] < 32))
 	{
 		if (FuncBeforeEditChanged)
 			FuncBeforeEditChanged();
@@ -551,6 +553,19 @@ void TextEdit::OnKeyUp(InputKey key)
 {
 }
 
+bool TextEdit::OnMouseWheel(const Point& pos, InputKey key)
+{
+	if (key == InputKey::MouseWheelUp)
+	{
+		vert_scrollbar->SetPosition(vert_scrollbar->GetPosition() - 1);
+	}
+	else if (key == InputKey::MouseWheelDown)
+	{
+		vert_scrollbar->SetPosition(vert_scrollbar->GetPosition() + 1);
+	}
+	return true;
+}
+
 void TextEdit::OnSetFocus()
 {
 	if (!readonly)
@@ -593,9 +608,9 @@ void TextEdit::OnVerticalScroll()
 void TextEdit::UpdateVerticalScroll()
 {
 	Rect rect(
-		GetWidth() - 16.0/*vert_scrollbar->GetWidth()*/,
+		GetWidth() - vert_scrollbar->GetPreferredWidth(),
 		0.0,
-		16.0/*vert_scrollbar->GetWidth()*/,
+		vert_scrollbar->GetPreferredWidth(),
 		GetHeight());
 
 	vert_scrollbar->SetFrameGeometry(rect);
@@ -982,7 +997,7 @@ void TextEdit::LayoutLines(Canvas* canvas)
 				line.layout.AddText(line.text, font, textColor);
 			else
 				line.layout.AddText(" ", font, textColor); // Draw one space character to get the correct height
-			line.layout.Layout(canvas, GetWidth());
+			line.layout.Layout(canvas, GetWidth() - vert_scrollbar->GetPreferredWidth());
 			line.box = Rect(draw_pos, line.layout.GetSize());
 			line.invalidated = false;
 		}

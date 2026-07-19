@@ -1,29 +1,22 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1994-1996 Raven Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2016 Christoph Oelckers
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-// DESCRIPTION:
-//		Cheat code. See *_sbar.cpp for status bars.
-//
-//-----------------------------------------------------------------------------
+/*
+** st_stuff.cpp
+**
+** Cheat code. See *_sbar.cpp for status bars.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include "d_protocol.h"
 #include "gstrings.h"
@@ -101,7 +94,7 @@ uint8_t CheatPowerup2[8][10] =
 	{ 'p','u','m','p','u','p',255 },
 };
 
-// Smashing Pumpkins Into Small Piles Of Putrid Debris. 
+// Smashing Pumpkins Into Small Piles Of Putrid Debris.
 static uint8_t CheatNoclip[] =		{ 'i','d','s','p','i','s','p','o','p','d',255 };
 static uint8_t CheatNoclip2[] =	{ 'i','d','c','l','i','p',255 };
 static uint8_t CheatMus[] =		{ 'i','d','m','u','s',0,0,255 };
@@ -353,7 +346,7 @@ bool ST_Responder (event_t *ev)
 	else
 	{
 		static cheatseq_t *cheatlists[] = { DoomCheats, HereticCheats, HexenCheats, StrifeCheats, ChexCheats, SpecialCheats };
-		static int counts[] = { countof(DoomCheats), countof(HereticCheats)-2, countof(HexenCheats), 
+		static int counts[] = { countof(DoomCheats), countof(HereticCheats)-2, countof(HexenCheats),
 								countof(StrifeCheats), countof(ChexCheats)-1, countof(SpecialCheats) };
 
 		for (size_t i=0; i<countof(cheatlists); i++)

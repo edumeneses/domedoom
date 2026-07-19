@@ -1,27 +1,17 @@
-// 
-//---------------------------------------------------------------------------
-//
-// Copyright(C) 2002-2016 Christoph Oelckers
-// All rights reserved.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
 /*
-** gl_sprite.cpp
+** hw_sprites.cpp
+**
 ** Sprite/Particle rendering
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
 **
 */
 
@@ -83,24 +73,24 @@ EXTERN_CVAR(Float, r_actorspriteshadowfadeheight)
 
 CVAR(Bool, gl_usecolorblending, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool, gl_sprite_blend, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
-CVAR(Int, gl_spriteclip, 1, CVAR_ARCHIVE)
+CVAR(Int, gl_spriteclip, -1, CVAR_ARCHIVE)
 CVAR(Bool, r_debug_nolimitanamorphoses, false, 0)
 CVAR(Float, r_spriteclipanamorphicminbias, 0.6, CVAR_ARCHIVE)
 CVAR(Float, gl_sclipthreshold, 10.0, CVAR_ARCHIVE)
 CVAR(Float, gl_sclipfactor, 1.8f, CVAR_ARCHIVE)
-CVAR(Int, gl_particles_style, 2, CVAR_ARCHIVE | CVAR_GLOBALCONFIG) // 0 = square, 1 = round, 2 = smooth
+CVAR(Int, gl_particles_style, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG) // 0 = square, 1 = round, 2 = smooth
 CVAR(Int, gl_billboard_mode, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool, gl_billboard_faces_camera, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool, hw_force_cambbpref, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool, gl_billboard_particles, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CUSTOM_CVAR(Int, gl_fuzztype, 0, CVAR_ARCHIVE)
+CUSTOM_CVAR(Int, gl_fuzztype, 8, CVAR_ARCHIVE)
 {
 	if (self < 0 || self > 8) self = 0;
 }
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -109,7 +99,7 @@ void HWSprite::DrawSprite(HWDrawInfo *di, FRenderState &state, bool translucent)
 	bool additivefog = false;
 	bool foglayer = false;
 	int rel = fullbright ? 0 : getExtraLight();
-	auto &vp = di->Viewpoint;	
+	auto &vp = di->Viewpoint;
 
 	if (translucent)
 	{
@@ -257,7 +247,7 @@ void HWSprite::DrawSprite(HWDrawInfo *di, FRenderState &state, bool translucent)
 			// set up the light slice
 			secplane_t *topplane = i == 0 ? &topp : &(*lightlist)[i].plane;
 			secplane_t *lowplane = i == (*lightlist).Size() - 1 ? &bottomp : &(*lightlist)[i + 1].plane;
-			int thislight = (*lightlist)[i].caster != nullptr ? hw_ClampLight(*(*lightlist)[i].p_lightlevel) : lightlevel;
+			int thislight = (*lightlist)[i].caster != nullptr ? RescaleLightLevel(*(*lightlist)[i].p_lightlevel) : lightlevel;
 			int thisll = actor == nullptr ? thislight : (uint8_t)actor->Sector->CheckSpriteGlow(thislight, actor->InterpolatedPosition(vp.TicFrac));
 
 			FColormap thiscm;
@@ -357,7 +347,7 @@ void HWSprite::DrawSprite(HWDrawInfo *di, FRenderState &state, bool translucent)
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -438,10 +428,29 @@ bool HWSprite::CalculateVertices(HWDrawInfo* di, FVector3* v, DVector3* vp)
 		//&& di->mViewActor != nullptr
 		&& (gl_billboard_mode == 1 || (actor && actor->renderflags & RF_FORCEXYBILLBOARD)))) && !AngledRoll;
 
-	const bool drawBillboardFacingCamera = gCubemapFaceRender || (hw_force_cambbpref ? gl_billboard_faces_camera :
-		gl_billboard_faces_camera
-		|| ((actor && (!(actor->renderflags2 & RF2_BILLBOARDNOFACECAMERA) && (actor->renderflags2 & RF2_BILLBOARDFACECAMERA)))
-		|| (particle && particle->texture.isValid() && (!(particle->flags & SPF_NOFACECAMERA) && (particle->flags & SPF_FACECAMERA)))));
+	bool drawBillboardFacingCamera = gl_billboard_faces_camera;
+	if (!hw_force_cambbpref)
+	{
+		if (actor)
+		{
+			if (actor->renderflags2 & RF2_BILLBOARDNOFACECAMERA)
+				drawBillboardFacingCamera = false;
+			else if (actor->renderflags2 & RF2_BILLBOARDFACECAMERA)
+				drawBillboardFacingCamera = true;
+		}
+		else if (particle && particle->texture.isValid())
+		{
+			if (particle->flags & SPF_NOFACECAMERA)
+				drawBillboardFacingCamera = false;
+			else if (particle->flags & SPF_FACECAMERA)
+				drawBillboardFacingCamera = true;
+		}
+	}
+	// DomeDoom: while rendering cubemap faces, billboards must face the camera
+	// POSITION (view-direction-independent) so sprites line up across face
+	// seams instead of splitting. Overrides all per-actor/particle preferences.
+	if (gCubemapFaceRender)
+		drawBillboardFacingCamera = true;
 
 	// [Nash] has +ROLLSPRITE
 	const bool drawRollSpriteActor = (actor != nullptr && actor->renderflags & RF_ROLLSPRITE);
@@ -489,7 +498,7 @@ bool HWSprite::CalculateVertices(HWDrawInfo* di, FVector3* v, DVector3* vp)
 		float rollDegrees = doRoll ? Angles.Roll.Degrees() : 0;
 		float angleRad = (FAngle::fromDeg(270.) - HWAngles.Yaw).Radians();
 
-		// [fgsfds] Rotate the sprite about the sight vector (roll) 
+		// [fgsfds] Rotate the sprite about the sight vector (roll)
 		if (isWallSprite)
 		{
 			float yawvecX = Angles.Yaw.Cos();
@@ -537,7 +546,7 @@ bool HWSprite::CalculateVertices(HWDrawInfo* di, FVector3* v, DVector3* vp)
 
 			if (!offset.isZero())
 				HandleSpriteOffsets(&mat, &HWAngles, &offset, false);
-			
+
 			if (doRoll)
 			{
 				// Compute center of sprite
@@ -585,7 +594,7 @@ bool HWSprite::CalculateVertices(HWDrawInfo* di, FVector3* v, DVector3* vp)
 			v[1] = mat * FVector3(x2, z1, y2);
 			v[2] = mat * FVector3(x1, z2, y1);
 			v[3] = mat * FVector3(x2, z2, y2);
-			
+
 		}
 		else
 		{
@@ -594,21 +603,23 @@ bool HWSprite::CalculateVertices(HWDrawInfo* di, FVector3* v, DVector3* vp)
 			v[2] = FVector3(x1, z2, y1);
 			v[3] = FVector3(x2, z2, y2);
 		}
-		
+
 	}
 	return false;
 }
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
 inline void HWSprite::PutSprite(HWDrawInfo *di, bool translucent)
 {
 	// That's a lot of checks...
-	if (modelframe && !modelframe->isVoxel && !(modelframeflags & MDL_NOPERPIXELLIGHTING) && RenderStyle.BlendOp != STYLEOP_Shadow && gl_light_sprites && di->Level->HasDynamicLights && !di->isFullbrightScene() && !fullbright)
+	if (modelframe && !modelframe->isVoxel && !(modelframeflags & MDL_NOPERPIXELLIGHTING) && RenderStyle.BlendOp != STYLEOP_Shadow
+		&& gl_light_sprites && di->Level->HasDynamicLights && !di->isFullbrightScene() && !fullbright
+		&& actor && !(actor->renderflags2 & RF2_NODYNAMICLIGHTING))
 	{
 		hw_GetDynModelLight(actor, lightdata);
 		dynlightindex = screen->mLights->UploadLights(lightdata);
@@ -626,7 +637,7 @@ inline void HWSprite::PutSprite(HWDrawInfo *di, bool translucent)
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -651,7 +662,7 @@ void HWSprite::CreateVertices(HWDrawInfo *di)
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -674,7 +685,7 @@ void HWSprite::SplitSprite(HWDrawInfo *di, sector_t * frontsector, bool transluc
 		if (lightbottom<z1)
 		{
 			copySprite=*this;
-			copySprite.lightlevel = hw_ClampLight(*lightlist[i].p_lightlevel);
+			copySprite.lightlevel = RescaleLightLevel(*lightlist[i].p_lightlevel);
 			copySprite.Colormap.CopyLight(lightlist[i].extra_colormap);
 
 			if (di->Level->flags3 & LEVEL3_NOCOLOREDSPRITELIGHTING)
@@ -690,7 +701,7 @@ void HWSprite::SplitSprite(HWDrawInfo *di, sector_t * frontsector, bool transluc
 			}
 
 			z1=copySprite.z2=lightbottom;
-			vt=copySprite.vb=copySprite.vt+ 
+			vt=copySprite.vb=copySprite.vt+
 				(lightbottom-copySprite.z1)*(copySprite.vb-copySprite.vt)/(z2-copySprite.z1);
 			copySprite.PutSprite(di, translucent);
 			put=true;
@@ -700,7 +711,7 @@ void HWSprite::SplitSprite(HWDrawInfo *di, sector_t * frontsector, bool transluc
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -785,7 +796,7 @@ void HWSprite::PerformSpriteClipAdjustment(AActor *thing, const DVector2 &thingp
 				z1 -= difft;
 			}
 		}
-		if (diffb <= (0 - (float)gl_sclipthreshold))	// such a large displacement can't be correct! 
+		if (diffb <= (0 - (float)gl_sclipthreshold))	// such a large displacement can't be correct!
 		{
 			// for living monsters standing on the floor allow a little more.
 			if (!(thing->flags3&MF3_ISMONSTER) || (thing->flags&MF_NOGRAVITY) || (thing->flags&MF_CORPSE) || diffb < (-1.8*(float)gl_sclipthreshold))
@@ -800,7 +811,7 @@ void HWSprite::PerformSpriteClipAdjustment(AActor *thing, const DVector2 &thingp
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -880,7 +891,7 @@ void HWSprite::Process(HWDrawInfo *di, AActor* thing, sector_t * sector, area_t 
 		if (thruportal == 1) vieworigin += di->Level->Displacements.getOffset(viewmaster->Sector->PortalGroup, sector->PortalGroup);
 		if (fabs(vieworigin.X - vp.ActorPos.X) < 2 && fabs(vieworigin.Y - vp.ActorPos.Y) < 2) return;
 
-		// Necessary in order to prevent sprite pop-ins with viewpos and models. 
+		// Necessary in order to prevent sprite pop-ins with viewpos and models.
 		auto* sec = viewmaster->Sector;
 		if (sec && !sec->PortalBlocksMovement(sector_t::ceiling))
 		{
@@ -1080,6 +1091,9 @@ void HWSprite::Process(HWDrawInfo *di, AActor* thing, sector_t * sector, area_t 
 		if (!texture || !texture->isValid())
 			return;
 
+		// Canvas textures are stored upside down
+		if (!isPicnumOverride && texture && texture->isHardwareCanvas()) std::swap(vt, vb);
+
 		if (thing->renderflags & RF_SPRITEFLIP) // [SP] Flip back
 			thing->renderflags ^= RF_XFLIP;
 
@@ -1191,7 +1205,7 @@ void HWSprite::Process(HWDrawInfo *di, AActor* thing, sector_t * sector, area_t 
 		depth = (float)((x + r2 * tempang2.Cos() - vp.Pos.X) * vp.TanCos
 						+ (y + r2 * tempang2.Sin() - vp.Pos.Y) * vp.TanSin);
 	}
-	if (isSpriteShadow) depth += 1.f/65536.f; // always sort shadows behind the sprite.
+	if (isSpriteShadow) depth += EQUAL_EPSILON; // always sort shadows behind the sprite.
 
 	if (gl_spriteclip == -1 && (thing->renderflags & RF_SPRITETYPEMASK) == RF_FACESPRITE) // perform anamorphosis
 	{
@@ -1253,7 +1267,7 @@ void HWSprite::Process(HWDrawInfo *di, AActor* thing, sector_t * sector, area_t 
 		((thing->renderflags & RF_FULLBRIGHT) && (!texture || !texture->isFullbrightDisabled()));
 
 	if (fullbright)	lightlevel = 255;
-	else lightlevel = hw_ClampLight(thing->GetLightLevel(rendersector));
+	else lightlevel = RescaleLightLevel(thing->GetLightLevel(rendersector));
 
 	foglevel = (uint8_t)clamp<short>(rendersector->lightlevel, 0, 255); // this *must* use the sector's light level or the fog will just look bad.
 
@@ -1337,11 +1351,11 @@ void HWSprite::Process(HWDrawInfo *di, AActor* thing, sector_t * sector, area_t 
 	{
 		trans = 1.f;
 	}
-	if (r_UseVanillaTransparency)
+	if (r_UseVanillaTransparency && (thing->renderflags & RF_ZDOOMTRANS))
 	{
 		// [SP] "canonical transparency" - with the flip of a CVar, disable transparency for Doom objects,
 		//   and disable 'additive' translucency for certain objects from other games.
-		if (thing->renderflags & RF_ZDOOMTRANS)
+		if (r_UseVanillaTransparency == 1 || AutoTrans.CheckKey(thing->GetClass()->TypeName) != nullptr)
 		{
 			trans = 1.f;
 			RenderStyle.BlendOp = STYLEOP_Add;
@@ -1469,7 +1483,7 @@ void HWSprite::Process(HWDrawInfo *di, AActor* thing, sector_t * sector, area_t 
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -1481,7 +1495,7 @@ void HWSprite::ProcessParticle(HWDrawInfo *di, particle_t *particle, sector_t *s
 	if (spr && !spr->ValidTexture())
 		return;
 
-	lightlevel = hw_ClampLight(spr ? spr->GetLightLevel(sector) : sector->GetSpriteLight());
+	lightlevel = RescaleLightLevel(spr ? spr->GetLightLevel(sector) : sector->GetSpriteLight());
 	foglevel = (uint8_t)clamp<short>(sector->lightlevel, 0, 255);
 
 	trans = particle->alpha;
@@ -1495,7 +1509,7 @@ void HWSprite::ProcessParticle(HWDrawInfo *di, particle_t *particle, sector_t *s
 	this->particle = particle;
 	fullbright = particle->flags & SPF_FULLBRIGHT;
 
-	if (di->isFullbrightScene()) 
+	if (di->isFullbrightScene())
 	{
 		Colormap.Clear();
 	}
@@ -1512,7 +1526,7 @@ void HWSprite::ProcessParticle(HWDrawInfo *di, particle_t *particle, sector_t *s
 
 			if (lightbottom < particle->Pos.Z)
 			{
-				lightlevel = hw_ClampLight(*lightlist[i].p_lightlevel);
+				lightlevel = RescaleLightLevel(*lightlist[i].p_lightlevel);
 				Colormap.CopyLight(lightlist[i].extra_colormap);
 				break;
 			}
@@ -1546,7 +1560,7 @@ void HWSprite::ProcessParticle(HWDrawInfo *di, particle_t *particle, sector_t *s
 	if (paused || (di->Level->isFrozen() && !(particle->flags & SPF_NOTIMEFREEZE)))
 		timefrac = 0.;
 
-	
+
 	if (spr && !(spr->flags & VTF_IsParticle))
 	{
 		AdjustVisualThinker(di, spr, sector);
@@ -1581,7 +1595,7 @@ void HWSprite::ProcessParticle(HWDrawInfo *di, particle_t *particle, sector_t *s
 			{
 				if(custom_animated_texture)
 				{
-					lump = TexAnim.UpdateStandaloneAnimation(particle->animData, di->Level->maptime + timefrac);
+					lump = TexAnim.UpdateStandaloneAnimation(particle->animData, di->Level->LocalWorldTimer + timefrac);
 				}
 				else if(has_texture)
 				{
@@ -1625,7 +1639,7 @@ void HWSprite::ProcessParticle(HWDrawInfo *di, particle_t *particle, sector_t *s
 			float rvf = (particle->RollVel) * timefrac;
 			Angles.Roll = TAngle<double>::fromDeg(particle->Roll + rvf);
 		}
-	
+
 		float factor;
 		if (particle_style == 1) factor = 1.3f / 7.f;
 		else if (particle_style == 2) factor = 2.5f / 7.f;
@@ -1647,7 +1661,7 @@ void HWSprite::ProcessParticle(HWDrawInfo *di, particle_t *particle, sector_t *s
 		z2=z+scalefac;
 
 		depth = (float)((x - vp.Pos.X) * vp.TanCos + (y - vp.Pos.Y) * vp.TanSin);
-	
+
 		// [BB] Translucent particles have to be rendered without the alpha test.
 		if (particle_style != 2 && trans>=1.0f-FLT_EPSILON) hw_styleflags = STYLEHW_Solid;
 		else hw_styleflags = STYLEHW_NoAlphaTest;
@@ -1663,7 +1677,7 @@ void HWSprite::ProcessParticle(HWDrawInfo *di, particle_t *particle, sector_t *s
 }
 
 // [MC] VisualThinkers are to be rendered akin to actor sprites. The reason this whole system
-// is hitching a ride on particle_t is because of the large number of checks with 
+// is hitching a ride on particle_t is because of the large number of checks with
 // HWSprite elsewhere in the draw lists.
 void HWSprite::AdjustVisualThinker(HWDrawInfo* di, DVisualThinker* spr, sector_t* sector)
 {
@@ -1674,12 +1688,12 @@ void HWSprite::AdjustVisualThinker(HWDrawInfo* di, DVisualThinker* spr, sector_t
 
 	if (paused || spr->isFrozen())
 		timefrac = 0.;
-	
+
 	bool custom_anim = ((spr->PT.flags & SPF_LOCAL_ANIM) && spr->PT.animData.ok);
 
 	texture = TexMan.GetGameTexture(
 			custom_anim
-			? TexAnim.UpdateStandaloneAnimation(spr->PT.animData, di->Level->maptime + timefrac)
+			? TexAnim.UpdateStandaloneAnimation(spr->PT.animData, di->Level->LocalWorldTimer + timefrac)
 			: spr->PT.texture, !custom_anim);
 
 	if (spr->flags & VTF_DontInterpolate)
@@ -1739,7 +1753,7 @@ void HWSprite::AdjustVisualThinker(HWDrawInfo* di, DVisualThinker* spr, sector_t
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -1748,7 +1762,7 @@ void HWDrawInfo::ProcessActorsInPortal(FLinePortalSpan *glport, area_t in_area)
 	TMap<AActor*, bool> processcheck;
 	if (glport->validcount == validcount) return;	// only process once per frame
 	glport->validcount = validcount;
-    const auto &vp = Viewpoint;
+	const auto &vp = Viewpoint;
 	for (auto port : glport->lines)
 	{
 		line_t *line = port->mOrigin;

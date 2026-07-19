@@ -1,3 +1,27 @@
+/*
+** quaternion.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 #include "vectors.h"
@@ -205,12 +229,12 @@ public:
 	{
 		return X*X + Y*Y + Z*Z + W*W;
 	}
-	
+
 	double Sum() const
 	{
 		return abs(X) + abs(Y) + abs(Z) + abs(W);
 	}
-	
+
 
 	// Return a unit vector facing the same direction as this one
 	TQuaternion Unit() const
@@ -243,7 +267,7 @@ public:
 		return *this;
 	}
 
-	TQuaternion Resized(double len) const 
+	TQuaternion Resized(double len) const
 	{
 		double vlen = Length();
 		if (vlen != 0.)

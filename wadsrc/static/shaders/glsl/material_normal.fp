@@ -1,3 +1,19 @@
+/*
+** material_normal.fp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2013-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 vec3 lightContribution(int i, vec3 normal)
 {
@@ -62,12 +78,12 @@ vec3 ProcessMaterialLight(Material material, vec3 color)
 	vec3 frag;
 
 	if ( uLightBlendMode == 1 )
-	{	// COLOR_CORRECT_CLAMPING 
+	{	// COLOR_CORRECT_CLAMPING
 		vec3 lightcolor = color + desaturate(dynlight).rgb;
 		frag = material.Base.rgb * ((lightcolor / max(max(max(lightcolor.r, lightcolor.g), lightcolor.b), 1.4) * 1.4));
 	}
 	else if ( uLightBlendMode == 2 )
-	{	// UNCLAMPED 
+	{	// UNCLAMPED
 		frag = material.Base.rgb * (color + desaturate(dynlight).rgb);
 	}
 	else

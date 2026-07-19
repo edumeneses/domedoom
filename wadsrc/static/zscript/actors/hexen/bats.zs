@@ -1,3 +1,22 @@
+/*
+** bats.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Bat Spawner --------------------------------------------------------------
 
@@ -21,14 +40,14 @@ class BatSpawner : SwitchableDecoration
 		TNT1 A -1;
 		Stop;
 	}
-	
+
 	//===========================================================================
 	// Bat Spawner Variables
 	//	special1	frequency counter
-	//	special2	
+	//	special2
 	//	args[0]		frequency of spawn (1=fastest, 10=slowest)
 	//	args[1]		spread angle (0..255)
-	//	args[2]		
+	//	args[2]
 	//	args[3]		duration of bats (in octics)
 	//	args[4]		turn amount per move (in degrees)
 	//
@@ -62,7 +81,7 @@ class BatSpawner : SwitchableDecoration
 			mo.target = self;
 		}
 	}
-	
+
 }
 
 // Bat ----------------------------------------------------------------------
@@ -87,7 +106,7 @@ class Bat : Actor
 		ABAT A 2;
 		Stop;
 	}
-	
+
 	void A_BatMove()
 	{
 		if (special2 < 0)
@@ -116,10 +135,6 @@ class Bat : Actor
 
 		// Handle Z movement
 		SetZ(target.pos.Z + 2 * BobSin(args[0]));
-		args[0] = (args[0] + 3) & 63;	
+		args[0] = (args[0] + 3) & 63;
 	}
 }
-
-
-
-

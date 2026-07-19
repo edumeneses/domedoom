@@ -1,3 +1,23 @@
+/*
+** fog.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 //==========================================================================
 // Fog Variables:
 //
@@ -30,7 +50,7 @@ class FogSpawner : Actor
 		TNT1 A 20 A_FogSpawn;
 		Loop;
 	}
-	
+
 	//==========================================================================
 	//
 	// A_FogSpawn
@@ -68,7 +88,7 @@ class FogSpawner : Actor
 			mo.WeaveIndexZ = random[FogSpawn](0, 63);
 		}
 	}
-	
+
 }
 
 // Small Fog Patch ----------------------------------------------------------
@@ -94,7 +114,7 @@ class FogPatchSmall : Actor
 		FOGS E 5;
 		Stop;
 	}
-	
+
 	//==========================================================================
 	//
 	// A_FogMove
@@ -156,4 +176,3 @@ class FogPatchLarge : FogPatchMedium
 		Goto Super::Death;
 	}
 }
-

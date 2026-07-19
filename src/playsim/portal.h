@@ -1,3 +1,21 @@
+/*
+** portal.h
+**
+** Everything that has to do with portals (both line and sector variety)
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2016 ZZYZX
+** Copyright 2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #ifndef _PORTALS_H_
 #define _PORTALS_H_
 
@@ -17,7 +35,7 @@ struct subsector_t;
 // that are connected by portals.
 // The idea here is basically the same as implemented in Eternity Engine:
 //
-// - each portal creates two sector groups in the map 
+// - each portal creates two sector groups in the map
 //   which are offset by the displacement of the portal anchors
 //
 // - for two or multiple groups the displacement is calculated by

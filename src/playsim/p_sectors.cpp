@@ -1,56 +1,25 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2018 Christoph Oelckers
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-// DESCRIPTION:
-//		Sector utility functions.
-//
-//-----------------------------------------------------------------------------
-
-/* For code that originates from ZDoom the following applies:
+/*
+** p_sectors.cpp
+**
+** Sector utility functions.
 **
 **---------------------------------------------------------------------------
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1993-1996 id Software
+** Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2018 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** For code that originates from ZDoom the following applies:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -71,6 +40,8 @@
 #include "g_levellocals.h"
 #include "vm.h"
 #include "texturemanager.h"
+#include "i_time.h"
+#include "m_round.h"
 
 //==========================================================================
 //
@@ -129,23 +100,59 @@ DEFINE_ACTION_FUNCTION_NATIVE(_Sector, NextSpecialSector, P_NextSpecialSector)
 	ACTION_RETURN_POINTER(P_NextSpecialSector(self, type, nogood));
 }
 
-bool sector_t::IsDangerous(const DVector3& pos, double height) const
+static bool IsDamaging(sector_t& sec, int moTID)
 {
-	if (damageamount > 0)
+	static const int DamageTime = GameTicRate * 5;
+	// If damaging was manually done within the past 5 seconds, consider it unsafe. Good for capturing looping
+	// manual damage map scripts.
+	if (sec.damageamount > 0 || (sec.LastDamage >= 0 && sec.Level->maptime - sec.LastDamage <= DamageTime))
 		return true;
 
-	auto cl = dyn_cast<DCeiling>(ceilingdata.Get());
+	// Check for any sector actions that might eventually lead to it dealing damage in some way.
+	// TODO: This needs to verify that 214's passed tag is this sector's. Currently there's no
+	// easy way to get this as sectors can have multiple tags.
+	for (AActor* secAct = sec.SecActTarget; secAct != nullptr; secAct = secAct->tracer)
+	{
+		if ((secAct->special == 73 && secAct->args[0] >= 0)
+			|| (secAct->special == 119 && secAct->args[1] > 0 && (!secAct->args[0] || secAct->args[1] == moTID))
+			|| (secAct->special == 214 && secAct->args[1] > 0))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static bool IsCrushing(sector_t& sec)
+{
+	auto cl = dyn_cast<DCeiling>(sec.ceilingdata.Get());
 	if (cl != nullptr && cl->getCrush() > 0)
+		return true;
+
+	auto fl = dyn_cast<DFloor>(sec.floordata.Get());
+	return fl != nullptr && fl->m_Crush > 0;
+}
+
+bool sector_t::IsDangerous(const DVector3& pos, double height, int moTID)
+{
+	if (IsDamaging(*this, moTID) || IsCrushing(*this))
 		return true;
 
 	for (auto rover : e->XFloor.ffloors)
 	{
-		if ((rover->flags & FF_EXISTS) && rover->model->damageamount > 0
+		if (!(rover->flags & FF_EXISTS))
+			continue;
+
+		if (IsDamaging(*rover->model, moTID)
 			&& pos.Z <= rover->top.plane->ZatPoint(pos)
 			&& pos.Z + height >= rover->bottom.plane->ZatPoint(pos))
 		{
 			return true;
 		}
+
+		if ((rover->flags & FF_SOLID) && IsCrushing(*rover->model))
+			return true;
 	}
 
 	return false;
@@ -649,7 +656,7 @@ sector_t *FindModelCeilingSector (sector_t *sect, double floordestheight)
 int FindMinSurroundingLight (const sector_t *sector, int min)
 {
 	sector_t*	check;
-		
+
 	for (auto line : sector->Lines)
 	{
 		if (NULL != (check = getNextSector (line, sector)) &&
@@ -948,6 +955,9 @@ void TransferSpecial(sector_t *sector, sector_t *model)
 	sector->damageinterval = model->damageinterval;
 	sector->leakydamage = model->leakydamage;
 	sector->Flags = (sector->Flags&~SECF_SPECIALFLAGS) | (model->Flags & SECF_SPECIALFLAGS);
+	// According to https://forum.zdoom.org/viewtopic.php?style=21&t=80227 this probably should be only for Doom
+	if ((compatflags2 & COMPATF2_TRANSFERSECRET || sv_autocompat) && gameinfo.gametype == GAME_Doom && model->isSecret())
+		sector->Flags |= SECF_SECRET;
 }
 
 //=====================================================================================
@@ -1050,7 +1060,7 @@ double NextHighestCeilingAt(sector_t *sec, double x, double y, double bottomz, d
 			double delta2 = topz - (ff_bottom + ((ff_top - ff_bottom) / 2));
 
 			if (ff_bottom < realceil && fabs(delta1) > fabs(delta2))
-			{ 
+			{
 				if (resultsec) *resultsec = sec;
 				if (resultffloor) *resultffloor = rover;
 				return ff_bottom;
@@ -1124,14 +1134,14 @@ double NextLowestFloorAt(sector_t *sec, double x, double y, double z, int flags,
 
 //===========================================================================
 //
-// 
+//
 //
 //===========================================================================
 
 double GetFriction(const sector_t *self, int plane, double *pMoveFac)
 {
-	if (self->Flags & SECF_FRICTION) 
-	{ 
+	if (self->Flags & SECF_FRICTION)
+	{
 		if (pMoveFac) *pMoveFac = self->movefactor;
 		return self->friction;
 	}
@@ -1150,7 +1160,7 @@ double GetFriction(const sector_t *self, int plane, double *pMoveFac)
 
  //===========================================================================
  //
- // 
+ //
  //
  //===========================================================================
 
@@ -1352,7 +1362,7 @@ double GetFriction(const sector_t *self, int plane, double *pMoveFac)
 
 //===========================================================================
 //
-// 
+//
 //
 //===========================================================================
 
@@ -1374,7 +1384,7 @@ double GetFriction(const sector_t *self, int plane, double *pMoveFac)
 
 //===========================================================================
 //
-// 
+//
 //
 //===========================================================================
 
@@ -1594,7 +1604,7 @@ int side_t::GetLightLevel (bool foggy, int baselight, int which, bool is3dlight,
 			if (((sector->Level->flags2 & LEVEL2_SMOOTHLIGHTING) || (Flags & WALLF_SMOOTHLIGHTING) || r_fakecontrast == 2) &&
 				delta.X != 0)
 			{
-				rel = xs_RoundToInt // OMG LEE KILLOUGH LIVES! :/
+				rel = RoundHalfUp // OMG LEE KILLOUGH LIVES! :/
 					(
 						sector->Level->WallHorizLight
 						+ fabs(atan(delta.Y / delta.X) / 1.57079)
@@ -1603,7 +1613,7 @@ int side_t::GetLightLevel (bool foggy, int baselight, int which, bool is3dlight,
 			}
 			else
 			{
-				rel = delta.X == 0 ? sector->Level->WallVertLight : 
+				rel = delta.X == 0 ? sector->Level->WallVertLight :
 					  delta.Y == 0 ? sector->Level->WallHorizLight : 0;
 			}
 			if (pfakecontrast != NULL)
@@ -1659,4 +1669,3 @@ void vertex_t::RecalcVertexHeights()
 	if (numheights <= 2) numheights = 0;	// is not in need of any special attention
 	dirty = false;
 }
-

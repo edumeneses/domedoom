@@ -1,36 +1,22 @@
 /*
-*
-** gl_clipper.cpp
+** hw_clipper.cpp
 **
-** Handles visibility checks.
-** Loosely based on the JDoom clipper.
+** Handles visibility checks. Loosely based on the JDoom clipper.
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2003 Tim Stump
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -68,7 +54,7 @@ void Clipper::RemoveRange(ClipNode * range)
 		if (range->prev) range->prev->next = range->next;
 		if (range->next) range->next->prev = range->prev;
 	}
-	
+
 	Free(range);
 }
 
@@ -82,7 +68,7 @@ void Clipper::Clear()
 {
 	ClipNode *node = cliphead;
 	ClipNode *temp;
-	
+
 	blocked = false;
 	while (node != NULL)
 	{
@@ -98,7 +84,7 @@ void Clipper::Clear()
 		node = node->next;
 		Free(temp);
 	}
-	
+
 	cliphead = NULL;
 	silhouette = NULL;
 	starttime++;
@@ -136,9 +122,9 @@ bool Clipper::IsRangeVisible(angle_t startAngle, angle_t endAngle)
 {
 	ClipNode *ci;
 	ci = cliphead;
-	
+
 	if (endAngle==0 && ci && ci->start==0) return false;
-	
+
 	while (ci != NULL && ci->start < endAngle)
 	{
 		if (startAngle >= ci->start && endAngle <= ci->end)
@@ -147,7 +133,7 @@ bool Clipper::IsRangeVisible(angle_t startAngle, angle_t endAngle)
 		}
 		ci = ci->next;
 	}
-	
+
 	return true;
 }
 
@@ -182,7 +168,7 @@ void Clipper::AddClipRange(angle_t start, angle_t end)
 				node = node->next;
 			}
 		}
-		
+
 		//check to see if range overlaps a range (or possibly 2)
 		node = cliphead;
 		while (node != NULL && node->start <= end)
@@ -196,7 +182,7 @@ void Clipper::AddClipRange(angle_t start, angle_t end)
 					node->start = start;
 				}
 
-				if (node->end < end) 
+				if (node->end < end)
 				{
 					node->end = end; // [DVR] This never triggers because of previous while loop. Remove?
 				}
@@ -211,20 +197,20 @@ void Clipper::AddClipRange(angle_t start, angle_t end)
 				}
 				return;
 			}
-			node = node->next;		
+			node = node->next;
 		}
-		
+
 		//just add range
 		node = cliphead;
 		prevNode = NULL;
 		temp = NewRange(start, end);
-		
+
 		while (node != NULL && node->start < end)
 		{
 			prevNode = node;
 			node = node->next;
 		}
-		
+
 		temp->next = node;
 		if (node == NULL)
 		{
@@ -289,7 +275,7 @@ void Clipper::RemoveClipRange(angle_t start, angle_t end)
 	}
 	DoRemoveClipRange(start, end);
 }
-	
+
 //-----------------------------------------------------------------------------
 //
 // RemoveClipRange worker function
@@ -317,7 +303,7 @@ void Clipper::DoRemoveClipRange(angle_t start, angle_t end)
 				node = node->next;
 			}
 		}
-		
+
 		//check to see if range overlaps a range (or possibly 2)
 		node = cliphead;
 		while (node != NULL)
@@ -349,7 +335,7 @@ void Clipper::DoRemoveClipRange(angle_t start, angle_t end)
 
 //-----------------------------------------------------------------------------
 //
-// 
+//
 //
 //-----------------------------------------------------------------------------
 
@@ -363,7 +349,7 @@ angle_t Clipper::AngleToPseudo(angle_t ang)
 	{
 		result = 2.f - result;
 	}
-	return xs_Fix<30>::ToFix(result);
+	return FloatToFixed<30>(result);
 }
 
 //-----------------------------------------------------------------------------
@@ -379,9 +365,9 @@ angle_t Clipper::PitchToPseudo(double ang)
 
 //-----------------------------------------------------------------------------
 //
-// ! Returns the pseudoangle between the line p1 to (infinity, p1.y) and the 
-// line from p1 to p2. The pseudoangle has the property that the ordering of 
-// points by true angle around p1 and ordering of points by pseudoangle are the 
+// ! Returns the pseudoangle between the line p1 to (infinity, p1.y) and the
+// line from p1 to p2. The pseudoangle has the property that the ordering of
+// points by true angle around p1 and ordering of points by pseudoangle are the
 // same.
 //
 // For clipping exact angles are not needed. Only the ordering matters.
@@ -415,7 +401,7 @@ angle_t Clipper::PointToPseudoAngle(double x, double y)
 		{
 			result = 2. - result;
 		}
-		return xs_Fix<30>::ToFix(result);
+		return FloatToFixed<30>(result);
 	}
 }
 
@@ -452,7 +438,7 @@ angle_t Clipper::PointToPseudoPitch(double x, double y, double z)
 		{
 			result = 2.0 - result;
 		}
-		return xs_Fix<30>::ToFix(result + 1.0); // range to 0 to 2 to 4 (bottom to top to suplex)
+		return FloatToFixed<30>(result + 1.0); // range to 0 to 2 to 4 (bottom to top to suplex)
 	}
 }
 
@@ -526,21 +512,21 @@ angle_t Clipper::PointToPseudoOrthoPitch(double x, double y, double z)
 	  {2,1,3,0}
 	};
 
-bool Clipper::CheckBox(const float *bspcoord) 
+bool Clipper::CheckBox(const float *bspcoord)
 {
 	angle_t angle1, angle2;
 
 	int        boxpos;
 	const uint8_t* check;
-	
+
 	// Find the corners of the box
 	// that define the edges from current viewpoint.
 	auto &vp = viewpoint;
 	boxpos = (vp->Pos.X <= bspcoord[BOXLEFT] ? 0 : vp->Pos.X < bspcoord[BOXRIGHT ] ? 1 : 2) +
 		(vp->Pos.Y >= bspcoord[BOXTOP ] ? 0 : vp->Pos.Y > bspcoord[BOXBOTTOM] ? 4 : 8);
-	
+
 	if (boxpos == 5) return true;
-	
+
 	check = checkcoord[boxpos];
 	angle1 = PointToPseudoAngle (bspcoord[check[0]], bspcoord[check[1]]);
 	angle2 = PointToPseudoAngle (bspcoord[check[2]], bspcoord[check[3]]);
@@ -562,7 +548,7 @@ bool Clipper::CheckBox(const float *bspcoord)
 		  break;
 	  }
 	}
-	
+
 	return SafeCheckRange(angle2, angle1);
 }
 

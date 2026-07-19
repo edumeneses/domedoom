@@ -1,28 +1,20 @@
-//
-//-----------------------------------------------------------------------------
-//
-// Copyright 2016 ZZYZX, Christoph Oelckers, et. al.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
-// DESCRIPTION:
-// Everything that has to do with portals
-// (both of the line and sector variety)
-//
-//-----------------------------------------------------------------------------
+/*
+** portal.cpp
+**
+** Everything that has to do with portals (both line and sector variety)
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2016 ZZYZX
+** Copyright 2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include "p_local.h"
 #include "p_blockmap.h"
@@ -37,9 +29,6 @@
 #include "p_spec.h"
 #include "g_levellocals.h"
 #include "vm.h"
-
-// simulation recurions maximum
-CVAR(Int, sv_portal_recursions, 4, CVAR_ARCHIVE|CVAR_SERVERINFO)
 
 DEFINE_FIELD(FSectorPortal, mType);
 DEFINE_FIELD(FSectorPortal, mFlags);
@@ -402,7 +391,7 @@ bool FLevelLocals::ChangePortal(line_t *ln, int thisid, int destid)
 inline int P_GetLineSide(const DVector2 &pos, const linebase_t *line)
 {
 	double v = (pos.Y - line->v1->fY()) * line->Delta().X + (line->v1->fX() - pos.X) * line->Delta().Y;
-	return v < -1. / 65536. ? -1 : v > 1. / 65536 ? 1 : 0;
+	return v < -EQUAL_EPSILON ? -1 : v > EQUAL_EPSILON ? 1 : 0;
 }
 
 bool P_ClipLineToPortal(linebase_t* line, linebase_t* portal, DVector2 view, bool partial, bool samebehind)
@@ -432,7 +421,7 @@ bool P_ClipLineToPortal(linebase_t* line, linebase_t* portal, DVector2 view, boo
 	else
 	{
 		// The line intersects with the portal straight, so we need to do another check to see how both ends of the portal lie in relation to the viewer.
-		int viewside = P_GetLineSide(view, line); 
+		int viewside = P_GetLineSide(view, line);
 		int p1side = P_GetLineSide(portal->v1->fPos(), line);
 		int p2side = P_GetLineSide(portal->v2->fPos(), line);
 		// Do the same handling of points on the portal straight as above.
@@ -609,7 +598,7 @@ unsigned FLevelLocals::GetStackPortal(AActor *point, int plane)
 //
 // GetPortalOffsetPosition
 //
-// Offsets a given coordinate if the trace from the origin crosses an 
+// Offsets a given coordinate if the trace from the origin crosses an
 // interactive line-to-line portal.
 //
 //============================================================================
@@ -801,7 +790,7 @@ void FLevelLocals::AddDisplacementForPortal(FLinePortal *portal)
 
 bool FLevelLocals::ConnectPortalGroups()
 {
-	// Now 
+	// Now
 	uint8_t indirect = 1;
 	bool bogus = false;
 	bool changed;

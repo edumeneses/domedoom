@@ -1,22 +1,22 @@
 /*
-**  Drawer commands for spans
-**  Copyright (c) 2016 Magnus Norddahl
+** r_draw_span32.h
 **
-**  This software is provided 'as-is', without any express or implied
-**  warranty.  In no event will the authors be held liable for any damages
-**  arising from the use of this software.
+** Drawer commands for spans
 **
-**  Permission is granted to anyone to use this software for any purpose,
-**  including commercial applications, and to alter it and redistribute it
-**  freely, subject to the following restrictions:
+**---------------------------------------------------------------------------
 **
-**  1. The origin of this software must not be misrepresented; you must not
-**     claim that you wrote the original software. If you use this software
-**     in a product, an acknowledgment in the product documentation would be
-**     appreciated but is not required.
-**  2. Altered source versions must be plainly marked as such, and must not be
-**     misrepresented as being the original software.
-**  3. This notice may not be removed or altered from any source distribution.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2016 Magnus Norddahl
+**
+** SPDX-License-Identifier: Zlib
+**
+**---------------------------------------------------------------------------
 **
 */
 
@@ -78,12 +78,12 @@ namespace swrenderer
 			texdata.ystep = args.TextureVStep();
 			texdata.xfrac = args.TextureUPos();
 			texdata.yfrac = args.TextureVPos();
-			
+
 			texdata.source = (const uint32_t*)args.TexturePixels();
-			
+
 			double lod = args.TextureLOD();
 			bool mipmapped = args.MipmappedTexture();
-			
+
 			bool magnifying = lod < 0.0;
 			if (r_mipmap && mipmapped)
 			{
@@ -105,7 +105,7 @@ namespace swrenderer
 
 			bool is_nearest_filter = (magnifying && !r_magfilter) || (!magnifying && !r_minfilter);
 			bool is_64x64 = texdata.width == 64 && texdata.height == 64;
-			
+
 			auto shade_constants = args.ColormapConstants();
 			if (shade_constants.simple_shade)
 			{

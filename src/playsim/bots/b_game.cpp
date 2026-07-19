@@ -1,45 +1,29 @@
 /*
+** b_game.cpp
 **
+** Makes the bot fit into game
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 1999 Martin Colberg
-** Copyright 1999-2016 Randy Heit
+** Copyright 1999-2016 Marisa Heit
 ** Copyright 2005-2016 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
-**
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **---------------------------------------------------------------------------
 **
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+** Misc things that has to do with the bot, like it's spawning etc.
 */
-/*******************************************
-* B_game.h                                 *
-* Description:                             *
-* Misc things that has to do with the bot, *
-* like it's spawning etc.                  *
-* Makes the bot fit into game              *
-*                                          *
-*******************************************/
+
 /*The files which are modified for Cajun Purpose
 D_player.h (v0.85: added some variables)
 D_netcmd.c (v0.71)
@@ -72,27 +56,25 @@ What I know has to be done. in near future.
 - Do some hunting/fleeing functions.
 - Make the roaming 100% flawfree.
 - Fix all SIGSEVS (Below is known SIGSEVS)
-      -Nada (but they might be there)
+	  -Nada (but they might be there)
 ******************************************
 Everything that is changed is marked (maybe commented) with "Added by MC"
 */
 
-#include "doomdef.h"
-#include "p_local.h"
 #include "b_bot.h"
-#include "g_game.h"
-#include "doomstat.h"
 #include "cmdlib.h"
-#include "m_misc.h"
-#include "sbar.h"
-#include "p_acs.h"
-#include "teaminfo.h"
 #include "d_net.h"
 #include "d_netinf.h"
 #include "d_player.h"
+#include "doomstat.h"
 #include "events.h"
-#include "vm.h"
+#include "g_game.h"
 #include "g_levellocals.h"
+#include "i_specialpaths.h"
+#include "p_acs.h"
+#include "p_local.h"
+#include "sbar.h"
+#include "teaminfo.h"
 
 #if !defined _WIN32 && !defined __APPLE__
 #include "i_system.h"  // for SHARE_DIR
@@ -249,7 +231,7 @@ bool FCajunMaster::SpawnBot (const char *name, int color)
 
 		if (thebot == NULL)
 		{
-   		 	Printf ("couldn't find %s in %s\n", name, BOTFILENAME);
+			Printf ("couldn't find %s in %s\n", name, BOTFILENAME);
 			return false;
 		}
 		else if (thebot->inuse == BOTINUSE_Waiting)
@@ -258,7 +240,7 @@ bool FCajunMaster::SpawnBot (const char *name, int color)
 		}
 		else if (thebot->inuse == BOTINUSE_Yes)
 		{
-   		 	Printf ("%s is already in the thick\n", name);
+			Printf ("%s is already in the thick\n", name);
 			return false;
 		}
 	}
@@ -500,7 +482,7 @@ FString M_GetCajunPath(const char* botfilename)
 	{
 		// Then check in SHARE_DIR/botfilename.
 		path = SHARE_DIR;
-		path << botfilename;
+		path << "/" << botfilename;
 		if (!FileExists(path))
 		{
 			path = "";
@@ -522,7 +504,19 @@ bool FCajunMaster::LoadBots ()
 	tmp = M_GetCajunPath(BOTFILENAME);
 	if (tmp.IsEmpty())
 	{
-		DPrintf (DMSG_ERROR, "No " BOTFILENAME ", so no bots\n");
+		// Adds a few default bots that can always be summoned for testing.
+		for (int i = 0; i < 5; ++i)
+		{
+			botinfo_t* defaultBot = new botinfo_t;
+			defaultBot->Name = FStringf("DefaultBot%d", i);
+			defaultBot->Info = FStringf("\\autoaim\\0\\movebob\\.25\\name\\%s\\team\\255\\playerclass\\random", defaultBot->Name.GetChars());
+			int skillVal = 25 * i;
+			defaultBot->skill = { i, i, i, i };
+			defaultBot->next = botinfo;
+			defaultBot->lastteam = TEAM_NONE;
+			botinfo = defaultBot;
+		}
+
 		return false;
 	}
 	if (!sc.OpenFile(tmp.GetChars()))

@@ -1,23 +1,21 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2016 Magnus Norddahl
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
+/*
+** r_particle.cpp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2016 Magnus Norddahl
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,6 +63,7 @@
 #include "swrenderer/drawers/r_draw_pal.h"
 #include "r_memory.h"
 #include "swrenderer/r_renderthread.h"
+#include "m_round.h"
 
 EXTERN_CVAR(Bool, r_fullbrightignoresectorcolor);
 
@@ -121,18 +120,18 @@ namespace swrenderer
 		// calculate edges of the shape
 		double psize = particle->size / 8.0;
 
-		x1 = max<int>(renderportal->WindowLeft, thread->Viewport->viewwindow.centerx + xs_RoundToInt((tx - psize) * xscale));
-		x2 = min<int>(renderportal->WindowRight, thread->Viewport->viewwindow.centerx + xs_RoundToInt((tx + psize) * xscale));
+		x1 = max<int>(renderportal->WindowLeft, thread->Viewport->viewwindow.centerx + RoundHalfUp((tx - psize) * xscale));
+		x2 = min<int>(renderportal->WindowRight, thread->Viewport->viewwindow.centerx + RoundHalfUp((tx + psize) * xscale));
 
 		if (x1 >= x2)
 			return;
-		
+
 		auto viewport = thread->Viewport.get();
 
 		yscale = xscale; // YaspectMul is not needed for particles as they should always be square
 		ty = (ippz - viewport->viewpoint.Pos.Z) * thread->Viewport->YaspectMul;
-		y1 = xs_RoundToInt(viewport->CenterY - (ty + psize) * yscale);
-		y2 = xs_RoundToInt(viewport->CenterY - (ty - psize) * yscale);
+		y1 = RoundHalfUp(viewport->CenterY - (ty + psize) * yscale);
+		y2 = RoundHalfUp(viewport->CenterY - (ty - psize) * yscale);
 
 		// Clip the particle now. Because it's a point and projected as its subsector is
 		// entered, we don't need to clip it to drawsegs like a normal sprite.
@@ -248,7 +247,7 @@ namespace swrenderer
 		// vis->renderflags holds translucency level (0-255)
 		fixed_t fglevel = ((vis->renderflags + 1) << 8) & ~0x3ff;
 		uint32_t alpha = fglevel * 256 / FRACUNIT;
-		
+
 		auto viewport = thread->Viewport.get();
 		auto drawers = thread->Drawers(viewport);
 

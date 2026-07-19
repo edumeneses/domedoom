@@ -1,3 +1,22 @@
+/*
+** dsparil.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Boss spot ----------------------------------------------------------------
 
@@ -76,8 +95,8 @@ class Sorcerer1 : Actor
 		SRCR L 12;
 		SRCR P -1 A_SorcererRise;
 	}
-	
-	
+
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_Sor1Pain
@@ -208,7 +227,7 @@ class SorcererFX1 : Actor
 		Stop;
 	}
 }
-		
+
 
 // Sorcerer 2 (D'Sparil without his serpent) --------------------------------
 
@@ -284,7 +303,7 @@ class Sorcerer2 : Actor
 		SDTH O -1 A_BossDeath;
 		Stop;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC P_DSparilTeleport
@@ -303,7 +322,7 @@ class Sorcerer2 : Actor
 		if (TeleportMove (spot.Pos, false))
 		{
 			Actor mo = Spawn("Sorcerer2Telefade", prev, ALLOW_REPLACE);
-			if (mo) 
+			if (mo)
 			{
 				mo.Translation = Translation;
 				mo.A_StartSound("misc/teleport", CHAN_BODY);
@@ -312,7 +331,7 @@ class Sorcerer2 : Actor
 			A_StartSound ("misc/teleport", CHAN_BODY);
 			SetZ(floorz);
 			angle = spot.angle;
-			vel = (0,0,0); 
+			vel = (0,0,0);
 		}
 	}
 
@@ -429,7 +448,7 @@ class Sorcerer2FX1 : Actor
 		FX16 HIJKL 5 BRIGHT;
 		Stop;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_BlueSpark
@@ -472,7 +491,7 @@ class Sorcerer2FXSpark : Actor
 	Spawn:
 		FX16 DEF 12 BRIGHT;
 		Stop;
-	}	
+	}
 }
 
 // Sorcerer 2 FX 2 ----------------------------------------------------------
@@ -552,4 +571,3 @@ class Sorcerer2Telefade : Actor
 		Stop;
 	}
 }
-

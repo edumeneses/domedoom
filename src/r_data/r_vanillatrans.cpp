@@ -1,106 +1,45 @@
-/* 
+/*
+** r_vanillatrans.cpp
+**
+** Figures out whether to turn off transparency for certain native game objects
+**
 **---------------------------------------------------------------------------
 **
-** Copyright(C) 2017 Rachael Alexanderson
-** All rights reserved.
+** Copyright 2017 Rachael Alexanderson
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+**---------------------------------------------------------------------------
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** Code written prior to 2026 is also licensed under:
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
-/*
-** r_vanillatrans.cpp
-** Figures out whether to turn off transparency for certain native game objects
-**
-**/
-
 
 #include "c_cvars.h"
 #include "filesystem.h"
 #include "doomtype.h"
-#ifdef _DEBUG
-#include "c_dispatch.h"
-#endif
 
-bool r_UseVanillaTransparency;
-CVAR (Int, r_vanillatrans, 0, CVAR_ARCHIVE)
+int r_UseVanillaTransparency = 0;
+CVAR(Int, r_vanillatrans, 0, CVAR_ARCHIVE)
+TMap<FName, bool> AutoTrans = {};
+bool bDehackedTransPresent = false;
+bool bModdedTransPresent = false;
 
-namespace
+int UseVanillaTransparency()
 {
-	bool firstTime = true;
-	bool foundDehacked = false;
-	bool foundDecorate = false;
-	bool foundZScript = false;
-}
-#ifdef _DEBUG
-CCMD (debug_checklumps)
-{
-	Printf("firstTime: %d\n", firstTime);
-	Printf("foundDehacked: %d\n", foundDehacked);
-	Printf("foundDecorate: %d\n", foundDecorate);
-	Printf("foundZScript: %d\n", foundZScript);
-}
-#endif
-
-void UpdateVanillaTransparency()
-{
-	firstTime = true;
-}
-
-bool UseVanillaTransparency()
-{
-	if (firstTime)
-	{
-		int lastlump = 0;
-		fileSystem.FindLump("ZSCRIPT", &lastlump); // ignore first ZScript
-		if (fileSystem.FindLump("ZSCRIPT", &lastlump) == -1) // no loaded ZScript
-		{
-			lastlump = 0;
-			foundDehacked = fileSystem.FindLump("DEHACKED", &lastlump) != -1;
-			lastlump = 0;
-			foundDecorate = fileSystem.FindLump("DECORATE", &lastlump) != -1;
-			foundZScript = false;
-		}
-		else
-		{
-			foundZScript = true;
-			foundDehacked = false;
-			foundDecorate = false;
-		}
-		firstTime = false;
-	}
-
 	switch (r_vanillatrans)
 	{
-		case 0: return false;
-		case 1: return true;
+		case 2:
+			return bDehackedTransPresent;
+		case 3:
+			return !bModdedTransPresent;
 		default:
-		if (foundDehacked)
-			return true;
-		if (foundDecorate)
-			return false;
-		return r_vanillatrans == 3;
+			return clamp<int>(r_vanillatrans, -1, 1);
 	}
 }

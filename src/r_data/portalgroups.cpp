@@ -1,24 +1,30 @@
-// 
-//---------------------------------------------------------------------------
-//
-// Copyright(C) 2005-2016 Christoph Oelckers
-// All rights reserved.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
+/*
+** portalgroups.cpp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2005-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** This program is free software: you can redistribute it and/or modify
+** it under the terms of the GNU Lesser General Public License as published by
+** the Free Software Foundation, either version 3 of the License, or
+** (at your option) any later version.
+**
+** This program is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+** GNU Lesser General Public License for more details.
+**
+** You should have received a copy of the GNU Lesser General Public License
+** along with this program.  If not, see <https://www.gnu.org/licenses/>.
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include "doomtype.h"
 #include "p_local.h"
@@ -27,7 +33,7 @@
 #include "a_sharedglobal.h"
 #include "g_levellocals.h"
 #include "r_utility.h"
-
+#include "m_round.h"
 
 //==========================================================================
 //
@@ -117,19 +123,19 @@ struct FCoverageBuilder
 		double v1y = (double)bsp->y;
 		double v1dx = (double)bsp->dx;
 		double v1dy = (double)bsp->dy;
-			
+
 		den = v1dy*v2dx - v1dx*v2dy;
 
 		if (den == 0)
 			return false;		// parallel
-		
+
 		num = (v1x - v2x)*v1dy + (v2y - v1y)*v1dx;
 		frac = num / den;
 
 		if (frac < 0. || frac > 1.) return false;
 
-		v->x = xs_RoundToInt(v2x + frac * v2dx);
-		v->y = xs_RoundToInt(v2y + frac * v2dy);
+		v->x = RoundHalfUp(v2x + frac * v2dx);
+		v->y = RoundHalfUp(v2y + frac * v2dy);
 		return true;
 	}
 
@@ -140,7 +146,7 @@ struct FCoverageBuilder
 	//==========================================================================
 
 	double PartitionDistance(FCoverageVertex *vt, node_t *node)
-	{	
+	{
 		return fabs(double(-node->dy) * (vt->x - node->x) + double(node->dx) * (vt->y - node->y)) / (node->len * 65536.);
 	}
 
@@ -151,7 +157,7 @@ struct FCoverageBuilder
 	//==========================================================================
 
 	int PointOnSide(FCoverageVertex *vt, node_t *node)
-	{	
+	{
 		return R_PointOnSide(vt->x, vt->y, node);
 	}
 
@@ -200,7 +206,7 @@ struct FCoverageBuilder
 					int side = PointOnSide(v1, bsp);
 					lists[side].Push(vl);
 				}
-				else 
+				else
 				{
 					int side1 = PointOnSide(v1, bsp);
 					int side2 = PointOnSide(v2, bsp);
@@ -224,7 +230,7 @@ struct FCoverageBuilder
 							lists[side1].Push(vl);
 						}
 					}
-					else 
+					else
 					{
 						// both points on the same side.
 						lists[side1].Push(vl);
@@ -295,11 +301,11 @@ void BuildPortalCoverage(FLevelLocals *Level, FPortalCoverage *coverage, subsect
 	}
 
 	FCoverageBuilder build(subsector);
-	build.center.x = xs_CRoundToInt(centerx / subsector->numlines);
-	build.center.y = xs_CRoundToInt(centery / subsector->numlines);
+	build.center.x = RoundHalfEven(centerx / subsector->numlines);
+	build.center.y = RoundHalfEven(centery / subsector->numlines);
 
 	build.CollectNode(Level->HeadNode(), shape);
-	coverage->subsectors = new uint32_t[build.collect.Size()]; 
+	coverage->subsectors = new uint32_t[build.collect.Size()];
 	coverage->sscount = build.collect.Size();
 	memcpy(coverage->subsectors, &build.collect[0], build.collect.Size() * sizeof(uint32_t));
 }
@@ -332,7 +338,7 @@ static void CollectPortalSectors(FLevelLocals *Level, FPortalMap &collection)
 //==========================================================================
 //
 // group sector portals by displacement
-// The renderer can handle such a group in one go to avoid multiple 
+// The renderer can handle such a group in one go to avoid multiple
 // BSP traversals
 //
 //==========================================================================
@@ -385,7 +391,7 @@ static void GroupSectorPortals(FLevelLocals *Level)
 
 //==========================================================================
 //
-// Group the line portals 
+// Group the line portals
 // Each group must be a continuous set of colinear linedefs with no gaps
 //
 //==========================================================================
@@ -465,4 +471,3 @@ void InitPortalGroups(FLevelLocals *Level)
 		GroupSectorPortals(Level);
 	GroupLinePortals(Level);
 }
-

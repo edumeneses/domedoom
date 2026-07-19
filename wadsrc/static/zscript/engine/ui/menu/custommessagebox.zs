@@ -1,33 +1,23 @@
 /*
+** custommessagebox.zs
+**
+**
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2010-2017 Christoph Oelckers
-** Copyright 2022 Ricardo Luis Vaz Silva
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2022 Jay
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** All rights reserved.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+**---------------------------------------------------------------------------
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** Code written prior to 2026 is also licensed under:
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -41,11 +31,11 @@ class CustomMessageBoxMenuBase : Menu abstract
 	Font textFont, arrowFont;
 	int destWidth, destHeight;
 	String selector;
-	
+
 	abstract uint OptionCount();
 	abstract String OptionName(uint index);
 	abstract int OptionXOffset(uint index);
-	
+
 	abstract int OptionForShortcut(int char_key, out bool activate); // -1 for no shortcut, activate = true if this executes the option immediately
 
 	//=============================================================================
@@ -114,17 +104,17 @@ class CustomMessageBoxMenuBase : Menu abstract
 
 		for (i = 0; i < c; i++)
 		{
-			screen.DrawText (textFont, Font.CR_UNTRANSLATED, destWidth/2 - mMessage.StringWidth(i)*NotifyFontScale/2, y, mMessage.StringAt(i), DTA_VirtualWidth, destWidth, DTA_VirtualHeight, destHeight, DTA_KeepRatio, true, 
+			screen.DrawText (textFont, Font.CR_UNTRANSLATED, destWidth/2 - mMessage.StringWidth(i)*NotifyFontScale/2, y, mMessage.StringAt(i), DTA_VirtualWidth, destWidth, DTA_VirtualHeight, destHeight, DTA_KeepRatio, true,
 				DTA_ScaleX, NotifyFontScale, DTA_ScaleY, NotifyFontScale);
 			y += fontheight;
 		}
 
 		y += fontheight;
 		mMouseY = int(y);
-		
+
 		let n = optionCount();
 		for(uint i = 0; i < n; i++)
-        {
+		{
 			screen.DrawText(textFont, messageSelection == i? OptionMenuSettings.mFontColorSelection : OptionMenuSettings.mFontColor, (destWidth / 2) + OptionXOffset(i), y + (fontheight * i), Stringtable.Localize(optionName(i)), DTA_VirtualWidth, destWidth, DTA_VirtualHeight, destHeight, DTA_KeepRatio, 	true, DTA_ScaleX, NotifyFontScale, DTA_ScaleY, NotifyFontScale);
 		}
 
@@ -171,10 +161,10 @@ class CustomMessageBoxMenuBase : Menu abstract
 			// tolower
 			int ch = ev.KeyChar;
 			ch = ch >= 65 && ch <91? ch + 32 : ch;
-			
+
 			bool activate;
 			int opt = optionForShortcut(ch,activate);
-			
+
 			if(opt >= 0){
 				if(activate || opt == messageSelection) {
 					HandleResult(messageSelection);
@@ -246,7 +236,7 @@ class CustomMessageBoxMenuBase : Menu abstract
 		// convert x/y from screen to virtual coordinates, according to CleanX/Yfac use in DrawTexture
 		x = x * destWidth / screen.GetWidth();
 		y = y * destHeight / screen.GetHeight();
-		
+
 		int n = OptionCount();
 
 		if (x >= mMouseLeft && x <= mMouseRight && y >= mMouseY && y < mMouseY + (n * fh))

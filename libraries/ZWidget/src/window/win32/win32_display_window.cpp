@@ -1,4 +1,3 @@
-
 #include "win32_display_window.h"
 #include <zwidget/core/image.h>
 #include <windowsx.h>
@@ -6,8 +5,11 @@
 #include <cmath>
 #include <vector>
 #include <dwmapi.h>
+#include <malloc.h>
 
 #pragma comment(lib, "dwmapi.lib")
+
+#define MESSAGE_NOTIFY_WINDOW (WM_APP + 100)
 
 #ifndef HID_USAGE_PAGE_GENERIC
 #define HID_USAGE_PAGE_GENERIC		((USHORT) 0x01)
@@ -77,7 +79,7 @@ static double DelayLoadGetDpiScale(HWND hwnd)
 	}
 }
 
-Win32DisplayWindow::Win32DisplayWindow(DisplayWindowHost* windowHost, bool popupWindow, Win32DisplayWindow* owner, RenderAPI renderAPI) : WindowHost(windowHost), PopupWindow(popupWindow)
+Win32DisplayWindow::Win32DisplayWindow(DisplayWindowHost* windowHost, Win32DisplayWindow* owner, RenderAPI renderAPI, struct WindowParams params) : WindowHost(windowHost), PopupWindow(params.popup)
 {
 	Windows.push_front(this);
 	WindowsIterator = Windows.begin();
@@ -97,7 +99,7 @@ Win32DisplayWindow::Win32DisplayWindow(DisplayWindowHost* windowHost, bool popup
 	// WS_THICKFRAME makes the window resizable
 
 	DWORD style = 0, exstyle = 0;
-	if (popupWindow)
+	if (params.popup)
 	{
 		exstyle = WS_EX_NOACTIVATE;
 		style = WS_POPUP;
@@ -105,9 +107,40 @@ Win32DisplayWindow::Win32DisplayWindow(DisplayWindowHost* windowHost, bool popup
 	else
 	{
 		exstyle = WS_EX_APPWINDOW | WS_EX_DLGMODALFRAME;
-		style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
+		style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | (params.resizable ? (WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX) : WS_MINIMIZEBOX);
 	}
-	CreateWindowEx(exstyle, L"ZWidgetWindow", L"", style, 0, 0, 100, 100, owner ? owner->WindowHandle.hwnd : 0, 0, GetModuleHandle(0), this);
+
+	float scale = GetDpiForSystem()/96.0;
+	resizable = params.resizable;
+	minW = scale * params.minSize.width;
+	minH = scale * params.minSize.height;
+	maxW = scale * params.maxSize.width;
+	maxH = scale * params.maxSize.height;
+	LONG width = params.size.width * scale;
+	LONG height = params.size.height * scale;
+	if (width < minW) width = minW;
+	if (height < minH) height = minH;
+	RECT wr = { 0, 0, width, height };
+	AdjustWindowRectEx(&wr, style, FALSE, exstyle);
+	padW = wr.right - wr.left - width;
+	padH = wr.bottom - wr.top - height;
+	width += padW;
+	height += padH;
+	minW += padW;
+	minH += padH;
+	maxW += padW;
+	maxH += padH;
+
+	int x = 0, y = 0;
+	if (params.centered)
+	{
+		auto s = GetScreenSize() * scale;
+		x = std::max(0.0, s.width - width) / 2;
+		y = std::max(0.0, s.height - height) / 2;
+	}
+
+	CreateWindowEx(exstyle, L"ZWidgetWindow", L"", style, x, y, width, height,
+		owner ? owner->WindowHandle.hwnd : 0, 0, GetModuleHandle(0), this);
 }
 
 Win32DisplayWindow::~Win32DisplayWindow()
@@ -119,9 +152,9 @@ Win32DisplayWindow::~Win32DisplayWindow()
 	}
 
 	if (SmallIcon)
-		DestroyCursor(SmallIcon);
+		DestroyIcon(SmallIcon);
 	if (LargeIcon)
-		DestroyCursor(LargeIcon);
+		DestroyIcon(LargeIcon);
 
 	Windows.erase(WindowsIterator);
 }
@@ -131,7 +164,7 @@ void Win32DisplayWindow::SetWindowTitle(const std::string& text)
 	SetWindowText(WindowHandle.hwnd, to_utf16(text).c_str());
 }
 
-static HICON CreateIconFromImageList(HDC hdc, const std::vector<std::shared_ptr<Image>>& images, int desiredSize)
+static HICON CreateIconFromImageList(const std::vector<std::shared_ptr<Image>>& images, int desiredSize)
 {
 	if (images.empty())
 		return 0;
@@ -147,13 +180,32 @@ static HICON CreateIconFromImageList(HDC hdc, const std::vector<std::shared_ptr<
 
 	int width = image->GetWidth();
 	int height = image->GetHeight();
-	std::vector<uint32_t> pixels(width * height * 4);
+	uint32_t* pixels = nullptr;
+
+	HDC hdc = CreateCompatibleDC(0);
+	if (!hdc)
+		return 0;
+
+	BITMAPV5HEADER bmp_header = {};
+	bmp_header.bV5Size = sizeof(BITMAPV5HEADER);
+	bmp_header.bV5Width = width;
+	bmp_header.bV5Height = height;
+	bmp_header.bV5Planes = 1;
+	bmp_header.bV5BitCount = 32;
+	bmp_header.bV5Compression = BI_RGB;
+
+	HBITMAP bitmap = CreateDIBSection(hdc, (BITMAPINFO*)&bmp_header, DIB_RGB_COLORS, (void**)&pixels, 0, 0);
+	if (!bitmap)
+	{
+		DeleteDC(hdc);
+		return 0;
+	}
 
 	if (image->GetFormat() == ImageFormat::R8G8B8A8)
 	{
 		int count = width * height;
 		const uint32_t* src = (const uint32_t*)image->GetData();
-		uint32_t* dest = pixels.data();
+		uint32_t* dest = pixels;
 		for (int i = 0; i < count; i++)
 		{
 			uint32_t r = src[i] & 0xff;
@@ -165,24 +217,14 @@ static HICON CreateIconFromImageList(HDC hdc, const std::vector<std::shared_ptr<
 	}
 	else if (image->GetFormat() == ImageFormat::B8G8R8A8)
 	{
-		memcpy(pixels.data(), image->GetData(), width * height * 4);
+		memcpy(pixels, image->GetData(), width * height * 4);
 	}
 	else
 	{
+		DeleteObject(bitmap);
+		DeleteDC(hdc);
 		return 0;
 	}
-
-	BITMAPV5HEADER bmp_header = {};
-	bmp_header.bV5Size = sizeof(BITMAPV5HEADER);
-	bmp_header.bV5Width = width;
-	bmp_header.bV5Height = height;
-	bmp_header.bV5Planes = 1;
-	bmp_header.bV5BitCount = 32;
-	bmp_header.bV5Compression = BI_RGB;
-
-	HBITMAP bitmap = CreateDIBitmap(hdc, (BITMAPINFOHEADER*)&bmp_header, CBM_INIT, pixels.data(), (BITMAPINFO*)&bmp_header, DIB_RGB_COLORS);
-	if (!bitmap)
-		return 0;
 
 	ICONINFO iconinfo = {};
 	iconinfo.fIcon = TRUE;
@@ -190,6 +232,7 @@ static HICON CreateIconFromImageList(HDC hdc, const std::vector<std::shared_ptr<
 	iconinfo.hbmMask = bitmap;
 	HICON icon = CreateIconIndirect(&iconinfo);
 	DeleteObject(bitmap);
+	DeleteDC(hdc);
 	return icon;
 }
 
@@ -199,22 +242,17 @@ void Win32DisplayWindow::SetWindowIcon(const std::vector<std::shared_ptr<Image>>
 
 	if (SmallIcon)
 	{
-		DestroyCursor(SmallIcon);
+		DestroyIcon(SmallIcon);
 		SmallIcon = {};
 	}
 	if (LargeIcon)
 	{
-		DestroyCursor(LargeIcon);
+		DestroyIcon(LargeIcon);
 		LargeIcon = {};
 	}
 
-	HDC hdc = GetDC(WindowHandle.hwnd);
-	if (hdc)
-	{
-		SmallIcon = CreateIconFromImageList(hdc, images, (int)std::round(16 * dpiScale));
-		LargeIcon = CreateIconFromImageList(hdc, images, (int)std::round(32 * dpiScale));
-		ReleaseDC(WindowHandle.hwnd, hdc);
-	}
+	SmallIcon = CreateIconFromImageList(images, (int)std::round(16 * dpiScale));
+	LargeIcon = CreateIconFromImageList(images, (int)std::round(32 * dpiScale));
 
 	SendMessage(WindowHandle.hwnd, WM_SETICON, ICON_SMALL, (LPARAM)SmallIcon);
 	SendMessage(WindowHandle.hwnd, WM_SETICON, ICON_BIG, (LPARAM)LargeIcon);
@@ -264,6 +302,12 @@ void Win32DisplayWindow::SetClientFrame(const Rect& box)
 void Win32DisplayWindow::Show()
 {
 	ShowWindow(WindowHandle.hwnd, PopupWindow ? SW_SHOWNA : SW_SHOW);
+}
+
+
+void Win32DisplayWindow::Restore()
+{
+	ShowWindow(WindowHandle.hwnd, SW_RESTORE);
 }
 
 void Win32DisplayWindow::ShowFullscreen()
@@ -561,6 +605,19 @@ LRESULT Win32DisplayWindow::OnWindowMessage(UINT msg, WPARAM wparam, LPARAM lpar
 		}
 		return DefWindowProc(WindowHandle.hwnd, msg, wparam, lparam);
 	}
+	else if (msg == WM_GETMINMAXINFO)
+	{
+		if (resizable)
+		{
+			LPMINMAXINFO lpMMI = (LPMINMAXINFO)lparam;
+			int minWL = GetSystemMetrics(SM_CXMINTRACK), minHL = GetSystemMetrics(SM_CYMINTRACK);
+			int maxWL = GetSystemMetrics(SM_CXMAXTRACK), maxHL = GetSystemMetrics(SM_CYMAXTRACK);
+			lpMMI->ptMinTrackSize.x = std::max(minW, std::max(1, minWL));
+			lpMMI->ptMinTrackSize.y = std::max(minH, std::max(1, minHL));
+			lpMMI->ptMaxTrackSize.x = std::min(maxW >= lpMMI->ptMinTrackSize.x? maxW: maxWL, maxWL);
+			lpMMI->ptMaxTrackSize.y = std::min(maxH >= lpMMI->ptMinTrackSize.y? maxH: maxHL, maxHL);
+		}
+	}
 	else if (msg == WM_PAINT)
 	{
 		PAINTSTRUCT paintStruct = {};
@@ -572,6 +629,10 @@ LRESULT Win32DisplayWindow::OnWindowMessage(UINT msg, WPARAM wparam, LPARAM lpar
 			PaintDC = 0;
 		}
 		return 0;
+	}
+	else if (msg == MESSAGE_NOTIFY_WINDOW)
+	{
+		WindowHost->OnWindowNotified();
 	}
 	else if (msg == WM_ACTIVATE)
 	{
@@ -695,6 +756,22 @@ LRESULT Win32DisplayWindow::OnWindowMessage(UINT msg, WPARAM wparam, LPARAM lpar
 			::ShowCursor(TRUE);
 		}
 	}
+	else if (msg == WM_GETICON)
+	{
+		// Windows 11 2025H2 Disaster Edition broke DefWindowProc's implementation of WM_GETICON
+		// The icon doesn't always get set, so we return the icon ourselves now.
+		// Note that we still call WM_SETICON when changing the icons as that will put it in the caption bar.
+
+		// int dpi = lparam;
+		if (wparam == ICON_BIG)
+		{
+			return (LRESULT)LargeIcon;
+		}
+		else if (wparam == ICON_SMALL || wparam == ICON_SMALL2)
+		{
+			return (LRESULT)SmallIcon;
+		}
+	}
 	else if (msg == WM_CLOSE)
 	{
 		WindowHost->OnWindowClose();
@@ -710,6 +787,36 @@ LRESULT Win32DisplayWindow::OnWindowMessage(UINT msg, WPARAM wparam, LPARAM lpar
 		NCCALCSIZE_PARAMS* calcsize = (NCCALCSIZE_PARAMS*)lparam;
 		return WVR_REDRAW;
 	}*/
+	else if (msg == WM_CREATE)
+	{
+		DragAcceptFiles(WindowHandle.hwnd, TRUE);
+		return 0;
+	}
+	else if (msg == WM_DROPFILES)
+	{
+		HDROP hdrop = (HDROP)wparam;
+		UINT filecount = DragQueryFileW(hdrop, 0xffffffff, NULL, 0);
+		WCHAR* path = NULL;
+		for (UINT i = 0; i < filecount; i++)
+		{
+			UINT pathlen = DragQueryFileW(hdrop, i, NULL, 0);
+			if (pathlen != 0)
+			{
+				WCHAR* newpath = (WCHAR*)realloc(path, (size_t)(pathlen + 1) * sizeof(WCHAR));
+				if (newpath)
+				{
+					path = newpath;
+					if (DragQueryFileW(hdrop, i, path, pathlen + 1) != 0)
+					{
+						WindowHost->OnFileDrop(from_utf16(path));
+					}
+				}
+			}
+		}
+		free(path);
+		DragFinish(hdrop);
+		return 0;
+	}
 
 	return DefWindowProc(WindowHandle.hwnd, msg, wparam, lparam);
 }
@@ -889,6 +996,11 @@ VkSurfaceKHR Win32DisplayWindow::CreateVulkanSurface(VkInstance instance)
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Could not create vulkan surface");
 	return surface;
+}
+
+void Win32DisplayWindow::NotifyWindow()
+{
+	PostMessageA(WindowHandle.hwnd, MESSAGE_NOTIFY_WINDOW, 0, 0);
 }
 
 std::vector<std::string> Win32DisplayWindow::GetVulkanInstanceExtensions()

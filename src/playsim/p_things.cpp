@@ -1,33 +1,22 @@
 /*
 ** p_things.cpp
+**
 ** ACS-accessible thing utilities
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2007 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -64,7 +53,7 @@ bool FLevelLocals::EV_Thing_Spawn (int tid, AActor *source, int type, DAngle ang
 	// Handle decorate replacements.
 	kind = kind->GetReplacement(this);
 
-	if ((GetDefaultByType(kind)->flags3 & MF3_ISMONSTER) && 
+	if ((GetDefaultByType(kind)->flags3 & MF3_ISMONSTER) &&
 		((dmflags & DF_NO_MONSTERS) || (flags2 & LEVEL2_NOMONSTERS)))
 		return false;
 
@@ -285,7 +274,7 @@ bool FLevelLocals::EV_Thing_Projectile (int tid, AActor *source, int type, const
 	kind = kind->GetReplacement(this);
 
 	defflags3 = GetDefaultByType(kind)->flags3;
-	if ((defflags3 & MF3_ISMONSTER) && 
+	if ((defflags3 & MF3_ISMONSTER) &&
 		((dmflags & DF_NO_MONSTERS) || (flags2 & LEVEL2_NOMONSTERS)))
 		return false;
 
@@ -447,7 +436,7 @@ void P_RemoveThing(AActor * actor)
 
 bool P_Thing_Raise(AActor *thing, AActor *raiser, int flags)
 {
-	if (!thing)	
+	if (!thing)
 		return false;
 
 	FState * RaiseState = thing->GetRaiseState();
@@ -455,7 +444,7 @@ bool P_Thing_Raise(AActor *thing, AActor *raiser, int flags)
 	{
 		return false;	// monster doesn't have a raise state
 	}
-	
+
 	AActor *info = thing->GetDefault ();
 
 	thing->Vel.X = thing->Vel.Y = 0;
@@ -500,7 +489,7 @@ bool P_Thing_CanRaise(AActor *thing)
 	{
 		return false;
 	}
-	
+
 	AActor *info = thing->GetDefault();
 
 	// Check against real height and radius
@@ -574,14 +563,14 @@ int P_Thing_CheckInputNum(player_t *p, int inputnum)
 	}
 	return renum;
 }
-int P_Thing_CheckProximity(FLevelLocals *Level, AActor *self, PClass *classname, double distance, int count, int flags, int ptr, bool counting)
+int P_Thing_CheckProximity(FLevelLocals *Level, AActor *self, PClass *classname, double distance, int count, int flags, int ptr, bool counting, EPTRClientSideState clientSide)
 {
-	AActor *ref = COPY_AAPTREX(Level, self, ptr);
+	AActor *ref = COPY_AAPTREX(Level, self, ptr, clientSide);
 
 	// We need these to check out.
 	if (!ref || !classname || distance <= 0)
 		return 0;
-	
+
 	int counter = 0;
 	int result = 0;
 	double closer = distance, farther = 0, current = distance;
@@ -591,8 +580,8 @@ int P_Thing_CheckProximity(FLevelLocals *Level, AActor *self, PClass *classname,
 	auto it = self->Level->GetThinkerIterator<AActor>();
 	AActor *mo, *dist = nullptr;
 
-	// [MC] Process of elimination, I think, will get through this as quickly and 
-	// efficiently as possible. 
+	// [MC] Process of elimination, I think, will get through this as quickly and
+	// efficiently as possible.
 	while ((mo = it.Next()))
 	{
 		if (mo == ref) //Don't count self.
@@ -662,7 +651,7 @@ int P_Thing_CheckProximity(FLevelLocals *Level, AActor *self, PClass *classname,
 			// Abort if the number of matching classes nearby is greater, we have obviously succeeded in our goal.
 			// Don't abort if calling the counting version CheckProximity non-action function.
 			if (!counting && counter > count)
-			{					
+			{
 				result = (flags & (CPXF_LESSOREQUAL | CPXF_EXACT)) ? 0 : 1;
 
 				// However, if we have one SET* flag and either the closest or farthest flags, keep the function going.
@@ -714,7 +703,7 @@ int P_Thing_Warp(AActor *caller, AActor *reference, double xofs, double yofs, do
 	int oldpgroup = caller->Sector->PortalGroup;
 
 	zofs += reference->Height * heightoffset;
-	
+
 
 	if (!(flags & WARPF_ABSOLUTEANGLE))
 	{
@@ -734,7 +723,7 @@ int P_Thing_Warp(AActor *caller, AActor *reference, double xofs, double yofs, do
 			// (borrowed from A_SpawnItemEx, assumed workable)
 			// in relative mode negative y values mean 'left' and positive ones mean 'right'
 			// This is the inverse orientation of the absolute mode!
-			
+
 			xofs = xofs1 * c + yofs * s;
 			yofs = xofs1 * s - yofs * c;
 		}
@@ -775,10 +764,10 @@ int P_Thing_Warp(AActor *caller, AActor *reference, double xofs, double yofs, do
 
 			if (flags & WARPF_COPYPITCH)
 				caller->SetPitch(reference->Angles.Pitch, false);
-			
+
 			if (pitch != nullAngle)
 				caller->SetPitch(caller->Angles.Pitch + pitch, false);
-			
+
 			if (flags & WARPF_COPYVELOCITY)
 			{
 				caller->Vel = reference->Vel;
@@ -788,7 +777,7 @@ int P_Thing_Warp(AActor *caller, AActor *reference, double xofs, double yofs, do
 				caller->Vel.Zero();
 			}
 
-			// this is no fun with line portals 
+			// this is no fun with line portals
 			if (flags & WARPF_WARPINTERPOLATION)
 			{
 				// This just translates the movement but doesn't change the vector
@@ -831,14 +820,14 @@ DEFINE_ACTION_FUNCTION(AActor, Warp)
 {
 	PARAM_SELF_PROLOGUE(AActor)
 	PARAM_OBJECT(destination, AActor)
-	PARAM_FLOAT(xofs)				
-	PARAM_FLOAT(yofs)				
-	PARAM_FLOAT(zofs)				
-	PARAM_ANGLE(angle)				
-	PARAM_INT(flags)				
-	PARAM_FLOAT(heightoffset)		
-	PARAM_FLOAT(radiusoffset)		
-	PARAM_ANGLE(pitch)				
+	PARAM_FLOAT(xofs)
+	PARAM_FLOAT(yofs)
+	PARAM_FLOAT(zofs)
+	PARAM_ANGLE(angle)
+	PARAM_INT(flags)
+	PARAM_FLOAT(heightoffset)
+	PARAM_FLOAT(radiusoffset)
+	PARAM_ANGLE(pitch)
 
 	const int result = destination == nullptr ? 0 :
 		P_Thing_Warp(self, destination, xofs, yofs, zofs, angle, flags, heightoffset, radiusoffset, pitch);

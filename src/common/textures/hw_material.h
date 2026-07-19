@@ -1,3 +1,19 @@
+/*
+** hw_material.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2004-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #ifndef __GL_MATERIAL_H
 #define __GL_MATERIAL_H
@@ -12,12 +28,11 @@ struct MaterialLayerInfo
 {
 	FTexture* layerTexture;
 	int scaleFlags;
-	int clampflags;
 };
 
 //===========================================================================
-// 
-// this is the material class for OpenGL. 
+//
+// this is the material class for OpenGL.
 //
 //===========================================================================
 
@@ -32,7 +47,7 @@ class FMaterial
 public:
 	static void SetLayerCallback(IHardwareTexture* (*layercallback)(int layer, int translation));
 
-	FGameTexture *sourcetex;	// the owning texture. 
+	FGameTexture *sourcetex;	// the owning texture.
 
 	FMaterial(FGameTexture *tex, int scaleflags);
 	virtual ~FMaterial();
@@ -76,5 +91,3 @@ public:
 };
 
 #endif
-
-

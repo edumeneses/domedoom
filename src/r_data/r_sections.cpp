@@ -1,26 +1,30 @@
-// 
-//---------------------------------------------------------------------------
-//
-// Copyright(C) 2008-2018 Christoph Oelckers
-// All rights reserved.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
-
-
+/*
+** r_sections.cpp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2008-2018 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** This program is free software: you can redistribute it and/or modify
+** it under the terms of the GNU Lesser General Public License as published by
+** the Free Software Foundation, either version 3 of the License, or
+** (at your option) any later version.
+**
+** This program is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+** GNU Lesser General Public License for more details.
+**
+** You should have received a copy of the GNU Lesser General Public License
+** along with this program.  If not, see <https://www.gnu.org/licenses/>.
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include <future>
 
@@ -172,7 +176,7 @@ public:
 
 	//==========================================================================
 	//
-	// Go through the list and split each element further into 
+	// Go through the list and split each element further into
 	// connected groups of subsectors.
 	//
 	//==========================================================================
@@ -369,7 +373,7 @@ public:
 				auto secondseg = outersegs[i];
 				if (secondseg->v1->fPos() == seg->v2->fPos())
 				{
-					// This should never choose a miniseg over a real sidedef. 
+					// This should never choose a miniseg over a real sidedef.
 					if (pick == nullptr || (pick->sidedef == nullptr && secondseg->sidedef != nullptr))
 					{
 						pick = secondseg;
@@ -791,7 +795,7 @@ public:
 							rc.addVertex(sub.firstline[i].v1->fX(), sub.firstline[i].v1->fY());
 							rc.addVertex(sub.firstline[i].v2->fX(), sub.firstline[i].v2->fY());
 						}
-						// Pick the one closer to this subsector. 
+						// Pick the one closer to this subsector.
 						if (rc.distanceTo(section.bounds) < rc.distanceTo(bestfit->bounds))
 						{
 							bestfit = &section;
@@ -859,12 +863,12 @@ void PrintSections(FLevelLocals *Level)
 			}
 			if (seg.sidedef)
 			{
-				Printf(PRINT_LOG, "segment for sidedef %d (line %d) from (%2.6f, %2.6f) to (%2.6f, %2.6f)%s\n", 
+				Printf(PRINT_LOG, "segment for sidedef %d (line %d) from (%2.6f, %2.6f) to (%2.6f, %2.6f)%s\n",
 					seg.sidedef->Index(), seg.sidedef->linedef->Index(), seg.start->fX(), seg.start->fY(), seg.end->fX(), seg.end->fY(), partnerstring.GetChars());
 			}
 			else
 			{
-				Printf(PRINT_LOG, "segment for seg from (%2.6f, %2.6f) to (%2.6f, %2.6f)%s\n", 
+				Printf(PRINT_LOG, "segment for seg from (%2.6f, %2.6f) to (%2.6f, %2.6f)%s\n",
 					seg.start->fX(), seg.start->fY(), seg.end->fX(), seg.end->fY(), partnerstring.GetChars());
 			}
 		}
@@ -890,4 +894,3 @@ void CreateSections(FLevelLocals *Level)
 	creat.ConstructOutput(Level->sections);
 	creat.FixMissingReferences();
 }
-

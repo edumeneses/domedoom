@@ -1,3 +1,22 @@
+/*
+** weaponbfg.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // --------------------------------------------------------------------------
 //
 // BFG 9000
@@ -59,11 +78,11 @@ class BFG9000 : DoomWeapon
 
 extend class StateProvider
 {
-	action void A_BFGsound() 
-	{ 
-		A_StartSound("weapons/bfgf", CHAN_WEAPON); 
+	action void A_BFGsound()
+	{
+		A_StartSound("weapons/bfgf", CHAN_WEAPON);
 	}
-	
+
 
 	//
 	// A_FireBFG
@@ -161,7 +180,7 @@ class BFGBall : Actor
 		Stop;
 	}
 }
-		
+
 class BFGExtra : Actor
 {
 	Default
@@ -230,7 +249,7 @@ extend class Actor
 
 				if (spray != null)
 				{
-					if ((spray.bMThruSpecies && target.GetSpecies() == t.linetarget.GetSpecies()) || 
+					if ((spray.bMThruSpecies && target.GetSpecies() == t.linetarget.GetSpecies()) ||
 						(!(flags & BFGF_HURTSOURCE) && target == t.linetarget)) // [XA] Don't hit oneself unless we say so.
 					{
 						spray.Destroy(); // [MC] Remove it because technically, the spray isn't trying to "hit" them.

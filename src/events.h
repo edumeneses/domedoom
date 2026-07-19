@@ -1,4 +1,21 @@
-#pragma once 
+/*
+** events.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
+#pragma once
 
 #include <variant>
 #include "dobject.h"
@@ -341,8 +358,8 @@ public:
 	bool UiProcess(const event_t* ev);
 	void UiTick();
 	void PostUiTick();
-	
-	// 
+
+	//
 	void ConsoleProcess(int player, FString name, int arg1, int arg2, int arg3, bool manual, bool ui);
 	void NetCommandProcess(FNetworkCommand& cmd);
 
@@ -422,7 +439,7 @@ struct FPlayerEvent
 	bool IsReturn;
 };
 
-struct FConsoleEvent 
+struct FConsoleEvent
 {
 	// player that activated this event. note that it's always -1 for non-playsim events (i.e. these not called with netevent)
 	int Player;
@@ -463,7 +480,7 @@ struct EventManager
 	// register
 	bool RegisterHandler(DStaticEventHandler* handler);
 	// unregister
-	bool UnregisterHandler(DStaticEventHandler* handler);
+	bool UnregisterHandler(DStaticEventHandler* handler, bool destroying);
 	// find
 	bool CheckHandler(DStaticEventHandler* handler);
 	// check type

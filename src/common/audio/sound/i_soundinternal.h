@@ -1,3 +1,27 @@
+/*
+** i_soundinternal.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2008-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #ifndef __SNDINT_H
 #define __SNDINT_H
 
@@ -43,38 +67,38 @@ DEFINE_TFLAGS_OPERATORS(EChanFlags)
 // Since I can't very well #include system-specific stuff in the
 // main game files, I duplicate it here.
 struct REVERB_PROPERTIES
-{                
+{
 	int			 Instance;
-    int			 Environment;
-    float        EnvSize;
-    float        EnvDiffusion;
-    int          Room;
-    int          RoomHF;
-    int          RoomLF;
-    float        DecayTime;
-    float        DecayHFRatio;
-    float        DecayLFRatio;
-    int          Reflections;
-    float        ReflectionsDelay;
-    float        ReflectionsPan0;
+	int			 Environment;
+	float        EnvSize;
+	float        EnvDiffusion;
+	int          Room;
+	int          RoomHF;
+	int          RoomLF;
+	float        DecayTime;
+	float        DecayHFRatio;
+	float        DecayLFRatio;
+	int          Reflections;
+	float        ReflectionsDelay;
+	float        ReflectionsPan0;
 	float        ReflectionsPan1;
 	float        ReflectionsPan2;
-    int          Reverb;
-    float        ReverbDelay;
-    float        ReverbPan0;
+	int          Reverb;
+	float        ReverbDelay;
+	float        ReverbPan0;
 	float        ReverbPan1;
 	float        ReverbPan2;
-    float        EchoTime;
-    float        EchoDepth;
-    float        ModulationTime;
-    float        ModulationDepth;
-    float        AirAbsorptionHF;
-    float        HFReference;
-    float        LFReference;
-    float        RoomRolloffFactor;
-    float        Diffusion;
-    float        Density;
-    unsigned int Flags;
+	float        EchoTime;
+	float        EchoDepth;
+	float        ModulationTime;
+	float        ModulationDepth;
+	float        AirAbsorptionHF;
+	float        HFReference;
+	float        LFReference;
+	float        RoomRolloffFactor;
+	float        Diffusion;
+	float        Density;
+	unsigned int Flags;
 };
 
 enum EReverbFlags

@@ -1,37 +1,26 @@
-/* For code that originates from ZDoom the following applies:
+/*
+** sc_man.cpp
+**
+**
 **
 **---------------------------------------------------------------------------
-** Copyright 2005-2016 Randy Heit
-** Copyright 2005-2016 Christoph Oelckers
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 2005-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
-
-
 
 // HEADER FILES ------------------------------------------------------------
 
@@ -49,6 +38,7 @@
 #include "name.h"
 #include <inttypes.h>
 #include "filesystem.h"
+#include "version.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -68,9 +58,12 @@
 
 // CODE --------------------------------------------------------------------
 
-void VersionInfo::operator=(const char *string)
+VersionInfo::VersionInfo(const char *string)
 {
 	char *endp;
+
+	minor = revision = distance = 0;
+
 	major = (int16_t)clamp<unsigned long long>(strtoull(string, &endp, 10), 0, USHRT_MAX);
 	if (*endp == '.')
 	{
@@ -78,19 +71,38 @@ void VersionInfo::operator=(const char *string)
 		if (*endp == '.')
 		{
 			revision = (int16_t)clamp<unsigned long long>(strtoull(endp + 1, &endp, 10), 0, USHRT_MAX);
-			if (*endp != 0) major = USHRT_MAX;
+
+			if (*endp == '-' && endp[1] >= '0' && endp[1] <= '9')
+			{
+				distance = (int16_t)clamp<unsigned long long>(strtoull(endp + 1, &endp, 10), 0, USHRT_MAX);
+			}
 		}
-		else if (*endp == 0)
-		{
-			revision = 0;
-		}
-		else major = USHRT_MAX;
 	}
-	else if (*endp == 0)
+
+	if (*endp != 0 && *endp != '-')
 	{
-		minor = revision = 0;
+		major = USHRT_MAX;
 	}
-	else major = USHRT_MAX;
+}
+
+
+void VersionInfo::operator=(const char *string)
+{
+	(*this) = VersionInfo(string);
+}
+
+VersionInfo::operator FString()
+{
+	FString tmp;
+	if(distance != 0 && distance != RC_REVISION_NOTRC)
+	{
+		tmp.Format("%u.%u.%u-%u", major, minor, revision, distance);
+	}
+	else
+	{
+		tmp.Format("%u.%u.%u", major, minor, revision);
+	}
+	return tmp;
 }
 
 //==========================================================================
@@ -244,8 +256,8 @@ void FScanner::PrepareScript ()
 		}
 	}
 
-	ScriptPtr = &ScriptBuffer[0];
-	ScriptEndPtr = &ScriptBuffer[ScriptBuffer.Len()];
+	ScriptPtr = ScriptBuffer.GetChars();
+	ScriptEndPtr = ScriptBuffer.GetChars() + ScriptBuffer.Len();
 	Line = 1;
 	End = false;
 	ScriptOpen = true;
@@ -639,6 +651,27 @@ bool FScanner::CheckToken (int token, bool evaluate)
 	return false;
 }
 
+
+//==========================================================================
+//
+// FScanner :: PeekToken
+//
+// Checks if the next token matches the specified token. Returns true if
+// it does. If it doesn't returns false. Always ungets it.
+//
+//==========================================================================
+
+bool FScanner::PeekToken (int token, bool evaluate)
+{
+	bool ok = false;
+	if (GetToken (evaluate))
+	{
+		ok = (TokenType == token);
+		UnGet ();
+	}
+	return ok;
+}
+
 //==========================================================================
 //
 // FScanner :: GetNumber
@@ -706,7 +739,7 @@ void FScanner::MustGetNumber (bool evaluate)
 //
 // FScanner :: CheckNumber
 //
-// similar to GetNumber but ungets the token if it isn't a number 
+// similar to GetNumber but ungets the token if it isn't a number
 // and does not print an error
 //
 //==========================================================================
@@ -944,7 +977,7 @@ bool FScanner::Compare (const char *text)
 bool FScanner::ScanValue(bool allowfloat, bool evaluate)
 {
 	bool neg = false;
-	if (!GetToken(evaluate)) 
+	if (!GetToken(evaluate))
 	{
 		return false;
 	}
@@ -960,7 +993,7 @@ bool FScanner::ScanValue(bool allowfloat, bool evaluate)
 	if (TokenType == TK_FloatConst && !allowfloat)
 		return false;
 
-	if (TokenType != TK_IntConst && TokenType != TK_FloatConst) 
+	if (TokenType != TK_IntConst && TokenType != TK_FloatConst)
 	{
 		auto d = constants.CheckKey(String);
 		if (!d) return false;
@@ -978,8 +1011,8 @@ bool FScanner::ScanValue(bool allowfloat, bool evaluate)
 	return true;
 }
 
-bool FScanner::CheckValue(bool allowfloat, bool evaluate) 
-{ 
+bool FScanner::CheckValue(bool allowfloat, bool evaluate)
+{
 	auto savedstate = SavePos();
 	bool res = ScanValue(allowfloat, evaluate);
 	if (!res) RestorePos(savedstate);
@@ -1144,7 +1177,7 @@ void FScanner::CheckOpen()
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -1159,7 +1192,7 @@ void FScanner::AddSymbol(const char *name, int64_t value)
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -1174,7 +1207,7 @@ void FScanner::AddSymbol(const char* name, uint64_t value)
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -1309,7 +1342,7 @@ void FScriptPosition::Message (int severity, const char *message, ...) const
 	}
 	const char *type = "";
 	const char *color;
-	int level = PRINT_HIGH;
+	PrintFlag level = PRINT_HIGH;
 
 	switch (severity)
 	{
@@ -1385,4 +1418,3 @@ int ParseHex(const char* hex, FScriptPosition* sc)
 
 	return num;
 }
-

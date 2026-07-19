@@ -1,55 +1,44 @@
 /*
 ** hudmessages.cpp
+**
 ** Neato messages for the HUD
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2006 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
 
-
-#include "doomdef.h"
-#include "sbar.h"
-#include "c_cvars.h"
-#include "v_video.h"
-#include "cmdlib.h"
-#include "serializer_doom.h"
-#include "serialize_obj.h"
-#include "doomstat.h"
-#include "vm.h"
 #include "c_console.h"
+#include "c_cvars.h"
+#include "cmdlib.h"
+#include "doomdef.h"
+#include "doomstat.h"
+#include "printf.h"
+#include "sbar.h"
 #include "v_draw.h"
+#include "v_video.h"
+#include "vm.h"
+
+#include "serialize_obj.h" // IWYU pragma: keep
+#include "serializer_doom.h" // IWYU pragma: keep
 
 IMPLEMENT_CLASS(DHUDMessageBase, false, true)
 IMPLEMENT_POINTERS_START(DHUDMessageBase)
 IMPLEMENT_POINTER(Next)
 IMPLEMENT_POINTERS_END
-
 
 IMPLEMENT_CLASS(DHUDMessage, false, false)
 
@@ -171,7 +160,7 @@ DHUDMessage::DHUDMessage (FFont *font, const char *text, float x, float y, int h
 		Top = y;
 		HUDWidth = hudwidth;
 		HUDHeight = hudheight;
-		
+
 		float intpart;
 		int fracpart = (int)(fabsf (modff (x, &intpart)) * 10.f + 0.5f);
 		if (fracpart & 4)
@@ -512,7 +501,7 @@ void DHUDMessage::DoDraw (int linenum, int x, int y, bool clean, int hudheight)
 //============================================================================
 
 DHUDMessageFadeOut::DHUDMessageFadeOut (FFont *font, const char *text, float x, float y,
-	int hudwidth, int hudheight,									
+	int hudwidth, int hudheight,
 	EColorRange textColor, float holdTime, float fadeOutTime)
 	: DHUDMessage (font, text, x, y, hudwidth, hudheight, textColor, holdTime)
 {
@@ -606,7 +595,7 @@ void DHUDMessageFadeOut::DoDraw (int linenum, int x, int y, bool clean, int hudh
 //============================================================================
 
 DHUDMessageFadeInOut::DHUDMessageFadeInOut (FFont *font, const char *text, float x, float y,
-	int hudwidth, int hudheight,									
+	int hudwidth, int hudheight,
 	EColorRange textColor, float holdTime, float fadeInTime, float fadeOutTime)
 	: DHUDMessageFadeOut (font, text, x, y, hudwidth, hudheight, textColor, holdTime, fadeOutTime)
 {
@@ -778,7 +767,7 @@ bool DHUDMessageTypeOnFadeOut::Tick ()
 				if (State == 3 && --step >= 0)
 				{
 					linedrawcount++;
-					
+
 					if (text.GetNextCharacter(linevis) == TEXTCOLOR_ESCAPE)
 					{
 						if (text[linevis] == '[')
@@ -900,7 +889,7 @@ void C_MidPrint(FFont* font, const char* msg, bool bold)
 	if (msg != nullptr)
 	{
 		auto color = (EColorRange)PrintColors[bold ? PRINTLEVELS + 1 : PRINTLEVELS];
-		Printf(PRINT_HIGH | PRINT_NONOTIFY, TEXTCOLOR_ESCAPESTR "%c%s\n%s\n%s\n", color, console_bar, msg, console_bar);
+		Printf(PRINT_NONOTIFY, TEXTCOLOR_ESCAPESTR "%c%s\n%s\n%s\n", color, console_bar, msg, console_bar);
 
 		StatusBar->AttachMessage(Create<DHUDMessage>(font, msg, 1.5f, 0.375f, 0, 0, color, con_midtime), MAKE_ID('C', 'N', 'T', 'R'));
 	}
@@ -909,4 +898,3 @@ void C_MidPrint(FFont* font, const char* msg, bool bold)
 		StatusBar->DetachMessage(MAKE_ID('C', 'N', 'T', 'R'));
 	}
 }
-

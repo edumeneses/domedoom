@@ -1,3 +1,22 @@
+/*
+** dsectoreffect.h
+**
+** Base class for effects on sectors.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #ifndef __DSECTOREFFECT_H__
 #define __DSECTOREFFECT_H__
 
@@ -11,7 +30,7 @@ public:
 	static const int DEFAULT_STAT = STAT_SECTOREFFECT;
 	void Construct(sector_t *sector);
 
-	
+
 	void Serialize(FSerializer &arc);
 	void OnDestroy() override;
 

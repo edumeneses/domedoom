@@ -1,34 +1,23 @@
 /*
 ** i_specialpaths.cpp
+**
 ** Gets special system folders where data should be stored. (Windows version)
 **
 **---------------------------------------------------------------------------
-** Copyright 2013-2016 Randy Heit
-** Copyright 2016 Christoph Oelckers
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 2013-2016 Marisa Heit
+** Copyright 2005-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -47,6 +36,7 @@
 #include "gstrings.h"
 #include "i_mainwindow.h"
 #include "engineerrors.h"
+#include "zstring.h"
 
 
 static int isportable = -1;
@@ -160,13 +150,13 @@ FString M_GetAppDataPath(bool create)
 //
 //===========================================================================
 
-FString M_GetCachePath(bool create)
+FString M_GetCachePath(bool create, FString ns)
 {
 	FString path = GetKnownFolder(CSIDL_LOCAL_APPDATA, FOLDERID_LocalAppData, create);
 
 	// Don't use GAME_DIR and such so that ZDoom and its child ports can
 	// share the node cache.
-	path += "/zdoom/cache";
+	path += "/doom/" + ns;
 	if (create)
 	{
 		CreatePath(path.GetChars());
@@ -192,7 +182,7 @@ FString M_GetAutoexecPath()
 // M_GetOldConfigPath
 //
 // Check if we have a config in a place that's no longer used.
-// 
+//
 //===========================================================================
 
 FString M_GetOldConfigPath(int& type)
@@ -239,7 +229,7 @@ FString M_GetOldConfigPath(int& type)
 // M_MigrateOldConfig
 //
 // Ask the user what to do with their old config.
-// 
+//
 //===========================================================================
 
 int M_MigrateOldConfig()
@@ -290,7 +280,7 @@ FString M_GetConfigPath(bool for_reading)
 	if (!for_reading || FileExists(path))
 		return path;
 
-	// No config was found in the accepted locations. 
+	// No config was found in the accepted locations.
 	// Look in previously valid places to see if we have something we can migrate
 
 	int type = 0;
@@ -348,7 +338,7 @@ FString M_GetScreenshotsPath()
 
 		path << "/" GAMENAME "/";
 	}
-	else 
+	else
 	{
 		path = GetKnownFolder(CSIDL_MYPICTURES, FOLDERID_Pictures, true);
 		path << "/Screenshots/" GAMENAME "/";
@@ -401,7 +391,7 @@ FString M_GetDocumentsPath()
 		return progdir;
 	}
 	// Try defacto My Documents/My Games folder
-	else 
+	else
 	{
 		// I assume since this isn't a standard folder, it doesn't have a localized name either.
 		path = GetKnownFolder(CSIDL_PERSONAL, FOLDERID_Documents, true);

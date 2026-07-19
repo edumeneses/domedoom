@@ -1,76 +1,56 @@
 /*
 ** c_cmds.cpp
+**
 ** Miscellaneous console commands.
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2006 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
 
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-
-#include "version.h"
-#include "c_console.h"
+#include "basics.h"
 #include "c_dispatch.h"
-
-#include "i_system.h"
-#include "engineerrors.h"
+#include "c_functions.h"
+#include "cmdlib.h"
+#include "d_main.h"
+#include "d_net.h"
+#include "d_player.h"
 #include "doomstat.h"
-#include "gstrings.h"
-#include "s_sound.h"
+#include "engineerrors.h"
+#include "filesystem.h"
 #include "g_game.h"
 #include "g_level.h"
-#include "filesystem.h"
-#include "gi.h"
-#include "r_defs.h"
-#include "d_player.h"
-#include "p_local.h"
-#include "r_sky.h"
-#include "p_setup.h"
-#include "cmdlib.h"
-#include "d_net.h"
-#include "v_text.h"
-#include "p_lnspec.h"
-#include "r_utility.h"
-#include "c_functions.h"
 #include "g_levellocals.h"
-#include "v_video.h"
-#include "md5.h"
-#include "findfile.h"
-#include "i_music.h"
+#include "gi.h"
+#include "gstrings.h"
+#include "i_system.h"
+#include "p_lnspec.h"
+#include "p_local.h"
+#include "p_setup.h"
+#include "r_defs.h"
+#include "r_sky.h"
+#include "r_utility.h"
 #include "s_music.h"
+#include "s_sound.h"
+#include "savegamemanager.h"
 #include "texturemanager.h"
 #include "v_draw.h"
-#include "d_main.h"
-#include "savegamemanager.h"
+#include "v_text.h"
+#include "v_video.h"
+#include <string>
 
 extern FILE *Logfile;
 extern bool insave;
@@ -80,8 +60,8 @@ CVAR (Bool, sv_unlimited_pickup, false, CVAR_SERVERINFO)
 CVAR (Int, cl_blockcheats, 0, 0)
 
 CVARD(Bool, show_messages, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG, "enable/disable showing messages")
+CVAR(Bool, con_stackident, true, CVAR_ARCHIVE)
 CVAR(Bool, show_obituaries, true, CVAR_ARCHIVE)
-
 
 bool CheckCheatmode (bool printmsg, bool sponly)
 {
@@ -314,7 +294,7 @@ CCMD (idclev)
 
 		// So be it.
 		Printf ("%s\n", GStrings.GetString("STSTR_CLEV"));
-      	G_DeferedInitNew (mapname.GetChars());
+		G_DeferedInitNew (mapname.GetChars());
 		//players[0].health = 0;		// Force reset
 	}
 }
@@ -338,7 +318,7 @@ CCMD (hxvisit)
 			{
 				// So be it.
 				Printf ("%s\n", GStrings.GetString("STSTR_CLEV"));
-      			G_DeferedInitNew (mapname.GetChars());
+				G_DeferedInitNew (mapname.GetChars());
 				return;
 			}
 		}
@@ -350,7 +330,7 @@ CCMD (changemap)
 {
 	if (!players[consoleplayer].mo || !usergame)
 	{
-		Printf ("Use the map command when not in a game.\n");
+		Printf ("Cannot use changemap command when not in a game. Use map instead\n");
 		return;
 	}
 
@@ -380,7 +360,7 @@ CCMD (changemap)
 		{
 			if (!P_CheckMapData(mapname))
 			{
-				Printf ("No map %s\n", mapname);
+				Printf ("No map %s.\n", mapname);
 			}
 			else
 			{
@@ -399,12 +379,61 @@ CCMD (changemap)
 		catch(CRecoverableError &error)
 		{
 			if (error.GetMessage())
-				Printf("%s", error.GetMessage());
+				Printf("%s\n", error.GetMessage());
 		}
 	}
 	else
 	{
 		Printf ("Usage: changemap <map name> [position]\n");
+	}
+}
+
+CCMD (changeepisode)
+{
+	if (!players[consoleplayer].mo || !usergame)
+	{
+		Printf ("Cannot use changeepisode command when not in a game.\n");
+		return;
+	}
+
+	if (!players[consoleplayer].settings_controller && netgame)
+	{
+		Printf ("Only settings controllers can change the episode.\n");
+		return;
+	}
+
+	if (argv.argc() > 1)
+	{
+		int ep = 0;
+		if (!C_IsValidInt(argv[1], ep) || ep < 1 || ep > AllEpisodes.Size())
+		{
+			Printf ("Episode %s is invalid.\n", argv[1]);
+			return;
+		}
+
+		const char* mapname = AllEpisodes[--ep].mEpisodeMap.GetChars();
+		try
+		{
+			if (!P_CheckMapData(mapname))
+			{
+				Printf ("Episode %s has no valid map.\n", argv[1]);
+			}
+			else
+			{
+				Net_WriteInt8 (DEM_CHANGEMAP2);
+				Net_WriteInt8(-1);
+				Net_WriteString (mapname);
+			}
+		}
+		catch(CRecoverableError &error)
+		{
+			if (error.GetMessage())
+				Printf("%s\n", error.GetMessage());
+		}
+	}
+	else
+	{
+		Printf ("Usage: changeepisode <episode number>\n");
 	}
 }
 
@@ -487,8 +516,7 @@ CCMD(setinv)
 
 }
 
-
-CCMD (puke)
+static void DoPuke(FCommandLine &argv)
 {
 	int argc = argv.argc();
 
@@ -530,7 +558,17 @@ CCMD (puke)
 	}
 }
 
-CCMD (pukename)
+CCMD (puke)
+{
+	DoPuke(argv);
+}
+
+CCMD (acs)
+{
+	DoPuke(argv);
+}
+
+static void DoPukeName(FCommandLine &argv)
 {
 	int argc = argv.argc();
 
@@ -544,7 +582,7 @@ CCMD (pukename)
 		int argstart = 2;
 		int arg[4] = { 0, 0, 0, 0 };
 		int argn = 0, i;
-		
+
 		if (argc > 2)
 		{
 			if (stricmp(argv[2], "always") == 0)
@@ -566,6 +604,16 @@ CCMD (pukename)
 			Net_WriteInt32(arg[i]);
 		}
 	}
+}
+
+CCMD (pukename)
+{
+	DoPukeName(argv);
+}
+
+CCMD (acsn)
+{
+	DoPukeName(argv);
 }
 
 CCMD (special)
@@ -657,11 +705,11 @@ CCMD (warp)
 
 UNSAFE_CCMD (load)
 {
-    if (argv.argc() != 2)
+	if (argv.argc() != 2)
 	{
-        Printf ("usage: load <filename>\n");
-        return;
-    }
+		Printf ("usage: load <filename>\n");
+		return;
+	}
 	if (netgame)
 	{
 		Printf ("cannot load during a network game\n");
@@ -703,9 +751,9 @@ UNSAFE_CCMD(save)
 {
 	if (argv.argc() < 2 || argv.argc() > 3 || argv[1][0] == 0)
 	{
-        Printf ("usage: save <filename> [description]\n");
-        return;
-    }
+		Printf ("usage: save <filename> [description]\n");
+		return;
+	}
 	FString fname = argv[1];
 	FixPathSeperator(fname);
 	if (fname[0] == '/')
@@ -726,7 +774,7 @@ UNSAFE_CCMD(save)
 		return;
 	}
 #endif
-    fname = G_BuildSaveName(fname.GetChars());
+	fname = G_BuildSaveName(fname.GetChars());
 	G_SaveGame (fname.GetChars(), argv.argc() > 2 ? argv[2] : argv[1]);
 }
 
@@ -921,9 +969,22 @@ CCMD(countitemsnum) // [SP] # of counted items
 //-----------------------------------------------------------------------------
 CCMD(changesky)
 {
-	const char *sky1name;
+	const char *sky1name = "";
+	if (argv.argc() < 2)
+	{
+		auto sky = (primaryLevel && primaryLevel->skytexture1.isValid())
+			? TexMan.GetGameTexture(primaryLevel->skytexture1)
+			: nullptr;
+		if (sky) sky1name = sky->GetName().GetChars();
+		Printf("Current sky: %s\n", sky1name);
+		return;
+	}
 
-	if (netgame || argv.argc()<2) return;
+	if (netgame)
+	{
+		Printf("changesky: Not available in a netgame\n");
+		return;
+	}
 
 	// This only alters the primary level's sky setting. For testing out a sky that is sufficient.
 	sky1name = argv[1];
@@ -950,6 +1011,21 @@ CCMD(changesky)
 CCMD(skymisttoggle)
 {
 	primaryLevel->flags3 ^= LEVEL3_SKYMIST;
+}
+
+//-----------------------------------------------------------------------------
+//
+//
+//
+//-----------------------------------------------------------------------------
+CCMD(skymistyscale)
+{
+	if (argv.argc() > 1)
+	{
+		// Do this only on the primary level.
+		primaryLevel->skymistyscale = clamp((float)strtod(argv[1], NULL), 0.002f, 544.0f);
+	}
+	Printf("%f (clamped between 0.002 and 544.0, default: 1.0)\n", primaryLevel->skymistyscale);
 }
 
 //-----------------------------------------------------------------------------
@@ -1009,7 +1085,7 @@ CCMD(nextmap)
 				TEXTCOLOR_NORMAL " is for single-player only.\n");
 		return;
 	}
-	
+
 	if (primaryLevel->NextMap.Len() > 0 && primaryLevel->NextMap.Compare("enDSeQ", 6))
 	{
 		G_DeferedInitNew(primaryLevel->NextMap.GetChars());
@@ -1182,6 +1258,23 @@ CCMD(secret)
 	}
 }
 
+CCMD(roundtest)
+{
+	if (argv.argc() < 2) return;
+	double d = std::stod(argv[1]);
+#define p(f) Printf(#f " %8f %d\n", d, f(d))
+	p(RoundUp);
+	p(RoundDown);
+	p(RoundToZero);
+	p(RoundFromZero);
+	p(RoundHalfUp);
+	p(RoundHalfDown);
+	p(RoundHalfEven);
+	p(RoundHalfToZero);
+	p(RoundHalfFromZero);
+#undef p
+}
+
 CCMD(angleconvtest)
 {
 	Printf("Testing degrees to angle conversion:\n");
@@ -1190,7 +1283,7 @@ CCMD(angleconvtest)
 		unsigned ang1 = DAngle::fromDeg(ang).BAMs();
 		unsigned ang2 = (unsigned)(ang * (0x40000000 / 90.));
 		unsigned ang3 = (unsigned)(int)(ang * (0x40000000 / 90.));
-		Printf("Angle = %.5f: xs_RoundToInt = %08x, unsigned cast = %08x, signed cast = %08x\n",
+		Printf("Angle = %.5f: RoundHalfUp = %08x, unsigned cast = %08x, signed cast = %08x\n",
 			ang, ang1, ang2, ang3);
 	}
 }
@@ -1203,7 +1296,7 @@ CCMD(r_showcaps)
 	PRINT_CAP("Flat Sprites", RFF_FLATSPRITES)
 	PRINT_CAP("3D Models", RFF_MODELS)
 	PRINT_CAP("Sloped 3D floors", RFF_SLOPE3DFLOORS)
-	PRINT_CAP("Full Freelook", RFF_TILTPITCH)	
+	PRINT_CAP("Full Freelook", RFF_TILTPITCH)
 	PRINT_CAP("Roll Sprites", RFF_ROLLSPRITES)
 	PRINT_CAP("Unclipped Sprites", RFF_UNCLIPPEDTEX)
 	PRINT_CAP("Material Shaders", RFF_MATSHADER)
@@ -1394,4 +1487,3 @@ CCMD (mapinfo)
 	else
 		Printf("Level redirection is currently not being tested - not in game!\n");
 }
-

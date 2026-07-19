@@ -1,3 +1,22 @@
+/*
+** weaponchainsaw.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // --------------------------------------------------------------------------
 //
 // Chainsaw
@@ -15,7 +34,7 @@ class Chainsaw : Weapon
 		Inventory.PickupMessage "$GOTCHAINSAW";
 		Obituary "$OB_MPCHAINSAW";
 		Tag "$TAG_CHAINSAW";
-		+WEAPON.MELEEWEAPON		
+		+WEAPON.MELEEWEAPON
 		+WEAPON.NOAUTOSWITCHTO
 	}
 	States
@@ -38,7 +57,7 @@ class Chainsaw : Weapon
 		Stop;
 	}
 }
-	
+
 
 extend class StateProvider
 {
@@ -65,7 +84,7 @@ extend class StateProvider
 		}
 		if (range == 0)
 		{ 
-			range = MeleeRange + MELEEDELTA + (1. / 65536.); // MBF21 SAWRANGE;
+			range = MeleeRange + MELEEDELTA + double.equal_epsilon; // MBF21 SAWRANGE;
 		}
 
 		double ang = angle + spread_xy * (Random2[Saw]() / 255.);
@@ -142,7 +161,7 @@ extend class StateProvider
 		}
 
 		A_StartSound (hitsound, CHAN_WEAPON);
-			
+
 		// turn to face target
 		if (!(flags & SF_NOTURN))
 		{

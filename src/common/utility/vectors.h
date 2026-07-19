@@ -1,33 +1,22 @@
 /*
 ** vectors.h
+**
 ** Vector math routines.
 **
 **---------------------------------------------------------------------------
-** Copyright 2005-2007 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 2005-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 ** Since C++ doesn't let me add completely new operators, the following two
@@ -48,9 +37,6 @@
 
 #include "common/utility/basics.h"
 
-// this is needed to properly normalize angles. We cannot do that with compiler provided conversions because they differ too much
-#include "xs_Float.h"
-
 // make this a local inline function to avoid any dependencies on other headers and not pollute the global namespace
 namespace pi
 {
@@ -70,8 +56,7 @@ inline double g_sqrt(double v) { return sqrt(v); }
 inline double g_atan2(double v, double w) { return atan2(v, w); }
 #endif
 
-
-#define EQUAL_EPSILON (1/65536.)
+constexpr float EQUAL_EPSILON = 1/65536.;
 
 template<class vec_t> struct TVector3;
 template<class vec_t> struct TRotator;
@@ -249,7 +234,7 @@ struct TVector2
 	{
 		return X*X + Y*Y;
 	}
-	
+
 	double Sum() const
 	{
 		return abs(X) + abs(Y);
@@ -378,7 +363,7 @@ struct TVector3
 	}
 
 	TVector3 (const TRotator<vec_t> &rot);
-	
+
 	template<typename U>
 	constexpr explicit operator TVector3<U> () const noexcept {
 		return TVector3<U>(static_cast<U>(X), static_cast<U>(Y), static_cast<U>(Z));
@@ -594,7 +579,7 @@ struct TVector3
 				right = { 1.f, 0.f, 0.f };
 			}
 			// Unconditional to ease static analysis
-			else // major == 2 && n[2] <= 0.0f		
+			else // major == 2 && n[2] <= 0.0f
 			{
 				right = { -1.f, 0.f, 0.f };
 			}
@@ -631,7 +616,7 @@ struct TVector3
 	{
 		return X*X + Y*Y + Z*Z;
 	}
-	
+
 	double Sum() const
 	{
 		return abs(X) + abs(Y) + abs(Z);
@@ -944,12 +929,12 @@ struct TVector4
 	{
 		return X*X + Y*Y + Z*Z + W*W;
 	}
-	
+
 	double Sum() const
 	{
 		return abs(X) + abs(Y) + abs(Z) + abs(W);
 	}
-	
+
 
 	// Return a unit vector facing the same direction as this one
 	TVector4 Unit() const
@@ -982,7 +967,7 @@ struct TVector4
 		return *this;
 	}
 
-	TVector4 Resized(double len) const 
+	TVector4 Resized(double len) const
 	{
 		double vlen = Length();
 		if (vlen != 0.)
@@ -1268,7 +1253,7 @@ private:
 public:
 
 	constexpr vec_t& Degrees__() { return Degrees_; }
-	
+
 	static constexpr TAngle fromDeg(float deg)
 	{
 		return TAngle(deg);
@@ -1443,7 +1428,7 @@ public:
 
 	unsigned BAMs() const
 	{
-		return xs_CRoundToInt(Degrees_ * (0x40000000 / 90.));
+		return RoundHalfEven(Degrees_ * (0x40000000 / 90.));
 	}
 
 	constexpr vec_t Degrees() const
@@ -1506,8 +1491,8 @@ typedef TAngle<double>		DAngle;
 
 constexpr DAngle nullAngle = DAngle::fromDeg(0.);
 constexpr FAngle nullFAngle = FAngle::fromDeg(0.);
-constexpr DAngle minAngle = DAngle::fromDeg(1. / 65536.);
-constexpr FAngle minFAngle = FAngle::fromDeg(1. / 65536.);
+constexpr DAngle minAngle = DAngle::fromDeg(EQUAL_EPSILON);
+constexpr FAngle minFAngle = FAngle::fromDeg(EQUAL_EPSILON);
 
 constexpr DAngle DAngle1 = DAngle::fromDeg(1);
 constexpr DAngle DAngle15 = DAngle::fromDeg(15);

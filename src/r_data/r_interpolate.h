@@ -1,3 +1,26 @@
+/*
+** r_interpolate.h
+**
+** Movement interpolation
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2008-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #ifndef R_INTERPOLATE_H
 #define R_INTERPOLATE_H
 
@@ -34,7 +57,7 @@ public:
 	virtual void UpdateInterpolation() = 0;
 	virtual void Restore() = 0;
 	virtual void Interpolate(double smoothratio) = 0;
-	
+
 	virtual void Serialize(FSerializer &arc);
 };
 
@@ -63,4 +86,3 @@ public:
 
 
 #endif
-

@@ -1,3 +1,23 @@
+/*
+** weaponstaff.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // Staff --------------------------------------------------------------------
 
 class Staff : HereticWeapon
@@ -16,7 +36,7 @@ class Staff : HereticWeapon
 
 	States
 	{
-	Ready:	
+	Ready:
 		STFF A 1 A_WeaponReady;
 		Loop;
 	Deselect:
@@ -31,7 +51,7 @@ class Staff : HereticWeapon
 		STFF B 8 A_ReFire;
 		Goto Ready;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_StaffAttackPL1
@@ -80,7 +100,7 @@ class StaffPowered : Staff
 
 	States
 	{
-	Ready:	
+	Ready:
 		STFF DEF 4 A_WeaponReady;
 		Loop;
 	Deselect:
@@ -142,7 +162,4 @@ class StaffPuff2 : Actor
 		PUF4 ABCDEF 4 BRIGHT;
 		Stop;
 	}
-}	
-
-
-
+}

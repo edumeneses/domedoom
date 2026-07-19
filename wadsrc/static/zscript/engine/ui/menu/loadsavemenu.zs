@@ -1,38 +1,26 @@
 /*
-** loacpp
+** loadsavemenu.zs
+**
 ** The load game and save game menus
 **
 **---------------------------------------------------------------------------
-** Copyright 2001-2010 Randy Heit
+**
+** Copyright 2001-2016 Marisa Heit
 ** Copyright 2010-2017 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
-
 
 struct SaveGameNode native
 {
@@ -60,7 +48,7 @@ struct SavegameManager native ui
 	native int ExtractSaveData(int index);
 	native void ClearSaveStuff();
 	native bool DrawSavePic(int x, int y, int w, int h);
-	deprecated("4.0") void DrawSaveComment(Font font, int cr, int x, int y, int scalefactor) 
+	deprecated("4.0") void DrawSaveComment(Font font, int cr, int x, int y, int scalefactor)
 	{
 		// Unfortunately, this was broken beyond repair so it now prints nothing.
 	}
@@ -110,7 +98,7 @@ class LoadSaveMenu : ListMenu
 
 	//=============================================================================
 	//
-	// 
+	//
 	//
 	//=============================================================================
 
@@ -231,7 +219,7 @@ class LoadSaveMenu : ListMenu
 			String text = Stringtable.Localize("$MNU_NOFILES");
 			int textlen = int(NewConsoleFont.StringWidth(text) * FontScale);
 
-			screen.DrawText (NewConsoleFont, Font.CR_GOLD, (listboxLeft+(listboxWidth-textlen)/2) / FontScale, (listboxTop+(listboxHeight-rowHeight)/2) / FontScale, text, 
+			screen.DrawText (NewConsoleFont, Font.CR_GOLD, (listboxLeft+(listboxWidth-textlen)/2) / FontScale, (listboxTop+(listboxHeight-rowHeight)/2) / FontScale, text,
 				DTA_VirtualWidthF, screen.GetWidth() / FontScale, DTA_VirtualHeightF, screen.GetHeight() / FontScale, DTA_KeepRatio, true);
 			return;
 		}
@@ -266,7 +254,7 @@ class LoadSaveMenu : ListMenu
 				didSeeSelected = true;
 				if (!mEntering)
 				{
-					screen.DrawText (NewConsoleFont, colr, (listboxLeft+1) / FontScale, (listboxTop+rowHeight*i + FontScale) / FontScale, node.SaveTitle, 
+					screen.DrawText (NewConsoleFont, colr, (listboxLeft+1) / FontScale, (listboxTop+rowHeight*i + FontScale) / FontScale, node.SaveTitle,
 						DTA_VirtualWidthF, screen.GetWidth() / FontScale, DTA_VirtualHeightF, screen.GetHeight() / FontScale, DTA_KeepRatio, true);
 				}
 				else
@@ -274,19 +262,19 @@ class LoadSaveMenu : ListMenu
 					String s = mInput.GetText() .. NewConsoleFont.GetCursor();
 					int length = int(NewConsoleFont.StringWidth(s) * FontScale);
 					int displacement = min(0, listboxWidth - 2 - length);
-					screen.DrawText (NewConsoleFont, Font.CR_WHITE, (listboxLeft + 1 + displacement) / FontScale, (listboxTop+rowHeight*i + FontScale) / FontScale, s, 
+					screen.DrawText (NewConsoleFont, Font.CR_WHITE, (listboxLeft + 1 + displacement) / FontScale, (listboxTop+rowHeight*i + FontScale) / FontScale, s,
 						DTA_VirtualWidthF, screen.GetWidth() / FontScale, DTA_VirtualHeightF, screen.GetHeight() / FontScale, DTA_KeepRatio, true);
 				}
 			}
 			else
 			{
-				screen.DrawText (NewConsoleFont, colr, (listboxLeft+1) / FontScale, (listboxTop+rowHeight*i + FontScale) / FontScale, node.SaveTitle, 
+				screen.DrawText (NewConsoleFont, colr, (listboxLeft+1) / FontScale, (listboxTop+rowHeight*i + FontScale) / FontScale, node.SaveTitle,
 					DTA_VirtualWidthF, screen.GetWidth() / FontScale, DTA_VirtualHeightF, screen.GetHeight() / FontScale, DTA_KeepRatio, true);
 			}
 			screen.ClearClipRect();
 			j++;
 		}
-	} 
+	}
 
 	void UpdateSaveComment()
 	{
@@ -304,7 +292,14 @@ class LoadSaveMenu : ListMenu
 		if (Selected != -1 && Selected < manager.SavegameCount())
 		{
 			String EndString;
-			EndString = String.Format("%s%s%s%s?\n\n%s", Stringtable.Localize("$MNU_DELETESG"), TEXTCOLOR_WHITE, manager.GetSavegame(Selected).SaveTitle, TEXTCOLOR_NORMAL, Stringtable.Localize("$PRESSYN"));
+			EndString = String.Format(
+				"%s\n%s%s%s?\n\n%s",
+				Stringtable.Localize("$MNU_DELETESG"),
+				TEXTCOLOR_WHITE,
+				manager.GetSavegame(Selected).SaveTitle,
+				TEXTCOLOR_NORMAL,
+				Stringtable.Localize("$PRESSYN")
+			);
 			StartMessage (EndString, 0);
 		}
 	}
@@ -417,7 +412,7 @@ class LoadSaveMenu : ListMenu
 
 	override bool MouseEvent(int type, int x, int y)
 	{
-		if (x >= listboxLeft && x < listboxLeft + listboxWidth && 
+		if (x >= listboxLeft && x < listboxLeft + listboxWidth &&
 			y >= listboxTop && y < listboxTop + listboxHeight)
 		{
 			int lineno = (y - listboxTop) / rowHeight;
@@ -538,7 +533,7 @@ class SaveMenu : LoadSaveMenu
 
 	override bool MenuEvent (int mkey, bool fromcontroller)
 	{
-		if (Super.MenuEvent(mkey, fromcontroller)) 
+		if (Super.MenuEvent(mkey, fromcontroller))
 		{
 			return true;
 		}
@@ -658,7 +653,7 @@ class LoadMenu : LoadSaveMenu
 
 	override bool MenuEvent (int mkey, bool fromcontroller)
 	{
-		if (Super.MenuEvent(mkey, fromcontroller)) 
+		if (Super.MenuEvent(mkey, fromcontroller))
 		{
 			return true;
 		}

@@ -1,34 +1,23 @@
 /*
 ** cmdlib.cpp
+**
 ** Misc utilities (mostly file handling stuff)
 **
 **---------------------------------------------------------------------------
-** Copyright 1999-2016 Randy Heit
+**
+** Copyright 1999-2016 Marisa Heit
 ** Copyright 2019 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -39,6 +28,7 @@
 #include "filesystem.h"
 #include "files.h"
 #include "md5.h"
+#include "zstring.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -582,7 +572,7 @@ void CreatePath(const char *fn)
 {
 	char c = fn[strlen(fn)-1];
 
-	if (c != '\\' && c != '/') 
+	if (c != '\\' && c != '/')
 	{
 		FString name(fn);
 		name += '/';
@@ -885,33 +875,66 @@ FString ExpandEnvVars(const char *searchpathstring)
 			FString varname = FString(dollar + 1, length);
 			if (varname.CompareNoCase("progdir") == 0)
 			{
-				out += progdir;
+				out /= progdir;
 			}
 			else
 			{
 				char *varvalue = getenv(varname.GetChars());
 				if ( (varvalue != NULL) && (strlen(varvalue) != 0) )
 				{
-					out += varvalue;
+					out /= varvalue;
 				}
 			}
 		}
 		else
 		{
-			out += '$';
+			out /= '$';
 		}
 		nextchars = dollar + length + 1;
 		dollar = strchr(nextchars, '$');
 		if (dollar != NULL)
 		{
-			out += FString(nextchars, dollar - nextchars);
+			out /= FString(nextchars, dollar - nextchars);
 		}
 	}
 	if (*nextchars != 0)
 	{
-		out += nextchars;
+		out /= nextchars;
 	}
 	return out;
+}
+
+FString _NicePath(FString path)
+{
+	if (path.IsEmpty()) return ".";
+#ifdef _WIN32
+	return ExpandEnvVars(path.GetChars());
+#else
+	if (path.Front() != '~')
+	{
+		return ExpandEnvVars(path.GetChars());
+	}
+	path = path.Right(path.Len()-1); // drop the ~
+
+	passwd *pwstruct;
+	auto slash = path.IndexOf('/');
+
+	if (path.IsEmpty() || slash == 0)
+	{ // Get my home directory
+		pwstruct = getpwuid(getuid());
+	}
+	else
+	{ // Get somebody else's home directory
+		FString who = slash < 0? path: path.Left(slash);
+		path = path.Right(path.Len()-slash);
+		pwstruct = getpwnam(who.GetChars());
+	}
+	if (pwstruct)
+	{
+		path = pwstruct->pw_dir / path;
+	}
+	return ExpandEnvVars(path.GetChars());
+#endif
 }
 
 //==========================================================================
@@ -925,53 +948,11 @@ FString ExpandEnvVars(const char *searchpathstring)
 
 FString NicePath(const char *path)
 {
-#ifdef _WIN32
-	if (*path == '\0')
-	{
-		return FString(".");
-	}
-	return ExpandEnvVars(path);
-#else
-	if (path == NULL || *path == '\0')
-	{
-		return FString("");
-	}
-	if (*path != '~')
-	{
-		return ExpandEnvVars(path);
-	}
-
-	passwd *pwstruct;
-	const char *slash;
-
-	if (path[1] == '/' || path[1] == '\0')
-	{ // Get my home directory
-		pwstruct = getpwuid(getuid());
-		slash = path + 1;
-	}
-	else
-	{ // Get somebody else's home directory
-		slash = strchr(path, '/');
-		if (slash == NULL)
-		{
-			slash = path + strlen(path);
-		}
-		FString who(path, slash - path);
-		pwstruct = getpwnam(who.GetChars());
-	}
-	if (pwstruct == NULL)
-	{
-		return ExpandEnvVars(path);
-	}
-	FString where(pwstruct->pw_dir);
-	if (*slash != '\0')
-	{
-		where += ExpandEnvVars(slash);
-	}
-	return where;
-#endif
+	FString fpath = _NicePath(path);
+	FixPathSeperator(fpath);
+	fpath.MergeChars('/');
+	return fpath;
 }
-
 
 //==========================================================================
 //
@@ -981,12 +962,12 @@ FString NicePath(const char *path)
 
 bool IsAbsPath(const char *name)
 {
-    if (IsSeperator(name[0])) return true;
+	if (IsSeperator(name[0])) return true;
 #ifdef _WIN32
-    /* [A-Za-z]: (for Windows) */
-    if (isalpha((uint8_t)name[0]) && name[1] == ':')    return true;
+	/* [A-Za-z]: (for Windows) */
+	if (isalpha((uint8_t)name[0]) && name[1] == ':')    return true;
 #endif /* _WIN32 */
-    return 0;
+	return 0;
 }
 
 //==========================================================================

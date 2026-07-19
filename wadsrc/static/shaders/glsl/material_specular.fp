@@ -1,3 +1,19 @@
+/*
+** material_specular.fp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2013-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 vec2 lightAttenuation(int i, vec3 normal, vec3 viewdir, float lightcolorA, float glossiness, float specularLevel)
 {
@@ -63,9 +79,9 @@ vec3 ProcessMaterialLight(Material material, vec3 color)
 			}
 		}
 	}
-	
+
 	if ( uLightBlendMode == 1 )
-	{	// COLOR_CORRECT_CLAMPING 
+	{	// COLOR_CORRECT_CLAMPING
 		dynlight.rgb = color + desaturate(dynlight).rgb;
 		specular.rgb = desaturate(specular).rgb;
 
@@ -73,7 +89,7 @@ vec3 ProcessMaterialLight(Material material, vec3 color)
 		specular.rgb = ((specular.rgb / max(max(max(specular.r, specular.g), specular.b), 1.4) * 1.4));
 	}
 	else if ( uLightBlendMode == 2 )
-	{	// UNCLAMPED 
+	{	// UNCLAMPED
 		dynlight.rgb = color + desaturate(dynlight).rgb;
 		specular.rgb = desaturate(specular).rgb;
 	}

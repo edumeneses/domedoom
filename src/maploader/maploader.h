@@ -1,3 +1,30 @@
+/*
+** maploader.h
+**
+** Do WAD I/O, get map description, set up initial state and misc LUTs
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2018 Christoph Oelckers
+** Copyright 2010 James Haley
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** For code that originates from ZDoom the following applies:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 #include "nodebuild.h"
@@ -179,7 +206,7 @@ private:
 	void FixHoles();
 	void ReportUnpairedMinisegs();
 	void CalcIndices();
-	
+
 	// Strife dialogue
 	void LoadStrifeConversations (MapData *map, const char *mapname);
 	bool LoadScriptFile (const char *name, bool include, int type);
@@ -187,9 +214,9 @@ private:
 	FStrifeDialogueNode *ReadRetailNode (const char *name, FileReader &lump, uint32_t &prevSpeakerType);
 	FStrifeDialogueNode *ReadTeaserNode (const char *name, FileReader &lump, uint32_t &prevSpeakerType);
 	void ParseReplies (const char *name, int pos, FStrifeDialogueReply **replyptr, Response *responses);
-	
+
 	bool ParseUSDF(int lumpnum, FileReader &lump, int lumplen);
-	
+
 	// Specials
 	void SpawnSpecials();
 	void InitSectorSpecial(sector_t *sector, int special);
@@ -319,4 +346,3 @@ public:
 		Level = lev;
 	}
 };
-

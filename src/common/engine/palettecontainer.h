@@ -1,3 +1,27 @@
+/*
+** palettecontainer.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2006-2016 Marisa Heit
+** Copyright 2007-2016 Christoph Oelckers
+** Copyright 2020-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 #include <stdint.h>
@@ -35,7 +59,7 @@ struct FRemapTable
 	int Index;
 	int NumEntries;				// # of elements in this table (usually 256)
 	bool Inactive = false;				// This table is inactive and should be treated as if it was passed as NULL
-	bool TwodOnly = false;				// Only used for 2D rendering 
+	bool TwodOnly = false;				// Only used for 2D rendering
 	bool ForFont = false;				// Mark font translations because they may require different handling than the ones for sprites-
 	bool NoTransparency = false;		// This palette has no transparent index and must be excluded from all treatment for that.
 
@@ -175,7 +199,7 @@ public:
 
 private:
 	FMemArena remapArena;
-	TArray<TAutoGrowArray<FRemapTablePtr, FRemapTable*>> TranslationTables;
+	TArray<TAutoGrowArray<FRemapTablePtr>> TranslationTables;
 public:
 	void Init(int numslots, const uint8_t *indexmap);	// This cannot be a constructor!!!
 	void SetPalette(const uint8_t* colors, int transparent_index = -1);
@@ -242,4 +266,3 @@ struct LuminosityTranslationDesc
 };
 
 extern PaletteContainer GPalette;
-

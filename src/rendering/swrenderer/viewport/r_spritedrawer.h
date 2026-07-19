@@ -1,3 +1,26 @@
+/*
+** r_spritedrawer.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2016 Magnus Norddahl
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #pragma once
 
@@ -11,7 +34,7 @@ namespace swrenderer
 	class RenderThread;
 	struct FWallCoords;
 	class ProjectedWallLight;
-	
+
 	class VoxelBlock
 	{
 	public:
@@ -62,7 +85,7 @@ namespace swrenderer
 		uint32_t *DestBlend() const { return dc_destblend; }
 		fixed_t SrcAlpha() const { return dc_srcalpha; }
 		fixed_t DestAlpha() const { return dc_destalpha; }
-		
+
 		uint32_t DynamicLight() const { return dynlightcolor; }
 
 		bool DrawerNeedsPalInput() const { return drawer_needs_pal_input; }
@@ -103,7 +126,7 @@ namespace swrenderer
 		uint32_t dc_color_bgra = 0;
 		uint32_t dc_srccolor = 0;
 		uint32_t dc_srccolor_bgra = 0;
-		
+
 		uint32_t dynlightcolor = 0;
 
 		typedef void(SWPixelFormatDrawers::*SpriteDrawerFunc)(const SpriteDrawerArgs &args);

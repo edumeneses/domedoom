@@ -1,34 +1,23 @@
-#pragma once
 /*
 ** tarray.h
+**
 ** Templated, automatically resizing array
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2007 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2005-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 ** NOTE: TArray takes advantage of the assumption that the contained type is
@@ -47,20 +36,22 @@
 **
 */
 
+#pragma once
 
-#include <stdlib.h>
-#include <assert.h>
-#include <string.h>
+#include <cstdlib>
+#include <cassert>
+#include <cstring>
 #include <new>
 #include <utility>
 #include <iterator>
 #include <algorithm>
 #include <functional>
+#include <type_traits>
 
 #if !defined(_WIN32)
-#include <inttypes.h>		// for intptr_t
+#include <cinttypes>		// for intptr_t
 #else
-#include <stdint.h>			// for mingw
+#include <cstdint>			// for mingw
 #endif
 
 #if __has_include("m_alloc.h")
@@ -74,11 +65,11 @@
 template<typename T> class TIterator
 {
 public:
-    using iterator_category = std::random_access_iterator_tag;
-    using value_type        = T;
-    using difference_type   = ptrdiff_t;
-    using pointer           = value_type*;
-    using reference         = value_type&;
+	using iterator_category = std::random_access_iterator_tag;
+	using value_type        = T;
+	using difference_type   = ptrdiff_t;
+	using pointer           = value_type*;
+	using reference         = value_type&;
 
 	TIterator(T* ptr = nullptr) { m_ptr = ptr; }
 
@@ -136,19 +127,18 @@ struct FArray
 };
 
 // T is the type stored in the array.
-// TT is the type returned by operator().
-template <class T, class TT=T>
+template <class T>
 class TArray
 {
 public:
 
-    typedef TIterator<T>                       iterator;
-    typedef TIterator<const T>                 const_iterator;
-    using reverse_iterator       =             std::reverse_iterator<iterator>;
-    using const_reverse_iterator =             std::reverse_iterator<const_iterator>;
+	typedef TIterator<T>                       iterator;
+	typedef TIterator<const T>                 const_iterator;
+	using reverse_iterator       =             std::reverse_iterator<iterator>;
+	using const_reverse_iterator =             std::reverse_iterator<const_iterator>;
 	typedef T							value_type;
 
-    iterator begin()
+	iterator begin()
 	{
 		return &Array[0];
 	}
@@ -231,7 +221,7 @@ public:
 			ConstructEmpty(0, Count - 1);
 		}
 	}
-	
+
 	TArray (std::initializer_list<T> list)
 	{
 		Most = list.size();
@@ -254,17 +244,17 @@ public:
 		}
 	}
 
-	TArray (const TArray<T,TT> &other)
+	TArray (const TArray<T> &other)
 	{
 		DoCopy (other);
 	}
-	TArray (TArray<T,TT> &&other) noexcept
+	TArray (TArray<T> &&other) noexcept
 	{
 		Array = other.Array; other.Array = NULL;
 		Most = other.Most; other.Most = 0;
 		Count = other.Count; other.Count = 0;
 	}
-	TArray<T,TT> &operator= (const TArray<T,TT> &other)
+	TArray<T> &operator= (const TArray<T> &other)
 	{
 		if (&other != this)
 		{
@@ -280,7 +270,7 @@ public:
 		}
 		return *this;
 	}
-	TArray<T,TT> &operator= (TArray<T,TT> &&other) noexcept
+	TArray<T> &operator= (TArray<T> &&other) noexcept
 	{
 		if (Array)
 		{
@@ -332,12 +322,7 @@ public:
 		assert(index <= Count);
 		return Array[index];
 	}
-	// Returns the value of an element
-	TT operator() (size_t index) const
-	{
-		assert(index <= Count);
-		return Array[index];
-	}
+
 	// Returns a reference to the last element
 	T &Last() const
 	{
@@ -368,16 +353,27 @@ public:
 		return unsigned(elem - Array);
 	}
 
-    unsigned int Find(const T& item) const
-    {
-        unsigned int i;
-        for(i = 0;i < Count;++i)
-        {
-            if(Array[i] == item)
-                break;
-        }
-        return i;
-    }
+	unsigned int Find(const T& item) const
+	{
+		unsigned int i;
+		for(i = 0;i < Count;++i)
+		{
+			if(Array[i] == item)
+				break;
+		}
+		return i;
+	}
+
+	unsigned int FindNoCase(const T& item) const requires requires(const T& t) {t.CompareNoCase(t) == 0;}
+	{
+		unsigned int i;
+		for(i = 0;i < Count;++i)
+		{
+			if(Array[i].CompareNoCase(item) == 0)
+				break;
+		}
+		return i;
+	}
 
 	// !!! THIS REQUIRES AN ELEMENT TYPE THAT'S COMPARABLE WITH THE LT OPERATOR !!!
 	bool IsSorted()
@@ -434,17 +430,17 @@ public:
 	}
 
    bool Contains(const T& item) const
-    {
-        unsigned int i;
-        for(i = 0;i < Count;++i)
-        {
-            if(Array[i] == item)
-                return true;
-        }
-        return false;
-    }
+	{
+		unsigned int i;
+		for(i = 0;i < Count;++i)
+		{
+			if(Array[i] == item)
+				return true;
+		}
+		return false;
+	}
 
-	template<class Func> 
+	template<class Func>
 	bool Contains(const T& item, Func &&compare) const
 	{
 		unsigned int i;
@@ -456,7 +452,7 @@ public:
 		return false;
 	}
 
-	template<class Func> 
+	template<class Func>
 	unsigned int FindEx(Func &&compare) const
 	{
 		unsigned int i;
@@ -630,8 +626,8 @@ public:
 
 	void Delete (unsigned int index, int deletecount)
 	{
-        if(index >= Count) return;
-        
+		if(index >= Count) return;
+
 		if (index + deletecount > Count)
 		{
 			deletecount = Count - index;
@@ -772,6 +768,10 @@ public:
 	{
 		return (int)Count;
 	}
+	int64_t SSize64() const
+	{
+		return (int)Count;
+	}
 	unsigned int Max () const
 	{
 		return Most;
@@ -795,7 +795,7 @@ public:
 		}
 	}
 
-	void Swap(TArray<T, TT> &other)
+	void Swap(TArray<T> &other)
 	{
 		std::swap(Array, other.Array);
 		std::swap(Count, other.Count);
@@ -887,37 +887,62 @@ private:
 	}
 };
 
+template<typename T>
+concept IsPointer = std::is_pointer<T>::value;
+
 // TDeletingArray -----------------------------------------------------------
 // An array that deletes its elements when it gets deleted.
-template<class T, class TT=T>
-class TDeletingArray : public TArray<T, TT>
+template<IsPointer T, bool reverseOrderDelete = false>
+class TDeletingArray : public TArray<T>
 {
 public:
-	TDeletingArray() : TArray<T,TT>() {}
-	TDeletingArray(TDeletingArray<T,TT> &&other) : TArray<T,TT>(std::move(other)) {}
-	TDeletingArray<T,TT> &operator=(TDeletingArray<T,TT> &&other)
+	TDeletingArray() : TArray<T>() {}
+	TDeletingArray(TDeletingArray<T> &&other) : TArray<T>(std::move(other)) {}
+	TDeletingArray<T> &operator=(TDeletingArray<T> &&other)
 	{
 		DeleteAndClear();
-		TArray<T,TT>::operator=(std::move(other));
+		TArray<T>::operator=(std::move(other));
 		return *this;
 	}
 
 	~TDeletingArray()
 	{
-		for (unsigned int i = 0; i < TArray<T,TT>::Size(); ++i)
+		if constexpr(reverseOrderDelete)
 		{
-			if ((*this)[i] != NULL) 
-				delete (*this)[i];
+			for (int64_t i = (TArray<T>::SSize64() - 1); i >= 0; i--)
+			{
+				if ((*this)[i])
+					delete (*this)[i];
+			}
+		}
+		else
+		{
+			for (unsigned int i = 0; i < TArray<T>::Size(); ++i)
+			{
+				if ((*this)[i])
+					delete (*this)[i];
+			}
 		}
 	}
 	void DeleteAndClear()
 	{
-		for (unsigned int i = 0; i < TArray<T,TT>::Size(); ++i)
+		if constexpr(reverseOrderDelete)
 		{
-			if ((*this)[i] != NULL) 
-				delete (*this)[i];
+			for (int64_t i = (TArray<T>::SSize64() - 1); i >= 0; i--)
+			{
+				if ((*this)[i])
+					delete (*this)[i];
+			}
 		}
-		this->Clear();
+		else
+		{
+			for (unsigned int i = 0; i < TArray<T>::Size(); ++i)
+			{
+				if ((*this)[i])
+					delete (*this)[i];
+			}
+		}
+		TArray<T>::Clear();
 	}
 };
 
@@ -931,8 +956,8 @@ public:
 
 	typedef TIterator<T>                       iterator;
 	typedef TIterator<const T>                 const_iterator;
-    using reverse_iterator       =             std::reverse_iterator<iterator>;
-    using const_reverse_iterator =             std::reverse_iterator<const_iterator>;
+	using reverse_iterator       =             std::reverse_iterator<iterator>;
+	using const_reverse_iterator =             std::reverse_iterator<const_iterator>;
 	typedef T                                  value_type;
 
 	iterator begin()
@@ -1015,8 +1040,8 @@ public:
 // It can still be used as a normal TArray if needed. ACS uses this for
 // world and global arrays.
 
-template <class T, class TT=T>
-class TAutoGrowArray : public TArray<T, TT>
+template <class T>
+class TAutoGrowArray : public TArray<T>
 {
 public:
 	T GetVal (unsigned int index)
@@ -1198,65 +1223,65 @@ public:
 
   iterator begin()
   {
-    return iterator(*this);
+	return iterator(*this);
   }
   const_iterator begin() const
   {
-    return const_iterator(*this);
+	return const_iterator(*this);
   }
   const_iterator cbegin() const
   {
-    return const_iterator(*this);
+	return const_iterator(*this);
   }
 
   iterator end()
   {
-    auto it = iterator(*this, Size);
-    return it;
+	auto it = iterator(*this, Size);
+	return it;
   }
 
   const_iterator end() const
   {
-    auto it = const_iterator(
-            *this,
-            Size
-    );
-    return it;
+	auto it = const_iterator(
+			*this,
+			Size
+	);
+	return it;
   }
 
   const_iterator cend() const
   {
-    auto it = const_iterator(
-            *this,
-            Size
-    );
-    return it;
+	auto it = const_iterator(
+			*this,
+			Size
+	);
+	return it;
   }
 
   reverse_iterator rbegin()
   {
-    return reverse_iterator(end());
+	return reverse_iterator(end());
   }
   const_reverse_iterator rbegin() const
   {
-    return const_reverse_iterator(end());
+	return const_reverse_iterator(end());
   }
   const_reverse_iterator crbegin() const
   {
-    return const_reverse_iterator(cend());
+	return const_reverse_iterator(cend());
   }
 
   reverse_iterator rend()
   {
-    return reverse_iterator(begin());
+	return reverse_iterator(begin());
   }
   const_reverse_iterator rend() const
   {
-    return const_reverse_iterator(begin());
+	return const_reverse_iterator(begin());
   }
   const_reverse_iterator crend() const
   {
-    return const_reverse_iterator(cbegin());
+	return const_reverse_iterator(cbegin());
   }
 
 	//=======================================================================
@@ -1569,11 +1594,11 @@ protected:
 	}
 
 	/*
-	** Inserts a new key into a hash table; first, check whether key's main 
-	** position is free. If not, check whether colliding node is in its main 
-	** position or not: if it is not, move colliding node to an empty place and 
-	** put new key in its main position; otherwise (colliding node is in its main 
-	** position), new key goes to an empty position. 
+	** Inserts a new key into a hash table; first, check whether key's main
+	** position is free. If not, check whether colliding node is in its main
+	** position or not: if it is not, move colliding node to an empty place and
+	** put new key in its main position; otherwise (colliding node is in its main
+	** position), new key goes to an empty position.
 	**
 	** The Value field is left unconstructed.
 	*/
@@ -1721,7 +1746,7 @@ public:
   // STL standard type traits for iteration
   using iterator_category = std::forward_iterator_tag;
   using value_type = typename MapType::Pair;
-  using difference_type = ptrdiff_t;
+  using difference_type = hash_t;
   using pointer = value_type*;
   using reference = value_type&;
 
@@ -1731,7 +1756,7 @@ public:
 	}
 protected:
   explicit TMapIterator(MapType &map, hash_t position)
-        : Map(map), Position(position)
+		: Map(map), Position(position)
   {
   }
 public:
@@ -1745,19 +1770,32 @@ public:
   bool operator>=(const TMapIterator& other) const { return Position >= other.Position; }
 
   // Arithmetic operators
-  TMapIterator& operator++() { Position++; return *this; }
+  TMapIterator& operator++() {
+	if (Position >= Map.Size){
+		return *this;
+	}
+	while (++Position < Map.Size){
+		if (!Map.Nodes[Position].IsNil())
+		{
+			return *this;
+		}
+	}
+	return *this;
+  }
   TMapIterator operator++(int) { TMapIterator tmp(*this); tmp++; return tmp;}
-  TMapIterator& operator--() { Position--; return *this; }
+  TMapIterator& operator--() {
+	if (Position == 0){
+		return *this;
+	}
+	while (--Position > 0) {
+		if (Position < Map.Size && !Map.Nodes[Position].IsNil())
+		{
+			return *this;
+		}
+	}
+	return *this;
+  }
   TMapIterator operator--(int) { TMapIterator tmp(*this); tmp--; return tmp;}
-  TMapIterator& operator+=(difference_type n) { Position += n; return *this; }
-  TMapIterator operator+(difference_type n) const { TMapIterator tmp(*this); tmp += n; return tmp; }
-  TMapIterator& operator-=(difference_type n) { Position -= n; return *this; }
-  TMapIterator operator-(difference_type n) const { TMapIterator tmp(*this); tmp -= n; return tmp; }
-  difference_type operator-(const TMapIterator& other) const { return Position - other.Position; }
-
-  // Random access operators
-  value_type& operator[](difference_type n) { return *Map.Nodes[Position + n]; }
-  const value_type& operator[](difference_type n) const { return *Map.Nodes[Position + n]; }
 
   value_type& operator*() const { return *reinterpret_cast<value_type *>(&Map.Nodes[Position].Pair); }
   value_type* operator->() { return reinterpret_cast<value_type *>(&Map.Nodes[Position].Pair); }
@@ -1815,10 +1853,48 @@ template<class KT, class VT, class MapType=TMap<KT,VT> >
 class TMapConstIterator
 {
 public:
+	// STL standard type traits for iteration
+	using iterator_category = std::forward_iterator_tag;
+	using value_type = typename MapType::ConstPair;
+	using difference_type = hash_t;
+	using pointer = value_type*;
+	using reference = value_type&;
+
 	TMapConstIterator(const MapType &map)
 		: Map(map), Position(0)
 	{
 	}
+
+	// Arithmetic operators
+	TMapConstIterator& operator++() {
+		if (Position >= Map.Size){
+			return *this;
+		}
+		while (++Position < Map.Size){
+			if (!Map.Nodes[Position].IsNil())
+			{
+				return *this;
+			}
+		}
+		return *this;
+	}
+	TMapConstIterator operator++(int) { TMapIterator tmp(*this); tmp++; return tmp;}
+	TMapConstIterator& operator--() {
+		if (Position == 0){
+			return *this;
+		}
+		while (--Position > 0) {
+			if (Position < Map.Size && !Map.Nodes[Position].IsNil())
+			{
+				return *this;
+			}
+		}
+		return *this;
+	}
+	TMapConstIterator operator--(int) { TMapConstIterator tmp(*this); tmp--; return tmp;}
+
+	value_type& operator*() const { return *reinterpret_cast<value_type *>(&Map.Nodes[Position].Pair); }
+	value_type* operator->() { return reinterpret_cast<value_type *>(&Map.Nodes[Position].Pair); }
 
 	bool NextPair(typename MapType::ConstPair *&pair)
 	{
@@ -2162,8 +2238,8 @@ public:
 
 	typedef TIterator<T>                       iterator;
 	typedef TIterator<const T>                 const_iterator;
-    using reverse_iterator       =             std::reverse_iterator<iterator>;
-    using const_reverse_iterator =             std::reverse_iterator<const_iterator>;
+	using reverse_iterator       =             std::reverse_iterator<iterator>;
+	using const_reverse_iterator =             std::reverse_iterator<const_iterator>;
 	typedef T                                  value_type;
 
 	iterator begin()

@@ -1,3 +1,24 @@
+/*
+** a_ceiling.h
+**
+** Ceiling animation (lowering, crushing, raising)
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 #include "dsectoreffect.h"
@@ -49,6 +70,14 @@ public:
 		crushSlowdown = 2
 	};
 
+	ECeiling	m_Type;
+	double	 	m_BottomHeight;
+	double	 	m_TopHeight;
+	double	 	m_Speed;
+	double		m_Speed1;		// [RH] dnspeed of crushers
+	double		m_Speed2;		// [RH] upspeed of crushers
+	ECrushMode	m_CrushMode;
+	int			m_Silent;
 
 	void Construct(sector_t *sec);
 	void Construct(sector_t *sec, double speed1, double speed2, int silent);
@@ -58,17 +87,10 @@ public:
 
 	int getCrush() const { return m_Crush; }
 	int getDirection() const { return m_Direction; }
+	int getOldDirection() const { return m_OldDirection; }
 
 protected:
-	ECeiling	m_Type;
-	double	 	m_BottomHeight;
-	double	 	m_TopHeight;
-	double	 	m_Speed;
-	double		m_Speed1;		// [RH] dnspeed of crushers
-	double		m_Speed2;		// [RH] upspeed of crushers
 	int 		m_Crush;
-	ECrushMode	m_CrushMode;
-	int			m_Silent;
 	int 		m_Direction;	// 1 = up, 0 = waiting, -1 = down
 
 	// [RH] Need these for BOOM-ish transferring ceilings
@@ -83,4 +105,3 @@ protected:
 
 	friend struct FLevelLocals;
 };
-

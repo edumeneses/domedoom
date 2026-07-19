@@ -1,59 +1,26 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1994-1996 Raven Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2018 Christoph Oelckers
-// Copyright 2010 James Haley
-// Copyright 2017-2025 GZDoom Maintainers and Contributors
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-// DESCRIPTION:
-//		Do all the WAD I/O, get map description,
-//		set up initial state and misc. LUTs.
-//
-//-----------------------------------------------------------------------------
-
-/* For code that originates from ZDoom the following applies:
+/*
+** maploader.cpp
+**
+** Do WAD I/O, get map description, set up initial state and misc LUTs
 **
 **---------------------------------------------------------------------------
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2018 Christoph Oelckers
+** Copyright 2010 James Haley
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** For code that originates from ZDoom the following applies:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -95,6 +62,14 @@ enum
 CVAR (Bool, genblockmap, false, CVAR_SERVERINFO|CVAR_GLOBALCONFIG);
 CVAR (Bool, gennodes, false, CVAR_SERVERINFO|CVAR_GLOBALCONFIG);
 
+FARG(blockmap, "Configuration", "Regenerates the map's BLOCKMAP.", "",
+	"Causes " GAMENAME " to ignore all the BLOCKMAP information a map provides and generate it"
+	" instead. This is equivalent to +set genblockmap 1.");
+
+FARG_ADVANCED(enablelightmaps, "Experimental", "", "");
+
+EXTERN_FARG(xlat);
+
 inline bool P_LoadBuildMap(uint8_t *mapdata, size_t len, FMapThing **things, int *numthings)
 {
 	return false;
@@ -114,7 +89,7 @@ void MapLoader::TranslateTeleportThings ()
 	AActor *dest;
 	auto iterator = Level->GetThinkerIterator<AActor>(NAME_TeleportDest);
 	bool foundSomething = false;
-	
+
 	while ( (dest = iterator.Next()) )
 	{
 		if (!Level->SectorHasTags(dest->Sector))
@@ -123,7 +98,7 @@ void MapLoader::TranslateTeleportThings ()
 			foundSomething = true;
 		}
 	}
-	
+
 	if (foundSomething)
 	{
 		for (auto &line : Level->lines)
@@ -298,7 +273,7 @@ void MapLoader::SetTextureNoErr (side_t *side, int position, uint32_t *color, co
 {
 	FTextureID texture;
 	*validcolor = false;
-	texture = TexMan.CheckForTexture (name, ETextureType::Wall,	
+	texture = TexMan.CheckForTexture (name, ETextureType::Wall,
 		FTextureManager::TEXMAN_Overridable|FTextureManager::TEXMAN_TryAny);
 	if (!texture.Exists())
 	{
@@ -318,7 +293,7 @@ void MapLoader::SetTextureNoErr (side_t *side, int position, uint32_t *color, co
 			int l=(int)strlen(name);
 			texture = FNullTextureID();
 			*validcolor = false;
-			if (l>=7) 
+			if (l>=7)
 			{
 				for(stop=name2;stop<name2+6;stop++) if (!isxdigit(*stop)) *stop='0';
 
@@ -328,9 +303,9 @@ void MapLoader::SetTextureNoErr (side_t *side, int position, uint32_t *color, co
 				name2[4]=0; int green=strtol(name2+2,nullptr,16);
 				name2[2]=0; int red=strtol(name2,nullptr,16);
 
-				if (!isFog) 
+				if (!isFog)
 				{
-					if (factor==0) 
+					if (factor==0)
 					{
 						*validcolor=false;
 						return;
@@ -525,7 +500,7 @@ void MapLoader::LoadGLZSegs (FileReader &data, int type)
 			{
 				seg[-1].v2 = seg->v1;
 			}
-			
+
 			seg->PartnerSeg = partner == 0xffffffffu? nullptr : &Level->segs[partner];
 			if (line != 0xFFFFFFFF)
 			{
@@ -739,7 +714,7 @@ bool MapLoader::LoadExtendedNodes (FileReader &dalump, uint32_t id)
 	default:
 		return false;
 	}
-	
+
 	try
 	{
 		if (compressed)
@@ -1094,7 +1069,7 @@ void MapLoader::LoadSectors (MapData *map, FMissingTextureTracker &missingtex)
 	auto msp = map->Read(ML_SECTORS);
 	ms = (mapsector_t*)msp.Data();
 	ss = sectors;
-	
+
 	for (unsigned i = 0; i < numsectors; i++, ss++, ms++)
 	{
 		ss->e = &Level->extsectors[i];
@@ -1120,6 +1095,7 @@ void MapLoader::LoadSectors (MapData *map, FMissingTextureTracker &missingtex)
 		ss->SeqName = NAME_None;
 		ss->nextsec = -1;	//jff 2/26/98 add fields to support locking out
 		ss->prevsec = -1;	// stair retriggering until build completes
+		ss->LastDamage = -1;
 		memset(ss->SpecialColors, -1, sizeof(ss->SpecialColors));
 		memset(ss->AdditiveColors, 0, sizeof(ss->AdditiveColors));
 
@@ -1188,16 +1164,16 @@ bool MapLoader::LoadNodes (MapData * map)
 	{
 		return false;
 	}
-	
+
 	auto &nodes = Level->nodes;
-	nodes.Alloc(numnodes);		
+	nodes.Alloc(numnodes);
 	TArray<uint16_t> used(numnodes, true);
 	memset (used.data(), 0, sizeof(uint16_t) * numnodes);
 
 	auto mnp = map->Read(ML_NODES);
 	mn = (nodetype*)(mnp.Data() + nodetype::NF_LUMPOFFSET);
 	no = &nodes[0];
-	
+
 	for (unsigned i = 0; i < numnodes; i++, no++, mn++)
 	{
 		no->x = LittleShort(mn->x)<<FRACBITS;
@@ -1478,7 +1454,7 @@ void MapLoader::SpawnThings (int position)
 
 void MapLoader::SetLineID (int i, line_t *ld)
 {
-	if (Level->maptype == MAPTYPE_HEXEN)	
+	if (Level->maptype == MAPTYPE_HEXEN)
 	{
 		int setid = -1;
 		switch (ld->special)
@@ -1513,11 +1489,11 @@ void MapLoader::SetLineID (int i, line_t *ld)
 		case Polyobj_ExplicitLine:
 			setid = ld->args[4];
 			break;
-			
+
 		case Plane_Align:
 			if (!(Level->ib_compatflags & BCOMPATF_NOSLOPEID)) setid = ld->args[2];
 			break;
-			
+
 		case Static_Init:
 			if (ld->args[1] == Init_SectorLink) setid = ld->args[0];
 			break;
@@ -1685,7 +1661,7 @@ void MapLoader::LoadLineDefs (MapData * map)
 	int i, skipped;
 	line_t *ld;
 	maplinedef_t *mld;
-		
+
 	auto mldf = map->Read(ML_LINEDEFS);
 	int numlines = mldf.Size() / sizeof(maplinedef_t);
 	int numsides = map->Size(ML_SIDEDEFS) / sizeof(mapsidedef_t);
@@ -1797,7 +1773,7 @@ void MapLoader::LoadLineDefs2 (MapData * map)
 	line_t *ld;
 	int lumplen = map->Size(ML_LINEDEFS);
 	maplinedef2_t *mld;
-		
+
 	int numlines = lumplen / sizeof(maplinedef2_t);
 	linemap.Resize(numlines);
 
@@ -1946,7 +1922,7 @@ void MapLoader::LoopSidedefs (bool firstloop)
 		line_t *line = Level->sides[i].linedef;
 		int lineside = (line->sidedef[0] != &Level->sides[i]);
 		int vert = lineside ? Index(line->v2) : Index(line->v1);
-		
+
 		sidetemp[i].b.lineside = lineside;
 		sidetemp[i].b.next = sidetemp[vert].b.first;
 		sidetemp[vert].b.first = i;
@@ -1994,7 +1970,7 @@ void MapLoader::LoopSidedefs (bool firstloop)
 			right = sidetemp[right].b.first;
 
 			if (right == NO_SIDE)
-			{ 
+			{
 				// There is no right side!
 				if (firstloop) Printf ("Line %d's right edge is unconnected\n", linemap[Index(line)]);
 				continue;
@@ -2195,6 +2171,7 @@ void MapLoader::LoadSideDefs2 (MapData *map, FMissingTextureTracker &missingtex)
 		sd->SetTextureYOffset(LittleShort(msd->rowoffset));
 		sd->SetTextureXScale(1.);
 		sd->SetTextureYScale(1.);
+		sd->ClearAlpha();
 		sd->linedef = nullptr;
 		sd->Flags = 0;
 		sd->UDMFIndex = i;
@@ -2218,7 +2195,7 @@ void MapLoader::LoadSideDefs2 (MapData *map, FMissingTextureTracker &missingtex)
 		imsd.midtexture.CopyCStrPart(msd->midtexture, 8);
 		imsd.bottomtexture.CopyCStrPart(msd->bottomtexture, 8);
 
-		ProcessSideTextures(!map->HasBehavior, sd, sec, &imsd, 
+		ProcessSideTextures(!map->HasBehavior, sd, sec, &imsd,
 							  sidetemp[i].a.special, sidetemp[i].a.tag, &sidetemp[i].a.alpha, missingtex);
 	}
 }
@@ -2538,7 +2515,7 @@ bool FBlockmap::VerifyBlockMap(int count, unsigned numlines)
 				return false;
 			}
 
-			offset = *blockoffset;         
+			offset = *blockoffset;
 
 			// check that list offset is in bounds
 			if(offset < 4 || offset >= count)
@@ -2603,7 +2580,7 @@ void MapLoader::LoadBlockMap (MapData * map)
 
 	if (ForceNodeBuild || genblockmap ||
 		count/2 >= 0x10000 || count == 0 ||
-		Args->CheckParm("-blockmap")
+		Args->CheckParm(FArg_blockmap)
 		)
 	{
 		DPrintf (DMSG_SPAMMY, "Generating BLOCKMAP\n");
@@ -2749,7 +2726,7 @@ void MapLoader::GroupLines (bool buildmap)
 			li->backsector->Lines[linesDoneInEachSector[Index(li->backsector)]++] = li;
 		}
 	}
-	
+
 	sector = &Level->sectors[0];
 	for (unsigned i = 0; i < numsectors; ++i, ++sector)
 	{
@@ -2951,7 +2928,7 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 {
 	const int *oldvertextable  = nullptr;
 
-	// note: most of this ordering is important 
+	// note: most of this ordering is important
 	ForceNodeBuild = gennodes;
 
 	// [RH] Load in the BEHAVIOR lump
@@ -2973,7 +2950,7 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 		else
 		{
 			// Has the user overridden the game's default translator with a commandline parameter?
-			translator = Args->CheckValue("-xlat");
+			translator = Args->CheckValue(FArg_xlat);
 			if (translator == nullptr)
 			{
 				// Use the game's default.
@@ -3179,7 +3156,7 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 	// use in P_PointInSubsector to avoid problems with maps that depend on the specific
 	// nodes they were built with (P:AR E1M3 is a good example for a map where this is the case.)
 	reloop |= CheckNodes(map, BuildGLNodes, (uint32_t)(endTime - startTime));
-	
+
 	// set the head node for gameplay purposes. If the separate gamenodes array is not empty, use that, otherwise use the render nodes.
 	Level->headgamenode = Level->gamenodes.Size() > 0 ? &Level->gamenodes[Level->gamenodes.Size() - 1] : Level->nodes.Size() ? &Level->nodes[Level->nodes.Size() - 1] : nullptr;
 
@@ -3366,7 +3343,7 @@ void MapLoader::LoadLightmap(MapData *map)
 	Level->LPWidth = 0;
 	Level->LPHeight = 0;
 
-	if (!Args->CheckParm("-enablelightmaps"))
+	if (!Args->CheckParm(FArg_enablelightmaps))
 		return;		// this feature is still too early WIP to allow general access
 
 	if (!map->Size(ML_LIGHTMAP))

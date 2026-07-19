@@ -1,24 +1,21 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2016 Magnus Norddahl
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
+/*
+** r_line.cpp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2016 Magnus Norddahl
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -453,7 +450,7 @@ namespace swrenderer
 	{
 		if (!mFloorPlane)
 			return false;
-		
+
 		// deep water check
 		if (mFrontSector->GetHeightSec() == nullptr)
 		{
@@ -510,7 +507,7 @@ namespace swrenderer
 	{
 		if (!mCeilingPlane)
 			return false;
-		
+
 		// deep water check
 		if (mFrontSector->GetHeightSec() == nullptr && mFrontSector->GetTexture(sector_t::ceiling) != skyflatnum)
 		{
@@ -585,7 +582,7 @@ namespace swrenderer
 			return linedef->isVisualPortal();
 		}
 	}
-	
+
 	void SWRenderLine::SetWallVariables()
 	{
 		RenderPortal *renderportal = Thread->Portal.get();
@@ -680,34 +677,34 @@ namespace swrenderer
 	{
 		side_t *sidedef = mLineSegment->sidedef;
 		line_t *linedef = mLineSegment->linedef;
-		
+
 		// No top texture for skyhack lines
 		if (mFrontSector->GetTexture(sector_t::ceiling) == skyflatnum && mBackSector->GetTexture(sector_t::ceiling) == skyflatnum) return;
-		
+
 		auto tex = GetPalettedSWTexture(sidedef->GetTexture(side_t::top), true);
 		if (!tex) return;
 		mTopTexture = tex;
 	}
-	
+
 	void SWRenderLine::SetMiddleTexture()
 	{
 		side_t *sidedef = mLineSegment->sidedef;
 		line_t *linedef = mLineSegment->linedef;
-		
+
 		// [RH] Horizon lines do not need to be textured
 		if (linedef->isVisualPortal()) return;
 		if (linedef->special == Line_Horizon) return;
-			
+
 		auto tex = GetPalettedSWTexture(sidedef->GetTexture(side_t::mid), true);
 		if (!tex) return;
 		mMiddleTexture = tex;
 	}
-	
+
 	void SWRenderLine::SetBottomTexture()
 	{
 		side_t *sidedef = mLineSegment->sidedef;
 		line_t *linedef = mLineSegment->linedef;
-		
+
 		auto tex = GetPalettedSWTexture(sidedef->GetTexture(side_t::bottom), true);
 		if (!tex) return;
 		mBottomTexture = tex;
@@ -719,7 +716,7 @@ namespace swrenderer
 			front->Colormap.FadeColor != back->Colormap.FadeColor &&
 			(front->GetTexture(sector_t::ceiling) != skyflatnum || back->GetTexture(sector_t::ceiling) != skyflatnum);
 	}
-	
+
 	void SWRenderLine::ClipSegmentTopBottom(int x1, int x2)
 	{
 		// clip wall to the floor and ceiling

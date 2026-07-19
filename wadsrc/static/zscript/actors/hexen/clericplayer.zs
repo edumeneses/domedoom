@@ -1,3 +1,23 @@
+/*
+** clericplayer.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // The cleric ---------------------------------------------------------------
 
 class ClericPlayer : PlayerPawn
@@ -18,7 +38,7 @@ class ClericPlayer : PlayerPawn
 		Player.JumpZ 9;
 		Player.Viewheight 48;
 		Player.SpawnClass "Cleric";
-		Player.DisplayName "Cleric";
+		Player.DisplayName "$MNU_CLERIC";
 		Player.SoundClass "cleric";
 		Player.ScoreIcon "CLERFACE";
 		Player.InvulnerabilityMode "Ghost";
@@ -31,7 +51,7 @@ class ClericPlayer : PlayerPawn
 		Player.WeaponSlot 3, "CWeapFlame";
 		Player.WeaponSlot 4, "CWeapWraithverge";
 		Player.FlechetteType "ArtiPoisonBag1";
-		
+
 		Player.ColorRange 146, 163;
 		Player.Colorset		0, "$TXT_COLOR_BLUE",		146, 163,    161;
 		Player.ColorsetFile 1, "$TXT_COLOR_RED",		"TRANTBL7",  0xB3;
@@ -42,7 +62,7 @@ class ClericPlayer : PlayerPawn
 		Player.ColorsetFile 6, "$TXT_COLOR_BROWN",		"TRANTBLC",  0x72;
 		Player.ColorsetFile 7, "$TXT_COLOR_PURPLE",		"TRANTBLD",  0xEE;
 	}
-	
+
 	States
 	{
 	Spawn:
@@ -66,7 +86,7 @@ class ClericPlayer : PlayerPawn
 		CLER M 6 A_NoBlocking;
 		CLER NOP 6;
 		CLER Q -1;
-		Stop;		
+		Stop;
 	XDeath:
 		CLER R 5 A_PlayerScream;
 		CLER S 5;
@@ -103,4 +123,3 @@ class ClericPlayer : PlayerPawn
 		Stop;
 	}
 }
-		

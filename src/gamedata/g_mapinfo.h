@@ -1,32 +1,22 @@
 /*
-** g_level.h
+** g_mapinfo.h
+**
+**
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2006 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -35,27 +25,19 @@
 #define __G_LEVEL_H__
 
 #include "autosegs.h"
+#include "doomdef.h"
 #include "doomtype.h"
-#include "vectors.h"
+#include "fs_decompress.h"
+#include "hw_viewpointuniforms.h"
+#include "hwrenderer/postprocessing/hw_postprocess.h"
+#include "maps.h"
 #include "sc_man.h"
 #include "screenjob.h"
-#include "hwrenderer/postprocessing/hw_postprocess.h"
-#include "hw_viewpointuniforms.h"
-#include "vm.h"
-#include "maps.h"
+#include "vectors.h"
 
 struct level_info_t;
 struct cluster_info_t;
 class FSerializer;
-
-#if defined(_MSC_VER)
-#pragma section(SECTION_YREG,read)
-#define MSVC_YSEG __declspec(allocate(SECTION_YREG))
-#define GCC_YSEG
-#else
-#define MSVC_YSEG
-#define GCC_YSEG __attribute__((section(SECTION_YREG))) __attribute__((used))
-#endif
 
 // The structure used to control scripts between maps
 struct acsdefered_t
@@ -147,15 +129,17 @@ struct FMapInfoParser
 	static void MapOptHandler_##name(FMapInfoParser &parse, level_info_t *info); \
 	static FMapOptInfo MapOpt_##name = \
 		{ #name, MapOptHandler_##name, old }; \
-	MSVC_YSEG FMapOptInfo *mapopt_##name GCC_YSEG = &MapOpt_##name; \
 	static void MapOptHandler_##name(FMapInfoParser &parse, level_info_t *info)
 
 
-struct FMapOptInfo
+struct FMapOptInfo : FAutoSegEntry<FMapOptInfo>
 {
 	const char *name;
 	void (*handler) (FMapInfoParser &parse, level_info_t *levelinfo);
 	bool old;
+
+	FMapOptInfo(const char *n, void (*h) (FMapInfoParser &, level_info_t *), bool o)
+	: FAutoSegEntry(AutoSegs::MapInfoOptions, this), name(n), handler(h), old(o) {}
 };
 
 enum ELevelFlags : unsigned int
@@ -205,7 +189,7 @@ enum ELevelFlags : unsigned int
 	LEVEL_CHANGEMAPCHEAT		= 0x40000000,	// Don't display cluster messages
 	LEVEL_VISITED				= 0x80000000,	// Used for intermission map
 
-	// The flags uint64_t is now split into 2 DWORDs 
+	// The flags uint64_t is now split into 2 DWORDs
 	LEVEL2_RANDOMPLAYERSTARTS	= 0x00000001,	// Select single player starts randomnly (no voodoo dolls)
 	LEVEL2_ALLMAP				= 0x00000002,	// The player picked up a map on this level
 
@@ -222,7 +206,7 @@ enum ELevelFlags : unsigned int
 	LEVEL2_CLIPMIDTEX			= 0x00000200,
 	LEVEL2_WRAPMIDTEX			= 0x00000400,
 
-	LEVEL2_CHECKSWITCHRANGE		= 0x00000800,	
+	LEVEL2_CHECKSWITCHRANGE		= 0x00000800,
 
 	LEVEL2_PAUSE_MUSIC_IN_MENUS	= 0x00001000,
 	LEVEL2_TOTALINFIGHTING		= 0x00002000,
@@ -250,7 +234,7 @@ enum ELevelFlags : unsigned int
 	LEVEL2_ENDGAME				= 0x20000000,	// This is an epilogue level that cannot be quit.
 	LEVEL2_NOAUTOSAVEHINT		= 0x40000000,	// tell the game that an autosave for this level does not need to be kept
 	LEVEL2_FORGETSTATE			= 0x80000000,	// forget this map's state in a hub
-	
+
 	// More flags!
 	LEVEL3_FORCEFAKECONTRAST	= 0x00000001,	// forces fake contrast even with fog enabled
 	LEVEL3_REMOVEITEMS			= 0x00000002,	// kills all INVBAR items on map change.
@@ -275,6 +259,7 @@ enum ELevelFlags : unsigned int
 	LEVEL3_NOFOGOFWAR			= 0x00100000,	// disables effect of r_radarclipper CVAR on this map
 	LEVEL3_SECRET				= 0x00200000,   // level is a secret level
 	LEVEL3_SKYMIST				= 0x00400000,   // level skyfog uses the skymist texture
+	LEVEL3_NOAMBIENTOCCLUSION	= 0x00800000,   // disables ambient occlusion on this map
 };
 
 
@@ -328,7 +313,7 @@ struct level_info_t
 {
 	int			levelnum;
 	int			id24_levelnum;
-	
+
 	FString		MapName;
 	FString		NextMap;
 	FString		NextSecretMap;
@@ -363,6 +348,7 @@ struct level_info_t
 	float		skyspeed1;
 	float		skyspeed2;
 	float		skymistspeed;
+	float		skymistyscale;
 	uint32_t	fadeto;
 	uint32_t	outsidefog;
 	int			cdtrack;
@@ -371,8 +357,10 @@ struct level_info_t
 	double		aircontrol;
 	int			WarpTrans;
 	int			airsupply;
-	uint32_t	compatflags, compatflags2;
-	uint32_t	compatmask, compatmask2;
+	ELevelCompatFlags	compatflags;
+	ELevelCompatFlags2  compatflags2;
+	ELevelCompatFlags	compatmask;
+	ELevelCompatFlags2	compatmask2;
 	FString		Translator;	// for converting Doom-format linedef and sector types.
 	int			DefaultEnvironment;	// Default sound environment for the map.
 	FName		Intermission;
@@ -417,7 +405,7 @@ struct level_info_t
 	TArray<FSoundID> PrecacheSounds;
 	TArray<FString> PrecacheTextures;
 	TArray<FName> PrecacheClasses;
-	
+
 	TArray<FString> EventHandlers;
 
 	ELightMode	lightmode;
@@ -432,13 +420,13 @@ struct level_info_t
 	bool		fs_nocheckposition;
 	ELightBlendMode lightblendmode;
 	ETonemapMode tonemap;
-	
+
 	CutsceneDef intro, outro;
 
 
-	level_info_t() 
-	{ 
-		Reset(); 
+	level_info_t()
+	{
+		Reset();
 	}
 	~level_info_t()
 	{

@@ -1,3 +1,22 @@
+/*
+** entityboss.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Rogue Entertainment
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Entity Nest --------------------------------------------------------------
 
@@ -46,7 +65,7 @@ class EntityPod : Actor
 		PODD E -1;
 		Stop;
 	}
-	
+
 	void A_SpawnEntity ()
 	{
 		Actor entity = Spawn("EntityBoss", pos + (0,0,70), ALLOW_REPLACE);
@@ -58,7 +77,7 @@ class EntityPod : Actor
 			entity.tracer = self;
 		}
 	}
-	
+
 }
 
 
@@ -139,7 +158,7 @@ class EntityBoss : SpectralMonster
 		MNAL Q 6 Bright A_EntityDeath;
 		Stop;
 	}
-	
+
 	//  --------------------------------------------------------------
 
 	private void A_SpectralMissile (class<Actor> missilename)
@@ -211,7 +230,7 @@ class EntityBoss : SpectralMonster
 			}
 		}
 	}
-	
+
 }
 
 // Second Entity Boss -------------------------------------------------------
@@ -284,7 +303,7 @@ class EntitySecond : SpectralMonster
 		MDTH O 3 Bright A_SubEntityDeath;
 		Stop;
 	}
-	
+
 	//  --------------------------------------------------------------
 
 	void A_SubEntityDeath ()
@@ -295,9 +314,3 @@ class EntitySecond : SpectralMonster
 		}
 	}
 }
-
-
-
-
-
-

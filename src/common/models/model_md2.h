@@ -1,3 +1,20 @@
+/*
+** model_md2.h
+**
+** MD2/DMD model format code
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2013-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 #include "model.h"
 
@@ -96,8 +113,8 @@ protected:
 	DMDLoD			lods[MAX_LODS];
 
 public:
-	FDMDModel() 
-	{ 
+	FDMDModel()
+	{
 		mLumpNum = -1;
 		frames = NULL;
 		skins = NULL;
@@ -133,5 +150,3 @@ public:
 	virtual void LoadGeometry();
 
 };
-
-

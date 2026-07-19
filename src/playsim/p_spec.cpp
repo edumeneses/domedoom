@@ -1,69 +1,38 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1994-1996 Raven Software
-// Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2016 Christoph Oelckers
-// Copyright 2017-2025 GZDoom Maintainers and Contributors
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-// DESCRIPTION:
-//		Implements special effects:
-//		Texture animation, height or lighting changes
-//		 according to adjacent sectors, respective
-//		 utility functions, etc.
-//		Line Tag handling. Line and Sector triggers.
-//		Implements donut linedef triggers
-//		Initializes and implements BOOM linedef triggers for
-//			Scrollers/Conveyors
-//			Friction
-//			Wind/Current
-//
-//-----------------------------------------------------------------------------
-
-/* For code that originates from ZDoom the following applies:
+/*
+** p_spec.cpp
+**
+** Implements special effects
 **
 **---------------------------------------------------------------------------
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **---------------------------------------------------------------------------
 **
+** For code that originates from ZDoom the following applies:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+** Implements special effects:
+** - Texture animation, height or lighting changes
+**   according to adjacent sectors, respective
+**   utility functions, etc.
+** - Line Tag handling. Line and Sector triggers.
+** - Implements donut linedef triggers
+** - Initializes and implements BOOM linedef triggers for:
+**   - Scrollers/Conveyors
+**   - Friction
+**   - Wind/Current
 */
 
 #include <stdlib.h>
@@ -303,7 +272,7 @@ bool P_TestActivateLine (line_t *line, AActor *mo, int side, int activationType,
 	if ((lineActivation & activationType) == 0)
 	{
 		if (activationType != SPAC_MCross || lineActivation != SPAC_Cross)
-		{ 
+		{
 			return false;
 		}
 	}
@@ -315,7 +284,7 @@ bool P_TestActivateLine (line_t *line, AActor *mo, int side, int activationType,
 		!(mo->flags & MF_MISSILE) &&
 		!(line->flags & ML_MONSTERSCANACTIVATE) &&
 		(activationType != SPAC_MCross || (!(lineActivation & SPAC_MCross))))
-	{ 
+	{
 		// [RH] monsters' ability to activate this line depends on its type
 		// In Hexen, only MCROSS lines could be activated by monsters. With
 		// lax activation checks, monsters can also activate certain lines
@@ -443,7 +412,7 @@ void P_ActorInSpecialSector (AActor *victim, sector_t * sector, F3DFloor* Ffloor
 		if (!victim->isAtZ(theZ))
 			return;
 	}
-	
+
 	// Has hit ground.
 
 	auto Level = sector->Level;
@@ -460,7 +429,7 @@ void P_ActorInSpecialSector (AActor *victim, sector_t * sector, F3DFloor* Ffloor
 				P_DamageMobj(players[i].mo, nullptr, nullptr, TELEFRAG_DAMAGE, NAME_InstantDeath);
 		if (sector->Flags & SECF_EXIT2)
 			Level->SecretExitLevel(0);
-		else 
+		else
 			Level->ExitLevel(0, false);
 		return;
 	}
@@ -563,6 +532,7 @@ void P_SectorDamage(FLevelLocals *Level, int tag, int amount, FName type, PClass
 	{
 		AActor *actor, *next;
 		sector_t *sec = &Level->sectors[secnum];
+		sec->LastDamage = sec->Level->maptime;
 
 		// Do for actors in this sector.
 		for (actor = sec->thinglist; actor != NULL; actor = next)
@@ -575,6 +545,7 @@ void P_SectorDamage(FLevelLocals *Level, int tag, int amount, FName type, PClass
 		for (unsigned i = 0; i < sec->e->XFloor.attached.Size(); ++i)
 		{
 			sector_t *sec2 = sec->e->XFloor.attached[i];
+			sec2->LastDamage = sec2->Level->maptime;
 
 			for (actor = sec2->thinglist; actor != NULL; actor = next)
 			{
@@ -637,9 +608,9 @@ void P_GiveSecret(FLevelLocals *Level, AActor *actor, bool printmessage, bool pl
 			if (printmessage)
 			{
 				C_MidPrint(nullptr, GStrings.CheckString("SECRETMESSAGE"));
-				if (showsecretsector && sectornum >= 0) 
+				if (showsecretsector && sectornum >= 0)
 				{
-					Printf(PRINT_HIGH | PRINT_NONOTIFY, "Secret found in sector %d\n", sectornum);
+					Printf(PRINT_NONOTIFY, "Secret found in sector %d\n", sectornum);
 				}
 			}
 			if (playsound)

@@ -1,3 +1,23 @@
+/*
+** weaponflamer.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Rogue Entertainment
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // Flame Thrower ------------------------------------------------------------
 
 class FlameThrower : StrifeWeapon
@@ -16,7 +36,7 @@ class FlameThrower : StrifeWeapon
 		Tag "$TAG_FLAMER";
 		Inventory.PickupMessage "$TXT_FLAMER";
 	}
-	
+
 	States
 	{
 	Spawn:
@@ -36,7 +56,7 @@ class FlameThrower : StrifeWeapon
 		FLMF B 3 A_ReFire;
 		Goto Ready;
 	}
-	
+
 	//============================================================================
 	//
 	// A_FireFlamer
@@ -56,7 +76,7 @@ class FlameThrower : StrifeWeapon
 			if (!weapon.DepleteAmmo (weapon.bAltFire))
 				return;
 		}
-		
+
 		player.mo.PlayAttacking2 ();
 
 		Angle += Random2[Flamethrower]() * (5.625/256.);
@@ -66,7 +86,7 @@ class FlameThrower : StrifeWeapon
 			mo.Vel.Z += 5;
 		}
 	}
-}	
+}
 
 
 // Flame Thrower Projectile -------------------------------------------------
@@ -116,4 +136,3 @@ class FlameMissile : Actor
 		Vel.Z = random[FlameDie](0, 3);
 	}
 }
-

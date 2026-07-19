@@ -1,3 +1,22 @@
+/*
+** magestaff.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Mage Weapon Piece --------------------------------------------------------
 
@@ -79,7 +98,7 @@ class BloodscourgeDrop : Actor
 class MWeapBloodscourge : MageWeapon
 {
 	int MStaffCount;
-	
+
 	Default
 	{
 		Health 3;
@@ -123,10 +142,10 @@ class MWeapBloodscourge : MageWeapon
 		MSTF J 5 Offset (0, 36);
 		Goto Ready;
 	}
-	
+
 	//============================================================================
 	//
-	// 
+	//
 	//
 	//============================================================================
 
@@ -191,7 +210,7 @@ class MWeapBloodscourge : MageWeapon
 			if (!weapon.DepleteAmmo (weapon.bAltFire))
 				return;
 		}
-		
+
 		// [RH] Let's try and actually track what the player aimed at
 		AimLineAttack (angle, PLAYERMISSILERANGE, t, 32.);
 		if (t.linetarget == NULL)
@@ -249,7 +268,7 @@ class MageStaffFX2 : Actor
 		MSP2 I 4 Bright;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	//
@@ -269,7 +288,7 @@ class MageStaffFX2 : Actor
 	override bool SpecialBlastHandling (Actor source, double strength)
 	{
 		// Reflect to originator
-		tracer = target;	
+		tracer = target;
 		target = source;
 		return true;
 	}

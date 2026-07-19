@@ -1,3 +1,23 @@
+/*
+** weaponcrossbow.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Rogue Entertainment
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // Strife's Crossbow --------------------------------------------------------
 
 class StrifeCrossbow : StrifeWeapon
@@ -15,7 +35,7 @@ class StrifeCrossbow : StrifeWeapon
 		Tag "$TAG_STRIFECROSSBOW1";
 		Inventory.Icon "CBOWA0";
 	}
-	
+
 	States
 	{
 	Spawn:
@@ -45,7 +65,7 @@ class StrifeCrossbow : StrifeWeapon
 		XBOW KLM 5;
 		Loop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_ClearFlash
@@ -93,7 +113,7 @@ class StrifeCrossbow : StrifeWeapon
 			if (!weapon.DepleteAmmo (weapon.bAltFire))
 				return;
 		}
-		if (proj) 
+		if (proj)
 		{
 			double savedangle = angle;
 			angle += Random2[Electric]() * (5.625/256) * AccuracyFactor();
@@ -204,7 +224,7 @@ class PoisonBolt : Actor
 		AROW A 1;
 		Stop;
 	}
-	
+
 	override int DoSpecialDamage (Actor target, int damage, Name damagetype)
 	{
 		if (target.bNoBlood)
@@ -213,7 +233,7 @@ class PoisonBolt : Actor
 		}
 		if (target.health < 1000000)
 		{
-			if (!target.bBoss)			
+			if (!target.bBoss)
 				return target.health + 10;
 			else
 				return 50;
@@ -221,7 +241,5 @@ class PoisonBolt : Actor
 		return 1;
 	}
 
-	
+
 }
-
-

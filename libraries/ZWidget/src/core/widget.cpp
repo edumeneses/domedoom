@@ -2,16 +2,19 @@
 #include "core/timer.h"
 #include "core/colorf.h"
 #include "core/theme.h"
+#include "window/window.h"
 #include <stdexcept>
 #include <cmath>
 #include <algorithm>
 
-Widget::Widget(Widget* parent, WidgetType type, RenderAPI renderAPI) : Type(type)
+Widget::Widget(Widget* parent, WidgetType type, RenderAPI renderAPI, struct WindowParams params) : Type(type)
 {
 	if (type != WidgetType::Child)
 	{
 		Widget* owner = parent ? parent->Window() : nullptr;
-		DispWindow = DisplayWindow::Create(this, type == WidgetType::Popup, owner ? owner->DispWindow.get() : nullptr, renderAPI);
+		params.popup = type == WidgetType::Popup;
+		params.utility = type == WidgetType::Utility;
+		DispWindow = DisplayWindow::Create(this, owner ? owner->DispWindow.get() : nullptr, renderAPI, params);
 		if (renderAPI == RenderAPI::Unspecified || renderAPI == RenderAPI::Bitmap)
 		{
 			DispCanvas = Canvas::create();
@@ -312,7 +315,12 @@ void Widget::Hide()
 
 void Widget::ActivateWindow()
 {
-	if (Type != WidgetType::Child)
+	if(CaptureWidget && CaptureWidget->DispWindow && CaptureWidget != Window())
+	{ // auto-focus on modal windows
+		CaptureWidget->DispWindow->Restore();
+		CaptureWidget->ActivateWindow();
+	}
+	else if (Type != WidgetType::Child)
 	{
 		DispWindow->Activate();
 	}
@@ -402,6 +410,16 @@ void Widget::Paint(Canvas* canvas)
 	}
 	canvas->setOrigin(oldOrigin);
 	canvas->popClip();
+}
+
+double Widget::GetPreferredWidth()
+{
+	return GetNoncontentLeft() + GetNoncontentRight();
+}
+
+double Widget::GetPreferredHeight()
+{
+	return GetNoncontentTop() + GetNoncontentBottom();
 }
 
 void Widget::OnPaintFrame(Canvas* canvas)
@@ -513,26 +531,26 @@ void Widget::SetPointerCapture()
 void Widget::ReleasePointerCapture()
 {
 	Widget* w = Window();
-	if (w && w->CaptureWidget != nullptr)
+	if (w && w->CaptureWidget == this)
 	{
 		w->CaptureWidget = nullptr;
 		w->DispWindow->ReleaseMouseCapture();
 	}
 }
 
-void Widget::SetModalCapture()
+void Widget::SetModalCapture(bool rootWindow)
 {
-	Widget* w = Window();
+	Widget* w = Window(rootWindow);
 	if (w && w->CaptureWidget != this)
 	{
 		w->CaptureWidget = this;
 	}
 }
 
-void Widget::ReleaseModalCapture()
+void Widget::ReleaseModalCapture(bool rootWindow)
 {
-	Widget* w = Window();
-	if (w && w->CaptureWidget != nullptr)
+	Widget* w = Window(rootWindow);
+	if (w && w->CaptureWidget == this)
 	{
 		w->CaptureWidget = nullptr;
 	}
@@ -554,9 +572,20 @@ void Widget::SetClipboardText(const std::string& text)
 		w->DispWindow->SetClipboardText(text);
 }
 
-Widget* Widget::Window() const
+Widget* Widget::Window(bool rootWindow) const
 {
-	for (const Widget* w = this; w != nullptr; w = w->Parent())
+	if(rootWindow)
+	{
+		const Widget* w = this;
+
+		while(w->Parent())
+		{
+			w = w->Parent();
+		}
+
+		return (w->DispWindow) ? const_cast<Widget*>(w) : nullptr;
+	}
+	else for (const Widget* w = this; w != nullptr; w = w->Parent())
 	{
 		if (w->DispWindow)
 			return const_cast<Widget*>(w);
@@ -571,7 +600,19 @@ Canvas* Widget::GetCanvas() const
 		if (w->DispCanvas)
 			return w->DispCanvas.get();
 	}
-	return nullptr;
+
+	struct DummyCanvas
+	{
+		DummyCanvas()
+		{
+			canvas = Canvas::create();
+			canvas->attach(nullptr);
+		}
+		std::unique_ptr<Canvas> canvas;
+	};
+
+	static DummyCanvas dummy;
+	return dummy.canvas.get();
 }
 
 bool Widget::IsParent(const Widget* w) const
@@ -720,6 +761,12 @@ void Widget::OnWindowMouseDown(const Point& pos, InputKey key)
 	if (CaptureWidget)
 	{
 		CaptureWidget->OnMouseDown(CaptureWidget->MapFrom(this, pos), key);
+
+		if(CaptureWidget->DispWindow && CaptureWidget != Window())
+		{ // auto-focus on modal windows
+			CaptureWidget->DispWindow->Restore();
+			CaptureWidget->ActivateWindow();
+		}
 	}
 	else
 	{
@@ -741,6 +788,12 @@ void Widget::OnWindowMouseDoubleclick(const Point& pos, InputKey key)
 	if (CaptureWidget)
 	{
 		CaptureWidget->OnMouseDoubleclick(CaptureWidget->MapFrom(this, pos), key);
+
+		if(CaptureWidget->DispWindow && CaptureWidget != Window())
+		{ // auto-focus on modal windows
+			CaptureWidget->DispWindow->Restore();
+			CaptureWidget->ActivateWindow();
+		}
 	}
 	else
 	{
@@ -864,6 +917,11 @@ void Widget::OnWindowDeactivated()
 
 void Widget::OnWindowDpiScaleChanged()
 {
+}
+
+bool Widget::OnFileDrop(std::string path)
+{
+	return (FocusWidget && FocusWidget->OnFileDrop(path)) || (ParentObj && ParentObj->OnFileDrop(path));
 }
 
 double Widget::GetDpiScale() const
@@ -995,4 +1053,11 @@ Colorf Widget::GetStyleColor(const std::string& propertyName) const
 		return std::get<Colorf>(it->second);
 	WidgetStyle* style = WidgetTheme::GetTheme()->GetStyle(StyleClass);
 	return style ? style->GetColor(StyleState, propertyName) : Colorf::transparent();
+}
+
+void Widget::NotifyWindow()
+{
+	Widget* w = Window();
+	if (w && w->DispWindow)
+		w->DispWindow->NotifyWindow();
 }

@@ -1,3 +1,22 @@
+/*
+** ironlich.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Ironlich -----------------------------------------------------------------
 
@@ -28,7 +47,7 @@ class Ironlich : Actor
 		DropItem "ArtiEgg", 51, 0;
 	}
 
-	
+
 	States
 	{
 	Spawn:
@@ -54,7 +73,7 @@ class Ironlich : Actor
 		LICH I -1 A_BossDeath;
 		Stop;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_LichAttack
@@ -128,7 +147,7 @@ class Ironlich : Actor
 			}
 		}
 	}
-	
+
 }
 
 // Head FX 1 ----------------------------------------------------------------
@@ -161,7 +180,7 @@ class HeadFX1 : Actor
 		FX05 EFG 5 BRIGHT;
 		Stop;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_LichIceImpact
@@ -226,7 +245,7 @@ class HeadFX3 : Actor
 		FastSpeed 18;
 		Damage 5;
 		Projectile;
-		+WINDTHRUST	
+		+WINDTHRUST
 		+ZDOOMTRANS
 		-ACTIVATEIMPACT
 		-ACTIVATEPCROSS
@@ -246,7 +265,7 @@ class HeadFX3 : Actor
 		FX06 DEFG 5 BRIGHT;
 		Stop;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_LichFireGrow
@@ -298,7 +317,7 @@ class Whirlwind : Actor
 		FX07 GFED 4;
 		Stop;
 	}
-	
+
 	override int DoSpecialDamage (Actor victim, int damage, Name damagetype)
 	{
 		int randVal;
@@ -354,8 +373,5 @@ class Whirlwind : Actor
 		}
 		A_SeekerMissile(10, 30);
 	}
-	
+
 }
-
-
-

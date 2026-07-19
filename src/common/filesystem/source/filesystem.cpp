@@ -1,35 +1,24 @@
 /*
 ** filesystem.cpp
 **
+**
+**
 **---------------------------------------------------------------------------
-** Copyright 1998-2009 Randy Heit
+**
+** Copyright 1998-2016 Marisa Heit
 ** Copyright 2005-2020 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
-**
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **---------------------------------------------------------------------------
 **
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
 **
 */
 
@@ -49,7 +38,7 @@
 #include "fs_stringpool.h"
 
 namespace FileSys {
-	
+
 // MACROS ------------------------------------------------------------------
 
 #define NULL_INDEX		(0xffffffff)
@@ -74,7 +63,7 @@ static uint32_t MakeHash(const char* str, size_t length = SIZE_MAX)
 	return hash;
 }
 
-static void md5Hash(FileReader& reader, uint8_t* digest) 
+static void md5Hash(FileReader& reader, uint8_t* digest)
 {
 	using namespace md5;
 
@@ -234,11 +223,12 @@ void FileSystem::DeleteAll ()
 
 bool FileSystem::InitSingleFile(const char* filename, FileSystemMessageFunc Printf)
 {
-	std::vector<std::string> filenames = { filename };
+	std::string f = filename;
+	std::vector<ResourceName> filenames = { { f, false } };
 	return InitMultipleFiles(filenames, nullptr, Printf);
 }
 
-bool FileSystem::InitMultipleFiles (std::vector<std::string>& filenames, LumpFilterInfo* filter, FileSystemMessageFunc Printf, bool allowduplicates)
+bool FileSystem::InitMultipleFiles (std::vector<ResourceName>& filenames, LumpFilterInfo* filter, FileSystemMessageFunc Printf, bool allowduplicates)
 {
 	int numfiles;
 
@@ -258,7 +248,7 @@ bool FileSystem::InitMultipleFiles (std::vector<std::string>& filenames, LumpFil
 		{
 			for (size_t j=i+1;j<filenames.size(); j++)
 			{
-				if (filenames[i] == filenames[j])
+				if (filenames[i].Name == filenames[j].Name)
 				{
 					filenames.erase(filenames.begin() + j);
 					j--;
@@ -269,7 +259,7 @@ bool FileSystem::InitMultipleFiles (std::vector<std::string>& filenames, LumpFil
 
 	for(size_t i=0;i<filenames.size(); i++)
 	{
-		AddFile(filenames[i].c_str(), nullptr, filter, Printf);
+		AddFile(filenames[i].Name.c_str(), nullptr, filter, Printf, filenames[i].bOptional);
 
 		if (i == (unsigned)MaxIwadIndex) MoveLumpsInFolder("after_iwad/");
 		std::string path = "filter/%s";
@@ -327,7 +317,7 @@ int FileSystem::AddFromBuffer(const char* name, char* data, int size, int id, in
 // [RH] Removed reload hack
 //==========================================================================
 
-void FileSystem::AddFile (const char *filename, FileReader *filer, LumpFilterInfo* filter, FileSystemMessageFunc Printf)
+void FileSystem::AddFile (const char *filename, FileReader *filer, LumpFilterInfo* filter, FileSystemMessageFunc Printf, bool optional)
 {
 	int startlump;
 	bool isdir = false;
@@ -367,13 +357,13 @@ void FileSystem::AddFile (const char *filename, FileReader *filer, LumpFilterInf
 
 
 	if (!isdir)
-		resfile = FResourceFile::OpenResourceFile(filename, filereader, false, filter, Printf, stringpool);
+		resfile = FResourceFile::OpenResourceFile(filename, filereader, false, filter, Printf, stringpool, optional);
 	else
-		resfile = FResourceFile::OpenDirectory(filename, filter, Printf, stringpool);
+		resfile = FResourceFile::OpenDirectory(filename, filter, Printf, stringpool, optional);
 
 	if (resfile != NULL)
 	{
-		if (Printf) 
+		if (Printf)
 			Printf(FSMessageLevel::Message, "adding %s, %d lumps\n", filename, resfile->EntryCount());
 
 		uint32_t lumpstart = (uint32_t)FileInfo.size();
@@ -396,7 +386,7 @@ void FileSystem::AddFile (const char *filename, FileReader *filer, LumpFilterInf
 				path += ':';
 				path += resfile->getName(i);
 				auto embedded = resfile->GetEntryReader(i, READER_CACHED);
-				AddFile(path.c_str(), &embedded, filter, Printf);
+				AddFile(path.c_str(), &embedded, filter, Printf, optional);
 			}
 		}
 
@@ -491,7 +481,7 @@ int FileSystem::CheckNumForName (const char *name, int space) const
 			// from a Zip return that. WADs don't know these namespaces and single lumps must
 			// work as well.
 			auto lflags = lump.resfile->GetEntryFlags(lump.resindex);
-			if (space > ns_specialzipdirectory && lump.Namespace == ns_global && 
+			if (space > ns_specialzipdirectory && lump.Namespace == ns_global &&
 				!((lflags ^lump.flags) & RESFF_FULLPATH)) break;
 		}
 		i = NextLumpIndex[i];
@@ -578,10 +568,10 @@ int FileSystem::CheckNumForFullName (const char *name, bool trynormal, int names
 	{
 		if (strnicmp(name, FileInfo[i].LongName, len)) continue;
 		if (FileInfo[i].LongName[len] == 0) break;	// this is a full match
-		if (ignoreext && FileInfo[i].LongName[len] == '.') 
+		if (ignoreext && FileInfo[i].LongName[len] == '.')
 		{
 			// is this the last '.' in the last path element, indicating that the remaining part of the name is only an extension?
-			if (strpbrk(FileInfo[i].LongName + len + 1, "./") == nullptr) break;	
+			if (strpbrk(FileInfo[i].LongName + len + 1, "./") == nullptr) break;
 		}
 	}
 
@@ -605,7 +595,7 @@ int FileSystem::CheckNumForFullName (const char *name, int rfnum) const
 
 	i = FirstLumpIndex_FullName[MakeHash (name) % NumEntries];
 
-	while (i != NULL_INDEX && 
+	while (i != NULL_INDEX &&
 		(stricmp(name, FileInfo[i].LongName) || FileInfo[i].rfnum != rfnum))
 	{
 		i = NextLumpIndex_FullName[i];
@@ -754,7 +744,7 @@ uint32_t FileSystem::FileHash (int lump) const
 {
   if ((size_t)lump >= NumEntries)
   {
-    return -1;
+	return -1;
   }
   const auto &lump_p = FileInfo[lump];
   return lump_p.resfile->GetEntryHash(lump_p.resindex);
@@ -762,7 +752,7 @@ uint32_t FileSystem::FileHash (int lump) const
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -1161,6 +1151,20 @@ const char *FileSystem::GetResourceType(int lump) const
 
 //==========================================================================
 //
+// GetResourceHash
+//
+//==========================================================================
+
+const char* FileSystem::GetResourceHash(int wadNum) const
+{
+	if ((size_t)wadNum >= Files.size())
+		return nullptr;
+
+	return Files[wadNum]->GetHash();
+}
+
+//==========================================================================
+//
 // GetFileContainer
 //
 //==========================================================================
@@ -1175,7 +1179,7 @@ int FileSystem::GetFileContainer (int lump) const
 //==========================================================================
 //
 // GetFilesInFolder
-// 
+//
 // Gets all lumps within a single folder in the hierarchy.
 // If 'atomic' is set, it treats folders as atomic, i.e. only the
 // content of the last found resource file having the given folder name gets used.
@@ -1191,7 +1195,7 @@ static int folderentrycmp(const void *a, const void *b)
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -1465,14 +1469,14 @@ bool FileSystem::CreatePathlessCopy(const char *name, int id, int /*flags*/)
 
 extern "C" {
 __declspec(dllimport) unsigned long __stdcall FormatMessageA(
-    unsigned long dwFlags,
-    const void *lpSource,
-    unsigned long dwMessageId,
-    unsigned long dwLanguageId,
-    char **lpBuffer,
-    unsigned long nSize,
-    va_list *Arguments
-    );
+	unsigned long dwFlags,
+	const void *lpSource,
+	unsigned long dwMessageId,
+	unsigned long dwLanguageId,
+	char **lpBuffer,
+	unsigned long nSize,
+	va_list *Arguments
+	);
 __declspec(dllimport) void * __stdcall LocalFree (void *);
 __declspec(dllimport) unsigned long __stdcall GetLastError ();
 }
@@ -1480,15 +1484,15 @@ __declspec(dllimport) unsigned long __stdcall GetLastError ();
 static void PrintLastError (FileSystemMessageFunc Printf)
 {
 	char *lpMsgBuf;
-	FormatMessageA(0x1300 /*FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-							FORMAT_MESSAGE_FROM_SYSTEM | 
+	FormatMessageA(0x1300 /*FORMAT_MESSAGE_ALLOCATE_BUFFER |
+							FORMAT_MESSAGE_FROM_SYSTEM |
 							FORMAT_MESSAGE_IGNORE_INSERTS*/,
 		NULL,
 		GetLastError(),
 		1 << 10 /*MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT)*/, // Default language
 		&lpMsgBuf,
 		0,
-		NULL 
+		NULL
 	);
 	Printf (FSMessageLevel::Error, "  %s\n", lpMsgBuf);
 	// Free the buffer.

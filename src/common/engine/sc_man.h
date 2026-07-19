@@ -1,43 +1,36 @@
+/*
+** sc_man.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2005-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #ifndef __SC_MAN_H__
 #define __SC_MAN_H__
 
 #include <vector>
+
 #include "zstring.h"
 #include "tarray.h"
 #include "name.h"
 #include "basics.h"
-
-struct VersionInfo
-{
-	uint16_t major;
-	uint16_t minor;
-	uint32_t revision;
-
-	constexpr bool operator <=(const VersionInfo& o) const
-	{
-		return o.major > this->major || (o.major == this->major && o.minor > this->minor) || (o.major == this->major && o.minor == this->minor && o.revision >= this->revision);
-	}
-	constexpr bool operator >=(const VersionInfo& o) const
-	{
-		return o.major < this->major || (o.major == this->major && o.minor < this->minor) || (o.major == this->major && o.minor == this->minor && o.revision <= this->revision);
-	}
-	constexpr bool operator > (const VersionInfo& o) const
-	{
-		return o.major < this->major || (o.major == this->major && o.minor < this->minor) || (o.major == this->major && o.minor == this->minor && o.revision < this->revision);
-	}
-	constexpr bool operator < (const VersionInfo& o) const
-	{
-		return o.major > this->major || (o.major == this->major && o.minor > this->minor) || (o.major == this->major && o.minor == this->minor && o.revision > this->revision);
-	}
-	void operator=(const char* string);
-};
-
-// Cannot be a constructor because Lemon would puke on it.
-constexpr VersionInfo MakeVersion(unsigned int ma, unsigned int mi, unsigned int re = 0)
-{
-	return{ (uint16_t)ma, (uint16_t)mi, (uint32_t)re };
-}
-
 
 class FScanner
 {
@@ -119,7 +112,7 @@ public:
 	void TokenMustBe(int token);
 	void MustGetToken(int token, bool evaluate = false);
 	bool CheckToken(int token, bool evaluate = false);
-	bool CheckTokenId(ENamedName id);
+	bool PeekToken(int token, bool evaluate = false);
 
 	bool GetNumber(bool evaluate = false);
 	void MustGetNumber(bool evaluate = false);

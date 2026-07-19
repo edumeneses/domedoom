@@ -1,3 +1,22 @@
+/*
+** spike.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Dirt clump (spawned by spike) --------------------------------------------
 
@@ -18,7 +37,7 @@ class DirtClump : Actor
 
 // Spike (thrust floor) -----------------------------------------------------
 
-class ThrustFloor : Actor 
+class ThrustFloor : Actor
 {
 	Default
 	{
@@ -75,7 +94,7 @@ class ThrustFloor : Actor
 		TSPK B 2 A_ThrustImpale;
 		Loop;
 	}
-	
+
 	override void Activate (Actor activator)
 	{
 		if (args[0] == 0)
@@ -100,7 +119,7 @@ class ThrustFloor : Actor
 				SetStateLabel("ThrustLower");
 		}
 	}
-	
+
 	//===========================================================================
 	//
 	// Thrust floor stuff
@@ -172,7 +191,7 @@ class ThrustFloor : Actor
 		}
 	}
 
-	
+
 	void A_ThrustImpale()
 	{
 		BlockThingsIterator it = BlockThingsIterator.Create(self);

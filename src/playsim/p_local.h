@@ -1,32 +1,23 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1994-1996 Raven Software
-// Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2016 Christoph Oelckers
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-
-// DESCRIPTION:
-//		Play functions, animation, global header.
-//
-//-----------------------------------------------------------------------------
-
+/*
+** p_local.h
+**
+** Play functions, animation, global header.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #ifndef __P_LOCAL__
 #define __P_LOCAL__
@@ -35,6 +26,7 @@
 #include "doomtype.h"
 #include "vectors.h"
 #include "dobject.h"
+#include "actorptrselect.h"
 
 const double NO_VALUE = FLT_MAX;
 
@@ -82,8 +74,8 @@ void P_SetupPsprites (player_t* curplayer, bool startweaponup);
 //
 void	P_FallingDamage (AActor *ent);
 void	P_PlayerThink (player_t *player);
-void	P_PredictPlayer (player_t *player);
-void	P_UnPredictPlayer ();
+void	P_PredictClient ();
+void	P_UnPredictClient ();
 void	P_PredictionLerpReset();
 
 //
@@ -121,7 +113,7 @@ AActor *P_SpawnMissileAngleZSpeed(AActor *source, double z, PClassActor *type, D
 AActor *P_SpawnMissileZAimed(AActor *source, double z, AActor *dest, PClassActor *type);
 
 
-AActor *P_SpawnPlayerMissile (AActor *source, double x, double y, double z, PClassActor *type, DAngle angle, 
+AActor *P_SpawnPlayerMissile (AActor *source, double x, double y, double z, PClassActor *type, DAngle angle,
 							  FTranslatedLineTarget *pLineTarget = NULL, AActor **MissileActor = NULL, bool nofreeaim = false, bool noautoaim = false, int aimflags = 0);
 
 
@@ -147,7 +139,7 @@ void InitSpawnablesFromMapinfo();
 int P_Thing_CheckInputNum(player_t *p, int inputnum);
 int P_Thing_Warp(AActor *caller, AActor *reference, double xofs, double yofs, double zofs, DAngle angle, int flags, double heightoffset, double radiusoffset, DAngle pitch);
 struct FLevelLocals;
-int P_Thing_CheckProximity(FLevelLocals *Level, AActor *self, PClass *classname, double distance, int count, int flags, int ptr, bool counting = false);
+int P_Thing_CheckProximity(FLevelLocals *Level, AActor *self, PClass *classname, double distance, int count, int flags, int ptr, bool counting = false, EPTRClientSideState clientSide = CSPTR_IGNORE);
 
 enum
 {
@@ -379,7 +371,7 @@ struct FRailParams
 void P_RailAttack(FRailParams *params);
 
 enum	// P_RailAttack / A_RailAttack / A_CustomRailgun / P_DrawRailTrail flags
-{	
+{
 	RAF_SILENT = 1,
 	RAF_NOPIERCE = 2,
 	RAF_EXPLICITANGLE = 4,
@@ -412,7 +404,7 @@ enum
 	RADF_CIRCULARTHRUST = 512,
 };
 int P_GetRadiusDamage(AActor *self, AActor *thing, int damage, double distance, double fulldmgdistance, bool oldradiusdmg, bool circular);
-int	P_RadiusAttack (AActor *spot, AActor *source, int damage, double distance, 
+int	P_RadiusAttack (AActor *spot, AActor *source, int damage, double distance,
 						FName damageType, int flags, double fulldamagedistance=0.0, FName species = NAME_None);
 
 void	P_DelSeclist(msecnode_t *, msecnode_t *sector_t::*seclisthead);
@@ -428,7 +420,7 @@ msecnode_t *P_CreateSecNodeList(AActor *thing, double radius, msecnode_t *sector
 double	P_GetMoveFactor(const AActor *mo, double *frictionp);	// phares  3/6/98
 double		P_GetFriction(const AActor *mo, double *frictionfactor);
 
-// [RH] 
+// [RH]
 const secplane_t * P_CheckSlopeWalk(AActor *actor, DVector2 &move);
 
 //

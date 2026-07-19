@@ -1,3 +1,25 @@
+/*
+** RuntimeEvents.cpp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2025 nikitalita
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: MIT
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #define XBYAK_NO_OP_NAMES
 
 #include "RuntimeEvents.h"
@@ -14,7 +36,7 @@ namespace RuntimeEvents
 #define EVENT_WRAPPER_IMPL(NAME, HANDLER_SIGNATURE)                               \
 	bool g_## NAME## EventActive = false;																    \
 	std::function<HANDLER_SIGNATURE> g_## NAME## Event;                     \
-                                                                                  \
+																				  \
 	NAME##EventHandle SubscribeTo##NAME(std::function<HANDLER_SIGNATURE> handler) \
 	{                                                                             \
 		g_## NAME## Event = handler;\

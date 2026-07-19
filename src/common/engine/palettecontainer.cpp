@@ -1,33 +1,23 @@
 /*
-** r_translate.cpp
-** Translation table handling
+** palettecontainer.cpp
+**
+**
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2006 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2007-2016 Christoph Oelckers
+** Copyright 2020-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -90,7 +80,7 @@ void PaletteContainer::SetPalette(const uint8_t* colors, int transparent_index)
 
 
 	// Find white and black from the original palette so that they can be
-	// used to make an educated guess of the translucency % for a 
+	// used to make an educated guess of the translucency % for a
 	// translucency map.
 	WhiteIndex = BestColor((uint32_t*)RawColors, 255, 255, 255, 0, 255);
 	BlackIndex = BestColor((uint32_t*)RawColors, 0, 0, 0, 0, 255);
@@ -301,7 +291,7 @@ FTranslationID PaletteContainer::StoreTranslation(int slot, FRemapTable *remap)
 }
 
 //===========================================================================
-// 
+//
 // Examines the colormap to see if some of the colors have to be
 // considered fullbright all the time.
 //
@@ -567,8 +557,8 @@ bool FRemapTable::AddDesaturation(int start, int end, double r1, double g1, doub
 							GPalette.BaseColors[c].g * 143 +
 							GPalette.BaseColors[c].b * 37) / 256.0;
 
-		PalEntry pe = PalEntry(	min(255, int(r1 + intensity*r2)), 
-								min(255, int(g1 + intensity*g2)), 
+		PalEntry pe = PalEntry(	min(255, int(r1 + intensity*r2)),
+								min(255, int(g1 + intensity*g2)),
 								min(255, int(b1 + intensity*b2)));
 
 		int cc = GPalette.Remap[c];
@@ -671,7 +661,7 @@ bool FRemapTable::AddToTranslation(const char *range)
 	sc.MustGetAnyToken();
 
 	if (sc.TokenType == '[')
-	{ 
+	{
 		// translation using RGB values
 		int r1,g1,b1,r2,g2,b2;
 
@@ -821,5 +811,3 @@ bool FRemapTable::AddColors(int start, int count, const uint8_t*colors, int tran
 	return true;
 
 }
-
-

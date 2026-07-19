@@ -1,3 +1,22 @@
+/*
+** magecone.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // The Mage's Frost Cone ----------------------------------------------------
 
@@ -43,7 +62,7 @@ class MWeapFrost : MageWeapon
 		CONE A 10 A_ReFire;
 		Goto Ready;
 	}
-	
+
 	//============================================================================
 	//
 	// A_FireConePL1
@@ -104,7 +123,7 @@ class FrostMissile : Actor
 	const SHARDSPAWN_RIGHT	= 2;
 	const SHARDSPAWN_UP		= 4;
 	const SHARDSPAWN_DOWN	= 8;
-	
+
 	Default
 	{
 		Speed 25;
@@ -129,7 +148,7 @@ class FrostMissile : Actor
 		SHEX ABCDE 5 Bright;
 		Stop;
 	}
-	
+
 	override int DoSpecialDamage (Actor victim, int damage, Name damagetype)
 	{
 		if (special2 > 0)

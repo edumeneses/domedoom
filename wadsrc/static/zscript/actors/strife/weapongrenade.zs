@@ -1,3 +1,23 @@
+/*
+** weapongrenade.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Rogue Entertainment
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // High-Explosive Grenade Launcher ------------------------------------------
 
 class StrifeGrenadeLauncher : StrifeWeapon
@@ -44,7 +64,7 @@ class StrifeGrenadeLauncher : StrifeWeapon
 		GREF B 5 Bright A_Light2;
 		Goto LightDone;
 	}
-	
+
 	//============================================================================
 	//
 	// A_FireGrenade
@@ -242,7 +262,7 @@ class PhosphorousFire : Actor
 		FLBE JK 2 Bright;
 		Stop;
 	}
-	
+
 	override int DoSpecialDamage (Actor target, int damage, Name damagetype)
 	{
 		// This may look a bit weird but is the same as in SVE:
@@ -258,7 +278,7 @@ class PhosphorousFire : Actor
 		}
 		return damage;
 	}
-	
+
 	// This function is mostly redundant and only kept in case some mod references it.
 	void A_Burnarea ()
 	{
@@ -296,7 +316,7 @@ class PhosphorousFire : Actor
 			}
 
 			Vector2 newpos = Vec2Offset(xofs, yofs);
-			
+
 			Sector sec = Level.PointInSector(newpos);
 			// Consider portals and 3D floors instead of just using the current sector's z.
 			double floorh = sec.NextLowestFloorAt(newpos.x, newpos.y, pos.z+4, 0, MaxStepHeight);
@@ -319,6 +339,5 @@ class PhosphorousFire : Actor
 		}
 	}
 
-	
-}
 
+}

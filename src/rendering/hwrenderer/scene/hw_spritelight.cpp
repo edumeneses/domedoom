@@ -1,32 +1,22 @@
-// 
-//---------------------------------------------------------------------------
-//
-// Copyright(C) 2002-2016 Christoph Oelckers
-// All rights reserved.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
 /*
-** gl_light.cpp
+** hw_spritelight.cpp
+**
 ** Light level / fog management / dynamic lights
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
 **
 */
 
 #include "c_dispatch.h"
-#include "a_dynlight.h" 
+#include "a_dynlight.h"
 #include "p_local.h"
 #include "p_effect.h"
 #include "g_level.h"
@@ -112,7 +102,7 @@ void HWDrawInfo::GetDynSpriteLight(AActor *self, float x, float y, float z, FSec
 	FDynamicLight *light;
 	float frac, lr, lg, lb;
 	float radius;
-	
+
 	out[0] = out[1] = out[2] = 0.f;
 
 	LightProbe* probe = FindLightProbe(Level, x, y, z);
@@ -168,8 +158,8 @@ void HWDrawInfo::GetDynSpriteLight(AActor *self, float x, float y, float z, FSec
 					if (light->IsSpot())
 					{
 						L *= -1.0f / dist;
-						DAngle negPitch = -*light->pPitch;
-						DAngle Angle = light->target->Angles.Yaw;
+						DAngle negPitch = -light->Pitch;
+						DAngle Angle = light->Yaw;
 						double xyLen = negPitch.Cos();
 						double spotDirX = -Angle.Cos() * xyLen;
 						double spotDirY = -Angle.Sin() * xyLen;
@@ -218,11 +208,11 @@ void HWDrawInfo::GetDynSpriteLight(AActor *self, float x, float y, float z, FSec
 
 void HWDrawInfo::GetDynSpriteLight(AActor *thing, particle_t *particle, float *out)
 {
-	if (thing != NULL)
+	if (thing && !(thing->renderflags2 & RF2_NODYNAMICLIGHTING))
 	{
 		GetDynSpriteLight(thing, (float)thing->X(), (float)thing->Y(), (float)thing->Center(), thing->section, thing->Sector->PortalGroup, out);
 	}
-	else if (particle != NULL)
+	else if (particle && !(particle->flags & SPF_NODYNAMICLIGHTING))
 	{
 		GetDynSpriteLight(NULL, (float)particle->Pos.X, (float)particle->Pos.Y, (float)particle->Pos.Z, particle->subsector->section, particle->subsector->sector->PortalGroup, out);
 	}
@@ -230,7 +220,7 @@ void HWDrawInfo::GetDynSpriteLight(AActor *thing, particle_t *particle, float *o
 
 // static so that we build up a reserve (memory allocations stop)
 // For multithread processing each worker thread needs its own copy, though.
-static thread_local TArray<FDynamicLight*> addedLightsArray; 
+static thread_local TArray<FDynamicLight*> addedLightsArray;
 
 void hw_GetDynModelLight(AActor *self, FDynLightData &modellightdata)
 {

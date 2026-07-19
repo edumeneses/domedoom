@@ -1,3 +1,22 @@
+/*
+** fighterquietus.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Fighter Weapon Piece -----------------------------------------------------
 
@@ -126,7 +145,7 @@ class FWeapQuietus : FighterWeapon
 		FSRD B 1 Bright Offset (5, 40);
 		Goto Ready;
 	}
-	
+
 	//============================================================================
 	//
 	// A_FSwordAttack
@@ -154,7 +173,7 @@ class FWeapQuietus : FighterWeapon
 		A_StartSound ("FighterSwordFire", CHAN_WEAPON);
 	}
 
-	
+
 }
 
 // Fighter Sword Missile ----------------------------------------------------
@@ -191,7 +210,7 @@ class FSwordMissile : Actor
 		FSFX KLM 3 Bright;
 		Stop;
 	}
-	
+
 	override int DoSpecialDamage(Actor victim, int damage, Name damagetype)
 	{
 		if (victim.player)
@@ -200,7 +219,7 @@ class FSwordMissile : Actor
 		}
 		return damage;
 	}
-		
+
 	//============================================================================
 	//
 	// A_FSwordFlames

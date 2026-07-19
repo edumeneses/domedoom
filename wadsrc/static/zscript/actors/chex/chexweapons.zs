@@ -1,4 +1,22 @@
-// Same as Doom weapons, but the obituaries are removed.
+/*
+** chexweapons.zs
+**
+** Same as Doom weapons, but the obituaries are removed.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1996-1997 Digital Café
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 class Bootspoon : Fist
 {
@@ -93,7 +111,7 @@ class PropulsorMissile : Rocket
 		Obituary "$OB_MPPROPULSOR";
 		Alpha 0.75;
 	}
-}	
+}
 
 class PhasingZorcher : PlasmaRifle
 {
@@ -128,7 +146,7 @@ class PhaseZorchMissile : PlasmaBall
 		Obituary "$OB_MPPHASEZORCH";
 		Alpha 0.75;
 	}
-}	
+}
 
 class LAZDevice : BFG9000
 {

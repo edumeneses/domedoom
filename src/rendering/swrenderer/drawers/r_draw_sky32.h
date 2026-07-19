@@ -1,22 +1,22 @@
 /*
-**  Drawer commands for spans
-**  Copyright (c) 2016 Magnus Norddahl
+** r_draw_sky32.h
 **
-**  This software is provided 'as-is', without any express or implied
-**  warranty.  In no event will the authors be held liable for any damages
-**  arising from the use of this software.
+** Drawer commands for spans
 **
-**  Permission is granted to anyone to use this software for any purpose,
-**  including commercial applications, and to alter it and redistribute it
-**  freely, subject to the following restrictions:
+**---------------------------------------------------------------------------
 **
-**  1. The origin of this software must not be misrepresented; you must not
-**     claim that you wrote the original software. If you use this software
-**     in a product, an acknowledgment in the product documentation would be
-**     appreciated but is not required.
-**  2. Altered source versions must be plainly marked as such, and must not be
-**     misrepresented as being the original software.
-**  3. This notice may not be removed or altered from any source distribution.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2016 Magnus Norddahl
+**
+** SPDX-License-Identifier: Zlib
+**
+**---------------------------------------------------------------------------
 **
 */
 
@@ -39,7 +39,7 @@ namespace swrenderer
 
 			int32_t frac = args.TextureVPos();
 			int32_t fracstep = args.TextureVStep();
-			
+
 			uint32_t solid_top = args.SolidTopColor();
 			uint32_t solid_bottom = args.SolidBottomColor();
 			bool fadeSky = args.FadeSky();
@@ -95,7 +95,7 @@ namespace swrenderer
 
 				uint32_t alpha = max(min(frac >> (16 - start_fade), 256), 0);
 				uint32_t inv_alpha = 256 - alpha;
-				
+
 				BgraColor c = fg;
 				c.r = (c.r * alpha + solid_top_fill.r * inv_alpha) >> 8;
 				c.g = (c.g * alpha + solid_top_fill.g * inv_alpha) >> 8;
@@ -128,7 +128,7 @@ namespace swrenderer
 
 				uint32_t alpha = max(min(((2 << 24) - frac) >> (16 - start_fade), 256), 0);
 				uint32_t inv_alpha = 256 - alpha;
-				
+
 				BgraColor c = fg;
 				c.r = (c.r * alpha + solid_top_fill.r * inv_alpha) >> 8;
 				c.g = (c.g * alpha + solid_top_fill.g * inv_alpha) >> 8;
@@ -149,7 +149,7 @@ namespace swrenderer
 			}
 		}
 	};
-	
+
 	class DrawSkyDouble32Command
 	{
 	public:
@@ -170,7 +170,7 @@ namespace swrenderer
 			uint32_t solid_top = args.SolidTopColor();
 			uint32_t solid_bottom = args.SolidBottomColor();
 			bool fadeSky = args.FadeSky();
-			
+
 			// Find bands for top solid color, top fade, center textured, bottom fade, bottom solid color:
 			int start_fade = 2; // How fast it should fade out
 			int fade_length = (1 << (24 - start_fade));
@@ -232,7 +232,7 @@ namespace swrenderer
 
 				uint32_t alpha = max(min(frac >> (16 - start_fade), 256), 0);
 				uint32_t inv_alpha = 256 - alpha;
-				
+
 				BgraColor c = fg;
 				c = (c * alpha + solid_top_fill * inv_alpha) >> 8;
 				*dest = c;
@@ -274,7 +274,7 @@ namespace swrenderer
 
 				uint32_t alpha = max(min(((2 << 24) - frac) >> (16 - start_fade), 256), 0);
 				uint32_t inv_alpha = 256 - alpha;
-				
+
 				BgraColor c = fg;
 				c = (c * alpha + solid_top_fill * inv_alpha) >> 8;
 				*dest = c;

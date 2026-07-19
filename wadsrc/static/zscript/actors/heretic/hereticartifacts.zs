@@ -1,3 +1,23 @@
+/*
+** hereticartifacts.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // Super map ----------------------------------------------------------------
 
 Class SuperMap : MapRevealer
@@ -45,7 +65,7 @@ Class ArtiInvisibility : PowerupGiver
 	}
 }
 
- 
+
 // Tome of power ------------------------------------------------------------
 
 Class ArtiTomeOfPower : PowerupGiver
@@ -67,7 +87,7 @@ Class ArtiTomeOfPower : PowerupGiver
 		PWBK A 350;
 		Loop;
 	}
-	
+
 	override bool Use(bool pickup)
 	{
 		EMorphFlags mStyle = Owner.GetMorphStyle();
@@ -89,7 +109,7 @@ Class ArtiTomeOfPower : PowerupGiver
 
 		return Super.Use(pickup);
 	}
-	
+
 }
 
 
@@ -104,7 +124,7 @@ Class ActivatedTimeBomb : Actor
 		Alpha 0.4;
 		DeathSound "misc/timebomb";
 	}
-		
+
 	States
 	{
 	Spawn:
@@ -146,12 +166,12 @@ Class ArtiTimeBomb : Inventory
 		FBMB E 350;
 		Loop;
 	}
-	
+
 	override bool Use (bool pickup)
 	{
 		Actor mo = Spawn("ActivatedTimeBomb", Owner.Vec3Angle(24., Owner.angle, - Owner.Floorclip), ALLOW_REPLACE);
 		if (mo != null) mo.target = Owner;
 		return true;
 	}
-	
+
 }

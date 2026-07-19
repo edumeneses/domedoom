@@ -1,35 +1,21 @@
 /*
 ** doommenu.cpp
+**
 ** Menu base class and global interface
 **
 **---------------------------------------------------------------------------
 **
-** Copyright 2010 Christoph Oelckers
+** Copyright 2010-2016 Christoph Oelckers
 ** Copyright 2017-2025 GZDoom Maintainers and Contributors
-** All rights reserved.
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
 **
 **---------------------------------------------------------------------------
 **
@@ -53,6 +39,7 @@
 #include "i_soundinternal.h"
 #include "i_time.h"
 #include "menu.h"
+#include "name.h"
 #include "p_tick.h"
 #include "r_utility.h"
 #include "s_music.h"
@@ -61,6 +48,7 @@
 #include "teaminfo.h"
 #include "texturemanager.h"
 #include "v_draw.h"
+#include "v_font.h"
 #include "vm.h"
 
 EXTERN_CVAR(Int, cl_gfxlocalization)
@@ -68,11 +56,29 @@ EXTERN_CVAR(Bool, m_quickexit)
 EXTERN_CVAR(Bool, saveloadconfirmation) // [mxd]
 EXTERN_CVAR(Bool, quicksaverotation)
 EXTERN_CVAR(Bool, show_messages)
+EXTERN_CVAR(Bool, con_stackident)
 EXTERN_CVAR(Bool, haptics_do_menus)
 EXTERN_CVAR(Float, hud_scalefactor)
 
-// no longer used, but retained for scripts that access these CVARs.
-CVAR(Bool, m_simpleoptions, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG);
+EXTERN_CVAR(Float, vid_gamma)
+EXTERN_CVAR(Float, vid_contrast)
+EXTERN_CVAR(Float, vid_saturation)
+EXTERN_CVAR(Float, vid_fixgamma)
+EXTERN_CVAR(Float, vid_blackpoint)
+EXTERN_CVAR(Float, vid_whitepoint)
+EXTERN_CVAR(Int, gl_satformula)
+
+EXTERN_CVAR(Int, m_tooltip_lines)
+EXTERN_CVAR(Float, m_tooltip_speed)
+EXTERN_CVAR(Float, m_tooltip_delay)
+EXTERN_CVAR(Float, m_tooltip_alpha)
+EXTERN_CVAR(Float, m_tooltip_capratio)
+EXTERN_CVAR(Bool, m_tooltip_small)
+EXTERN_CVAR(Int, r_extralight)
+EXTERN_CVAR(Float, r_visibility)
+EXTERN_CVAR(Int, snd_mididevice)
+
+CVAR(Bool, m_simpleoptions, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG);
 CVAR(Bool, m_simpleoptions_view, true, 0);
 
 typedef void(*hfunc)();
@@ -151,7 +157,7 @@ bool M_SetSpecialMenu(FName& menu, int param)
 	case NAME_MainMenu:
 		if (gameinfo.gametype & GAME_DoomStrifeChex)	// Raven's games always used text based menus
 		{
-			if (gameinfo.forcetextinmenus)	// If text is forced, this overrides any check.
+			if (gameinfo.forcetextinmenus) 	// If text is forced, this overrides any check.
 			{
 				menu = NAME_MainMenuTextOnly;
 			}
@@ -159,22 +165,16 @@ bool M_SetSpecialMenu(FName& menu, int param)
 			{
 				// For these games we must check up-front if they get localized because in that case another template must be used.
 				DMenuDescriptor **desc = MenuDescriptors.CheckKey(NAME_MainMenu);
-				if (desc != nullptr)
+				if (desc == nullptr) break;
+				if (!(*desc)->IsKindOf(RUNTIME_CLASS(DListMenuDescriptor))) break;
+				DListMenuDescriptor *ld = static_cast<DListMenuDescriptor*>(*desc);
+				if (!ld->mFromEngine) break;
+				// This assumes that replacing one graphic will replace all of them.
+				// So this only checks the "New game" entry for localization capability.
+				FTextureID texid = TexMan.CheckForTexture("M_NGAME", ETextureType::MiscPatch);
+				if (!OkForLocalization(texid, "$MNU_NEWGAME"))
 				{
-					if ((*desc)->IsKindOf(RUNTIME_CLASS(DListMenuDescriptor)))
-					{
-						DListMenuDescriptor *ld = static_cast<DListMenuDescriptor*>(*desc);
-						if (ld->mFromEngine)
-						{
-							// This assumes that replacing one graphic will replace all of them.
-							// So this only checks the "New game" entry for localization capability.
-							FTextureID texid = TexMan.CheckForTexture("M_NGAME", ETextureType::MiscPatch);
-							if (!OkForLocalization(texid, "$MNU_NEWGAME"))
-							{
-								menu = NAME_MainMenuTextOnly;
-							}
-						}
-					}
+					menu = NAME_MainMenuTextOnly;
 				}
 			}
 		}
@@ -264,9 +264,39 @@ bool M_SetSpecialMenu(FName& menu, int param)
 		menu = NAME_NewPlayerMenu;	// redirect the old player menu to the new one.
 		break;
 
+	case NAME_OptionsMenu:
+		if (m_simpleoptions_view != m_simpleoptions)
+			m_simpleoptions_view->SetGenericRep(m_simpleoptions->ToInt(), CVAR_Bool);
+		if (m_simpleoptions) menu = NAME_OptionsMenuSimple;
+		break;
+
+	case NAME_OptionsMenuSimple:
+		if (!m_simpleoptions_view) m_simpleoptions_view->SetGenericRep(true, CVAR_Bool);
+		break;
+
+	case NAME_OptionsMenuFull:
+		if (m_simpleoptions_view) m_simpleoptions_view->SetGenericRep(false, CVAR_Bool);
+		menu = NAME_OptionsMenu;
+		break;
+
 	case NAME_ReadthisMenu:
 		// [MK] allow us to override the ReadThisMenu class
 		menu = gameinfo.HelpMenuClass;
+		break;
+
+	case NAME_MidiPlayerOptions:
+		switch (snd_mididevice)
+		{
+			// magic numbers from: ZMusic/configuration.cpp:MidiDeviceList.Build()
+			case -8: menu = NAME_OPNOptions; break;
+			case -7: menu = NAME_ADLOptions; break;
+			case -6: menu = NAME_WildMidiOptions;  break;
+			case -5: menu = NAME_FluidsynthOptions; break;
+			case -4: menu = NAME_GUSOptions; break;
+			case -3: menu = NAME_OPLOptions; break;
+			case -2: menu = NAME_TimidityOptions; break;
+			default: break;
+		}
 		break;
 	}
 
@@ -316,7 +346,7 @@ void OnMenuOpen(bool makeSound)
 //
 //==========================================================================
 
-CUSTOM_CVAR(Float, dimamount, -1.f, CVAR_ARCHIVE)
+CUSTOM_CVAR(Float, dimamount, 0.8f, CVAR_ARCHIVE)
 {
 	if (self < 0.f && self != -1.f)
 	{
@@ -327,7 +357,7 @@ CUSTOM_CVAR(Float, dimamount, -1.f, CVAR_ARCHIVE)
 		self = 1.f;
 	}
 }
-CVAR(Color, dimcolor, 0xffd700, CVAR_ARCHIVE)
+CVAR(Color, dimcolor, 0x000000, CVAR_ARCHIVE)
 
 void System_M_Dim()
 {
@@ -403,10 +433,10 @@ CCMD (menu_quit)
 	{
 		if (!netgame)
 		{
-			if (gameinfo.quitSound.IsNotEmpty())
+			if (gameinfo.quitSound.IsNotEmpty() && S_FindSound(gameinfo.quitSound).isvalid())
 			{
 				S_Sound(CHAN_VOICE, CHANF_UI|(haptics_do_menus?CHANF_RUMBLE:CHANF_NORUMBLE), gameinfo.quitSound, snd_menuvolume, ATTN_NONE);
-				I_WaitVBL(105);
+				I_WaitVBL(clamp(S_GetMSLength(S_FindSound(gameinfo.quitSound))*0.0735, 105.0, 350.0)); // Aim for 5% over length of sound, to a maximum 5 seconds
 			}
 		}
 		M_Quit();
@@ -445,7 +475,7 @@ CCMD (menu_endgame)
 		S_Sound (CHAN_VOICE, CHANF_UI|(haptics_do_menus?CHANF_RUMBLE:CHANF_NORUMBLE), "menu/invalid", snd_menuvolume, ATTN_NONE);
 		return;
 	}
-		
+
 	//M_StartControlPanel (true);
 	S_Sound (CHAN_VOICE, CHANF_UI|(haptics_do_menus?CHANF_RUMBLE:CHANF_NORUMBLE), "menu/activate", snd_menuvolume, ATTN_NONE);
 
@@ -475,7 +505,7 @@ CCMD (quicksave)
 		G_DoQuickSave();
 		return;
 	}
-		
+
 	if (savegameManager.quickSaveSlot == NULL || savegameManager.quickSaveSlot == (FSaveGameNode*)1)
 	{
 		S_Sound(CHAN_VOICE, CHANF_UI|(haptics_do_menus?CHANF_RUMBLE:CHANF_NORUMBLE), "menu/activate", snd_menuvolume, ATTN_NONE);
@@ -483,7 +513,7 @@ CCMD (quicksave)
 		M_SetMenu(NAME_SavegameMenu);
 		return;
 	}
-	
+
 	// [mxd]. Just save the game, no questions asked.
 	if (!saveloadconfirmation)
 	{
@@ -521,7 +551,7 @@ CCMD (quickload)
 		M_StartMessage (GStrings.GetString("QLOADNET"), 1);
 		return;
 	}
-		
+
 	if (savegameManager.quickSaveSlot == NULL || savegameManager.quickSaveSlot == (FSaveGameNode*)1)
 	{
 		M_StartControlPanel(true);
@@ -598,6 +628,28 @@ CCMD (sizeup)
 	S_Sound(CHAN_VOICE, CHANF_UI|(haptics_do_menus?CHANF_RUMBLE:CHANF_NORUMBLE), "menu/change", snd_menuvolume, ATTN_NONE);
 }
 
+CCMD(vid_reset2defaults)
+{
+	vid_contrast->ResetToDefault();
+	vid_saturation->ResetToDefault();
+	vid_fixgamma->ResetToDefault();
+	vid_blackpoint->ResetToDefault();
+	vid_whitepoint->ResetToDefault();
+	gl_satformula->ResetToDefault();
+}
+
+CCMD(acc_reset2defaults)
+{
+	m_tooltip_lines->ResetToDefault();
+	m_tooltip_speed->ResetToDefault();
+	m_tooltip_delay->ResetToDefault();
+	m_tooltip_alpha->ResetToDefault();
+	m_tooltip_capratio->ResetToDefault();
+	m_tooltip_small->ResetToDefault();
+	r_extralight->ResetToDefault();
+	r_visibility->ResetToDefault();
+}
+
 CCMD(reset2defaults)
 {
 	C_SetDefaultBindings ();
@@ -636,7 +688,7 @@ void M_StartupEpisodeMenu(FNewGameStartup *gs)
 		if ((*desc)->IsKindOf(RUNTIME_CLASS(DListMenuDescriptor)))
 		{
 			DListMenuDescriptor *ld = static_cast<DListMenuDescriptor*>(*desc);
-			
+
 			// Delete previous contents
 			for(unsigned i=0; i<ld->mItems.Size(); i++)
 			{
@@ -649,7 +701,7 @@ void M_StartupEpisodeMenu(FNewGameStartup *gs)
 				}
 			}
 
-			
+
 			int posx = (int)ld->mXpos;
 			int posy = (int)ld->mYpos;
 			int topy = posy;
@@ -720,7 +772,7 @@ void M_StartupEpisodeMenu(FNewGameStartup *gs)
 					}
 					if (it == nullptr)
 					{
-						it = CreateListMenuItemText(posx, posy, spacing, AllEpisodes[i].mShortcut, 
+						it = CreateListMenuItemText(posx, posy, spacing, AllEpisodes[i].mShortcut,
 							AllEpisodes[i].mEpisodeName.GetChars(), ld->mFont, ld->mFontColor, ld->mFontColor2, NAME_SkillMenu, i);
 					}
 					ld->mItems.Push(it);
@@ -788,7 +840,7 @@ static void BuildPlayerclassMenu()
 			// add player display
 
 			ld->mSelectedItem = ld->mItems.Size();
-			
+
 			int posy = (int)ld->mYpos;
 			int topy = posy;
 
@@ -819,7 +871,7 @@ static void BuildPlayerclassMenu()
 			if (numclassitems <= 1)
 			{
 				// create a dummy item that auto-chooses the default class.
-				auto it = CreateListMenuItemText(0, 0, 0, 'p', "player", 
+				auto it = CreateListMenuItemText(0, 0, 0, 'p', "player",
 					ld->mFont,ld->mFontColor, ld->mFontColor2, NAME_EpisodeMenu, -1000);
 				ld->mAutoselect = ld->mItems.Push(it);
 				success = true;
@@ -931,7 +983,7 @@ static void InitCrosshairsList()
 	lastlump = 0;
 
 	FOptionValues **opt = OptionValues.CheckKey(NAME_Crosshairs);
-	if (opt == nullptr) 
+	if (opt == nullptr)
 	{
 		return;	// no crosshair value list present. No need to go on.
 	}
@@ -1026,7 +1078,7 @@ void M_CreateGameMenus()
 	auto opt = OptionValues.CheckKey(NAME_PlayerTeam);
 	if (opt != nullptr)
 	{
-		auto op = *opt; 
+		auto op = *opt;
 		op->mValues.Resize(Teams.Size() + 1);
 		op->mValues[0].Value = 0;
 		op->mValues[0].Text = "$OPTVAL_NONE";
@@ -1175,7 +1227,7 @@ void M_StartupSkillMenu(FNewGameStartup *gs)
 			for(unsigned i=0; i<ld->mItems.Size(); i++)
 			{
 				FName n = ld->mItems[i]->mAction;
-				if (n == NAME_Startgame || n == NAME_StartgameConfirm) 
+				if (n == NAME_Startgame || n == NAME_StartgameConfirm)
 				{
 					ld->mItems.Resize(i);
 					break;
@@ -1443,7 +1495,7 @@ CCMD (menu_game)
 	M_StartControlPanel (true);
 	M_SetMenu(NAME_PlayerclassMenu, -1);	// The playerclass menu is the first in the 'start game' chain
 }
-								
+
 CCMD (menu_options)
 {
 	M_StartControlPanel (true);

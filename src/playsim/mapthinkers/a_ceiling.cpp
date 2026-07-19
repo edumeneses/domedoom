@@ -1,32 +1,23 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1994-1996 Raven Software
-// Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2016 Christoph Oelckers
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-//
-// DESCRIPTION:  Ceiling animation (lowering, crushing, raising)
-//
-//-----------------------------------------------------------------------------
-
-
+/*
+** a_ceiling.cpp
+**
+** Ceiling animation (lowering, crushing, raising)
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include "doomdef.h"
 #include "p_local.h"
@@ -49,7 +40,7 @@ IMPLEMENT_CLASS(DCeiling, false, false)
 
 //============================================================================
 //
-// 
+//
 //
 //============================================================================
 
@@ -72,9 +63,34 @@ void DCeiling::Serialize(FSerializer &arc)
 		.Enum("crushmode", m_CrushMode);
 }
 
+DEFINE_FIELD(DCeiling, m_Type)
+DEFINE_FIELD(DCeiling, m_BottomHeight)
+DEFINE_FIELD(DCeiling, m_TopHeight)
+DEFINE_FIELD(DCeiling, m_Speed)
+DEFINE_FIELD(DCeiling, m_Speed1)
+DEFINE_FIELD(DCeiling, m_Speed2)
+DEFINE_FIELD(DCeiling, m_Silent)
+DEFINE_FIELD(DCeiling, m_CrushMode)
+
+DEFINE_ACTION_FUNCTION(DCeiling, getCrush)
+{
+	PARAM_SELF_PROLOGUE(DCeiling);
+	ACTION_RETURN_INT(self->getCrush());
+}
+DEFINE_ACTION_FUNCTION(DCeiling, getDirection)
+{
+	PARAM_SELF_PROLOGUE(DCeiling);
+	ACTION_RETURN_INT(self->getDirection());
+}
+DEFINE_ACTION_FUNCTION(DCeiling, getOldDirection)
+{
+	PARAM_SELF_PROLOGUE(DCeiling);
+	ACTION_RETURN_INT(self->getOldDirection());
+}
+
 //============================================================================
 //
-// 
+//
 //
 //============================================================================
 
@@ -109,7 +125,7 @@ void DCeiling::PlayCeilingSound ()
 void DCeiling::Tick ()
 {
 	EMoveResult res;
-		
+
 	switch (m_Direction)
 	{
 	case 0:
@@ -118,7 +134,7 @@ void DCeiling::Tick ()
 	case 1:
 		// UP
 		res = m_Sector->MoveCeiling (m_Speed, m_TopHeight, m_Direction);
-		
+
 		if (res == EMoveResult::pastdest)
 		{
 			switch (m_Type)
@@ -129,7 +145,7 @@ void DCeiling::Tick ()
 				if (!SN_IsMakingLoopingSound (m_Sector))
 					PlayCeilingSound ();
 				break;
-				
+
 			// movers with texture change, change the texture then get removed
 			case genCeilingChgT:
 			case genCeilingChg0:
@@ -145,11 +161,11 @@ void DCeiling::Tick ()
 			}
 		}
 		break;
-		
+
 	case -1:
 		// DOWN
 		res = m_Sector->MoveCeiling (m_Speed, m_BottomHeight, m_Crush, m_Direction, m_CrushMode == ECrushMode::crushHexen);
-		
+
 		if (res == EMoveResult::pastdest)
 		{
 			switch (m_Type)
@@ -200,7 +216,7 @@ void DCeiling::Tick ()
 
 //============================================================================
 //
-// 
+//
 //
 //============================================================================
 
@@ -227,11 +243,11 @@ void DCeiling::Construct(sector_t *sec, double speed1, double speed2, int silent
 
 //============================================================================
 //
-// 
+//
 //
 //============================================================================
 
-bool FLevelLocals::CreateCeiling(sector_t *sec, DCeiling::ECeiling type, line_t *line, int tag, 
+bool FLevelLocals::CreateCeiling(sector_t *sec, DCeiling::ECeiling type, line_t *line, int tag,
 				   double speed, double speed2, double height,
 				   int crush, int silent, int change, DCeiling::ECrushMode hexencrush)
 {
@@ -242,7 +258,7 @@ bool FLevelLocals::CreateCeiling(sector_t *sec, DCeiling::ECeiling type, line_t 
 	{
 		return false;
 	}
-	
+
 	// new door thinker
 	DCeiling *ceiling = CreateThinker<DCeiling> (sec, speed, speed2, silent & ~4);
 	vertex_t *spot = sec->Lines[0]->v1;
@@ -379,7 +395,7 @@ bool FLevelLocals::CreateCeiling(sector_t *sec, DCeiling::ECeiling type, line_t 
 	default:
 		break;	// Silence GCC
 	}
-			
+
 	ceiling->m_Tag = tag;
 	ceiling->m_Type = type;
 	ceiling->m_Crush = crush;
@@ -494,7 +510,7 @@ bool FLevelLocals::EV_DoCeiling (DCeiling::ECeiling type, line_t *line,
 	int 		secnum;
 	bool 		rtn;
 	sector_t*	sec;
-		
+
 	rtn = false;
 
 	// check if a manual trigger, if so do just the sector on the backside
@@ -508,7 +524,7 @@ bool FLevelLocals::EV_DoCeiling (DCeiling::ECeiling type, line_t *line,
 		rtn |= ActivateInStasisCeiling (tag);
 		return CreateCeiling(sec, type, line, tag, speed, speed2, height, crush, silent, change, hexencrush);
 	}
-	
+
 	//	Reactivate in-stasis ceilings...for certain types.
 	// This restarts a crusher after it has been stopped
 	if (type == DCeiling::ceilCrushAndRaise)

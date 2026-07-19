@@ -1,3 +1,22 @@
+/*
+** dynlights.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 class DynamicLight : Actor
 {
 	double SpotInnerAngle;
@@ -7,7 +26,7 @@ class DynamicLight : Actor
 
 	property SpotInnerAngle: SpotInnerAngle;
 	property SpotOuterAngle: SpotOuterAngle;
-	
+
 	flagdef subtractive: lightflags, 0;
 	flagdef additive: lightflags, 1;
 	flagdef dontlightself: lightflags, 2;
@@ -51,7 +70,7 @@ class DynamicLight : Actor
 		SectorLight,
 		DummyLight,
 		ColorPulseLight,
-		ColorFlickerLight, 
+		ColorFlickerLight,
 		RandomColorFlickerLight
 	};
 
@@ -75,7 +94,7 @@ class DynamicLight : Actor
 		+NOTONAUTOMAP
 		+LIGHTMULTALPHA
 	}
-	
+
 	//==========================================================================
 	//
 	//
@@ -86,7 +105,7 @@ class DynamicLight : Actor
 	{
 		// Lights do not call the super method.
 	}
-	
+
 	override void BeginPlay()
 	{
 		ChangeStatNum(STAT_DLIGHT);
@@ -96,7 +115,7 @@ class DynamicLight : Actor
 	{
 		Super.PostBeginPlay();
 		AttachLight();
-		
+
 		if (!(SpawnFlags & MTF_DORMANT))
 		{
 			Activate(self);
@@ -114,7 +133,7 @@ class DynamicLight : Actor
 		bDormant = true;
 		DeactivateLight();
 	}
-	
+
 }
 
 
@@ -441,13 +460,13 @@ class SpotLightFlickerRandomAttenuated : SpotLightFlickerRandom
 	}
 }
 
-class VavoomLight : DynamicLight 
+class VavoomLight : DynamicLight
 {
 	Default
 	{
 		DynamicLight.Type "Point";
 	}
-	
+
 	override void BeginPlay ()
 	{
 		if (CurSector) AddZ(-CurSector.floorplane.ZatPoint(pos.XY), false); // z is absolute for Vavoom lights
@@ -480,5 +499,3 @@ class VavoomLightColor : VavoomLight
 		Super.BeginPlay();
 	}
 }
-
-

@@ -1,37 +1,25 @@
 /*
 ** gl_framebuffer.cpp
-** Implementation of the non-hardware specific parts of the
-** OpenGL frame buffer
+**
+** Implementation of non-hardware specific parts of the OpenGL frame buffer
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2010-2020 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
-**
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **---------------------------------------------------------------------------
 **
-*/ 
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include "gl_system.h"
 #include "v_video.h"
@@ -85,8 +73,8 @@ namespace OpenGLRenderer
 //
 //==========================================================================
 
-OpenGLFrameBuffer::OpenGLFrameBuffer(void *hMonitor, bool fullscreen) : 
-	Super(hMonitor, fullscreen) 
+OpenGLFrameBuffer::OpenGLFrameBuffer(void *hMonitor, bool fullscreen) :
+	Super(hMonitor, fullscreen)
 {
 	// SetVSync needs to be at the very top to workaround a bug in Nvidia's OpenGL driver.
 	// If wglSwapIntervalEXT is called after glBindFramebuffer in a frame the setting is not changed!
@@ -847,7 +835,7 @@ int OpenGLFrameBuffer::ExportCubemapCrossAsDmaBuf(FCanvasTexture* crossTex,
 //
 //===========================================================================
 
-const char* OpenGLFrameBuffer::DeviceName() const 
+const char* OpenGLFrameBuffer::DeviceName() const
 {
 	return gl.modelstring;
 }
@@ -881,8 +869,6 @@ void OpenGLFrameBuffer::Swap()
 
 		mVertexData->NextPipelineBuffer();
 		mVertexData->WaitSync();
-
-		RenderState()->SetVertexBuffer(screen->mVertexData); // Needed for Raze because it does not reset it
 	}
 	Finish.Unclock();
 	camtexcount = 0;
@@ -922,8 +908,8 @@ void OpenGLFrameBuffer::SetTextureFilterMode()
 	if (GLRenderer != nullptr && GLRenderer->mSamplerManager != nullptr) GLRenderer->mSamplerManager->SetTextureFilterMode();
 }
 
-IHardwareTexture *OpenGLFrameBuffer::CreateHardwareTexture(int numchannels) 
-{ 
+IHardwareTexture *OpenGLFrameBuffer::CreateHardwareTexture(int numchannels)
+{
 	return new FHardwareTexture(numchannels);
 }
 
@@ -943,19 +929,19 @@ void OpenGLFrameBuffer::PrecacheMaterial(FMaterial *mat, int translation)
 			systex->BindOrCreate(layer->layerTexture, i, CLAMP_NONE, 0, layer->scaleFlags);
 		}
 	}
-	// unbind everything. 
+	// unbind everything.
 	FHardwareTexture::UnbindAll();
 	gl_RenderState.ClearLastMaterial();
 }
 
 IVertexBuffer *OpenGLFrameBuffer::CreateVertexBuffer()
-{ 
-	return new GLVertexBuffer; 
+{
+	return new GLVertexBuffer;
 }
 
 IIndexBuffer *OpenGLFrameBuffer::CreateIndexBuffer()
-{ 
-	return new GLIndexBuffer; 
+{
+	return new GLIndexBuffer;
 }
 
 IDataBuffer *OpenGLFrameBuffer::CreateDataBuffer(int bindingpoint, bool ssbo, bool needsresize)
@@ -1083,7 +1069,7 @@ void OpenGLFrameBuffer::SetSaveBuffers(bool yes)
 
 //===========================================================================
 //
-// 
+//
 //
 //===========================================================================
 
@@ -1096,7 +1082,7 @@ void OpenGLFrameBuffer::BeginFrame()
 }
 
 //===========================================================================
-// 
+//
 //	Takes a screenshot
 //
 //===========================================================================
@@ -1148,7 +1134,7 @@ TArray<uint8_t> OpenGLFrameBuffer::GetScreenshotBuffer(int &pitch, ESSType &colo
 }
 
 //===========================================================================
-// 
+//
 // 2D drawing
 //
 //===========================================================================

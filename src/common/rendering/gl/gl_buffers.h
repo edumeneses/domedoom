@@ -1,3 +1,26 @@
+/*
+** gl_buffers.h
+**
+** Low level vertex buffer class
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2018-2020 Christoph Oelckers
+** Copyright 2018-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 #include "buffers.h"
@@ -6,7 +29,7 @@
 #ifdef _MSC_VER
 // silence bogus warning C4250: 'GLVertexBuffer': inherits 'GLBuffer::GLBuffer::SetData' via dominance
 // According to internet infos, the warning is erroneously emitted in this case.
-#pragma warning(disable:4250) 
+#pragma warning(disable:4250)
 #endif
 
 namespace OpenGLRenderer

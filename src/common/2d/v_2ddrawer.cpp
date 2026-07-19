@@ -1,33 +1,22 @@
 /*
-** v_2ddrawer.h
+** v_2ddrawer.cpp
+**
 ** Device independent 2D draw list
 **
 **---------------------------------------------------------------------------
-** Copyright 2016-2020 Christoph Oelckers
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 2010-2020 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -219,7 +208,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DShape2D, PushTriangle, Shape2D_PushTriangle)
 //
 //==========================================================================
 
-int F2DDrawer::AddCommand(RenderCommand *data) 
+int F2DDrawer::AddCommand(RenderCommand *data)
 {
 	data->mScreenFade = screenFade;
 	if (mData.Size() > 0 && data->isCompatible(mData.Last()))
@@ -387,7 +376,7 @@ bool F2DDrawer::SetStyle(FGameTexture *tex, DrawParms &parms, PalEntry &vertexco
 		else if (quad.mDrawMode == TM_INVERSE) quad.mDrawMode = TM_INVERTOPAQUE;
 	}
 	quad.mRenderStyle = parms.style;	// this  contains the blend mode and blend equation settings.
-    if (parms.burn) quad.mFlags |= DTF_Burn;
+	if (parms.burn) quad.mFlags |= DTF_Burn;
 	return true;
 }
 
@@ -719,24 +708,24 @@ void F2DDrawer::AddShape(FGameTexture* img, DShape2D* shape, DrawParms& parms)
 
 void F2DDrawer::AddPoly(FGameTexture *texture, FVector2 *points, int npoints,
 		double originx, double originy, double scalex, double scaley,
-		DAngle rotation, const FColormap &colormap, PalEntry flatcolor, double fadelevel,
+		DAngle rotation, const FColormap &colormap, double alpha, double fadelevel,
 		uint32_t *indices, size_t indexcount)
 {
 	RenderCommand poly;
 
 	poly.mType = DrawTypeTriangles;
 	poly.mTexture = texture;
-	poly.mRenderStyle = DefaultRenderStyle();
+	poly.mRenderStyle = (alpha < 1.0) ? LegacyRenderStyles[STYLE_Translucent] : DefaultRenderStyle();
 	poly.mFlags |= DTF_Wrap;
 	poly.mDesaturate = colormap.Desaturation;
 
-	PalEntry color0; 
+	PalEntry color0;
 	double invfade = 1. - fadelevel;
 
 	color0.r = uint8_t(colormap.LightColor.r * invfade);
 	color0.g = uint8_t(colormap.LightColor.g * invfade);
 	color0.b = uint8_t(colormap.LightColor.b * invfade);
-	color0.a = 255;
+	color0.a = uint8_t(255 * alpha);
 
 	poly.mColor1.a = 0;
 	poly.mColor1.r = uint8_t(colormap.FadeColor.r * fadelevel);
@@ -998,12 +987,12 @@ void F2DDrawer::AddFlatFill(int left, int top, int right, int bottom, FGameTextu
 
 
 //===========================================================================
-// 
-// 
+//
+//
 //
 //===========================================================================
 
-void F2DDrawer::AddColorOnlyQuad(int x1, int y1, int w, int h, PalEntry color, FRenderStyle *style, bool prepend)
+void F2DDrawer::AddColorOnlyQuad(int x1, int y1, int w, int h, PalEntry color, FRenderStyle *style)
 {
 	RenderCommand dg;
 
@@ -1023,14 +1012,7 @@ void F2DDrawer::AddColorOnlyQuad(int x1, int y1, int w, int h, PalEntry color, F
 	dg.mIndexIndex = mIndices.Size();
 	dg.mIndexCount += 6;
 	AddIndices(dg.mVertIndex, 6, 0, 1, 2, 1, 3, 2);
-	if (!prepend) AddCommand(&dg);
-	else
-	{
-		// Only needed by Raze's fullscreen blends because they are being calculated late when half of the 2D content has already been submitted,
-		// This ensures they are below the HUD, not above it.
-		dg.mScreenFade = screenFade;
-		mData.Insert(0, dg);
-	}
+	AddCommand(&dg);
 }
 
 void F2DDrawer::ClearScreen(PalEntry color)
@@ -1251,9 +1233,9 @@ public:
 	}
 };
 
-FCanvas* GetTextureCanvas(const FString& texturename)
+FCanvas *GetTextureCanvas(const FString &texturename, ETextureType usetype = ETextureType::Wall, BITFIELD flags = 0)
 {
-	FTextureID textureid = TexMan.CheckForTexture(texturename.GetChars(), ETextureType::Wall, FTextureManager::TEXMAN_Overridable);
+	FTextureID textureid = TexMan.CheckForTexture(texturename.GetChars(), usetype, FTextureManager::TEXMAN_Overridable | flags);
 	if (textureid.isValid())
 	{
 		// Only proceed if the texture is a canvas texture.

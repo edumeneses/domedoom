@@ -1,61 +1,44 @@
 /*
 ** info.cpp
+**
 ** Keeps track of available actors and their states
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2006 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 ** This is completely different from Doom's info.c.
 **
 */
 
-
-#include "doomstat.h"
-#include "info.h"
-#include "c_dispatch.h"
-#include "d_net.h"
-#include "v_text.h"
-
-#include "gi.h"
 #include "actor.h"
-#include "r_state.h"
-#include "p_local.h"
-#include "stats.h"
-#include "thingdef.h"
-#include "d_player.h"
+#include "c_dispatch.h"
+#include "d_main.h"
+#include "d_net.h"
+#include "doomstat.h"
 #include "events.h"
-#include "types.h"
 #include "filesystem.h"
 #include "g_levellocals.h"
+#include "gi.h"
+#include "info.h"
+#include "p_local.h"
+#include "r_state.h"
+#include "stats.h"
 #include "texturemanager.h"
-#include "d_main.h"
-#include "maps.h"
-#include "p_visualthinker.h"
+#include "thingdef.h"
+#include "types.h"
 
 extern void LoadActors ();
 extern void InitBotStuff();
@@ -129,7 +112,7 @@ void FState::SetAction(const char *name)
 
 void FState::CheckCallerType(AActor *self, AActor *stateowner)
 {
-	auto CheckType = [=](AActor *check, PType *requiredType)
+	auto CheckType = [this](AActor *check, PType *requiredType)
 	{
 		// This should really never happen. Any valid action function must have actor pointers here.
 		if (!requiredType->isObjectPointer())
@@ -146,13 +129,13 @@ void FState::CheckCallerType(AActor *self, AActor *stateowner)
 			ThrowAbortException(X_OTHER, "Invalid class %s in function call to %s. %s expected", check->GetClass()->TypeName.GetChars(), ActionFunc->PrintableName, cls->TypeName.GetChars());
 		}
 	};
-	
+
 	if (ActionFunc->ImplicitArgs >= 1)
 	{
 		auto argtypes = ActionFunc->Proto->ArgumentTypes;
-		
+
 		CheckType(self, argtypes[0]);
-		
+
 		if (ActionFunc->ImplicitArgs >= 2)
 		{
 			CheckType(stateowner, argtypes[1]);
@@ -490,7 +473,7 @@ void PClassActor::InitializeDefaults()
 				memset(Defaults + ParentClass->Size, 0, Size - ParentClass->Size);
 			}
 
-			optr->ObjectFlags = ((DObject*)ParentClass->Defaults)->ObjectFlags & (OF_Transient | OF_ClientSide);
+			optr->ObjectFlags = ((DObject*)ParentClass->Defaults)->ObjectFlags & OF_TransferrableFlags;
 		}
 		else
 		{
@@ -554,7 +537,7 @@ void PClassActor::RegisterIDs()
 	if (ConversationID > 0)
 	{
 		StrifeTypes[ConversationID] = cls;
-		if (cls != this) 
+		if (cls != this)
 		{
 			Printf(TEXTCOLOR_RED"Conversation ID %d refers to hidden class type '%s'\n", ConversationID, cls->TypeName.GetChars());
 		}
@@ -565,7 +548,7 @@ void PClassActor::RegisterIDs()
 		if (SpawnID > 0)
 		{
 			SpawnableThings[SpawnID] = cls;
-			if (cls != this) 
+			if (cls != this)
 			{
 				Printf(TEXTCOLOR_RED"Spawn ID %d refers to hidden class type '%s'\n", SpawnID, cls->TypeName.GetChars());
 			}
@@ -583,7 +566,7 @@ void PClassActor::RegisterIDs()
 			ent.Type = cls;
 			ent.Special = -2;	// use -2 instead of -1 so that we can recognize DECORATE defined entries and print a warning message if duplicates occur.
 			DoomEdMap.Insert(DoomEdNum, ent);
-			if (cls != this) 
+			if (cls != this)
 			{
 				Printf(TEXTCOLOR_RED"Editor number %d refers to hidden class type '%s'\n", DoomEdNum, cls->TypeName.GetChars());
 			}
@@ -597,23 +580,45 @@ void PClassActor::RegisterIDs()
 //
 //==========================================================================
 
+static bool VerifyClientSideReplacement(const PClass& replacee, const PClass& replacement)
+{
+	return GetDefaultByType(&replacee)->IsClientSide() == GetDefaultByType(&replacement)->IsClientSide();
+}
+
 PClassActor *PClassActor::GetReplacement(FLevelLocals *Level, bool lookskill)
 {
 	FName skillrepname = NAME_None;
-	
+
 	if (lookskill && AllSkills.Size() > (unsigned)gameskill)
 	{
 		skillrepname = AllSkills[gameskill].GetReplacement(TypeName);
-		if (skillrepname != NAME_None && PClass::FindClass(skillrepname) == nullptr)
+		if (skillrepname != NAME_None)
 		{
-			Printf("Warning: incorrect actor name in definition of skill %s: \n"
-				   "class %s is replaced by non-existent class %s\n"
-				   "Skill replacement will be ignored for this actor.\n", 
-				   AllSkills[gameskill].Name.GetChars(), 
-				   TypeName.GetChars(), skillrepname.GetChars());
-			AllSkills[gameskill].SetReplacement(TypeName, NAME_None);
-			AllSkills[gameskill].SetReplacedBy(skillrepname, NAME_None);
-			lookskill = false; skillrepname = NAME_None;
+			bool failed = false;
+			auto cls    = PClass::FindClass(skillrepname);
+			if (cls == nullptr)
+			{
+				failed = true;
+				Printf("Warning: incorrect actor name in definition of skill %s: \n"
+				       "class %s is replaced by non-existent class %s\n"
+				       "Skill replacement will be ignored for this actor.\n",
+				       AllSkills[gameskill].Name.GetChars(), TypeName.GetChars(), skillrepname.GetChars());
+			}
+			else if (!VerifyClientSideReplacement(*this, *cls))
+			{
+				failed = true;
+				Printf("Warning: incorrect actor replacement in definition of skill %s: \n"
+				       "class %s is replaced by class %s with mismatched client-side handling\n"
+				       "Skill replacement will be ignored for this actor.\n",
+				       AllSkills[gameskill].Name.GetChars(), TypeName.GetChars(), skillrepname.GetChars());
+			}
+			if (failed)
+			{
+				AllSkills[gameskill].SetReplacement(TypeName, NAME_None);
+				AllSkills[gameskill].SetReplacedBy(skillrepname, NAME_None);
+				lookskill    = false;
+				skillrepname = NAME_None;
+			}
 		}
 	}
 	// [MK] ZScript replacement through Event Handlers, has priority over others.
@@ -623,7 +628,7 @@ PClassActor *PClassActor::GetReplacement(FLevelLocals *Level, bool lookskill)
 	if (Level && Level->localEventManager->CheckReplacement(this,&Replacement) )
 	{
 		// [MK] the replacement is final, so don't continue with the chain
-		return Replacement ? Replacement : this;
+		return Replacement && VerifyClientSideReplacement(*this, *Replacement) ? Replacement : this;
 	}
 	if (Replacement == nullptr && (!lookskill || skillrepname == NAME_None))
 	{
@@ -646,6 +651,12 @@ PClassActor *PClassActor::GetReplacement(FLevelLocals *Level, bool lookskill)
 	rep = rep->GetReplacement(Level, false);
 	// Reset the temporarily NULLed field
 	ActorInfo()->Replacement = oldrep;
+	if (!VerifyClientSideReplacement(*this, *rep))
+	{
+		Printf(TEXTCOLOR_RED "Class %s tried to replace class %s with mismatched client-side handling which is not allowed\n",
+			    rep->TypeName.GetChars(), TypeName.GetChars());
+		return this;
+	}
 	return rep;
 }
 
@@ -658,20 +669,36 @@ PClassActor *PClassActor::GetReplacement(FLevelLocals *Level, bool lookskill)
 PClassActor *PClassActor::GetReplacee(FLevelLocals *Level, bool lookskill)
 {
 	FName skillrepname = NAME_None;
-	
+
 	if (lookskill && AllSkills.Size() > (unsigned)gameskill)
 	{
 		skillrepname = AllSkills[gameskill].GetReplacedBy(TypeName);
-		if (skillrepname != NAME_None && PClass::FindClass(skillrepname) == nullptr)
+		if (skillrepname != NAME_None)
 		{
-			Printf("Warning: incorrect actor name in definition of skill %s: \n"
-				   "non-existent class %s is replaced by class %s\n"
-				   "Skill replacement will be ignored for this actor.\n", 
-				   AllSkills[gameskill].Name.GetChars(), 
-				   skillrepname.GetChars(), TypeName.GetChars());
-			AllSkills[gameskill].SetReplacedBy(TypeName, NAME_None);
-			AllSkills[gameskill].SetReplacement(skillrepname, NAME_None);
-			lookskill = false; 
+			bool failed = false;
+			auto cls    = PClass::FindClass(skillrepname);
+			if (cls == nullptr)
+			{
+				failed = true;
+				Printf("Warning: incorrect actor name in definition of skill %s: \n"
+				       "non-existent class %s is replaced by class %s\n"
+				       "Skill replacement will be ignored for this actor.\n",
+				       AllSkills[gameskill].Name.GetChars(), skillrepname.GetChars(), TypeName.GetChars());
+			}
+			else if (!VerifyClientSideReplacement(*cls, *this))
+			{
+				failed = true;
+				Printf("Warning: incorrect actor replacement in definition of skill %s: \n"
+				       "class %s is replaced by class %s with mismatched client-side handling\n"
+				       "Skill replacement will be ignored for this actor.\n",
+				       AllSkills[gameskill].Name.GetChars(), skillrepname.GetChars(), TypeName.GetChars());
+			}
+			if (failed)
+			{
+				AllSkills[gameskill].SetReplacedBy(TypeName, NAME_None);
+				AllSkills[gameskill].SetReplacement(skillrepname, NAME_None);
+				lookskill = false;
+			}
 		}
 	}
 	PClassActor *savedrep = ActorInfo()->Replacee;
@@ -683,7 +710,7 @@ PClassActor *PClassActor::GetReplacee(FLevelLocals *Level, bool lookskill)
 	if (Level->localEventManager->CheckReplacee(&savedrep, this))
 	{
 		// [MK] the replacement is final, so don't continue with the chain
-		return savedrep ? savedrep : this;
+		return savedrep && VerifyClientSideReplacement(*savedrep, *this) ? savedrep : this;
 	}
 	if (savedrep == nullptr && (!lookskill || skillrepname == NAME_None))
 	{
@@ -699,6 +726,12 @@ PClassActor *PClassActor::GetReplacee(FLevelLocals *Level, bool lookskill)
 	}
 	rep = rep->GetReplacee(Level, false);
 	ActorInfo()->Replacee = savedrep;
+	if (!VerifyClientSideReplacement(*rep, *this))
+	{
+			Printf(TEXTCOLOR_RED "Class %s tried to replace class %s with mismatched client-side handling which is not allowed\n",
+			       TypeName.GetChars(), rep->TypeName.GetChars());
+		return this;
+	}
 	return rep;
 }
 
@@ -738,7 +771,7 @@ void PClassActor::SetPainChance(FName type, int chance)
 		}
 	}
 
-	if (chance >= 0) 
+	if (chance >= 0)
 	{
 		ActorInfo()->PainChances.Push({ type, min(chance, 256) });
 	}
@@ -832,18 +865,18 @@ CCMD (summonfoe)
 
 TMap<FName, DamageTypeDefinition> GlobalDamageDefinitions;
 
-void DamageTypeDefinition::Apply(FName type) 
-{ 
-	GlobalDamageDefinitions[type] = *this; 
+void DamageTypeDefinition::Apply(FName type)
+{
+	GlobalDamageDefinitions[type] = *this;
 }
 
-DamageTypeDefinition *DamageTypeDefinition::Get(FName type) 
-{ 
-	return GlobalDamageDefinitions.CheckKey(type); 
+DamageTypeDefinition *DamageTypeDefinition::Get(FName type)
+{
+	return GlobalDamageDefinitions.CheckKey(type);
 }
 
 bool DamageTypeDefinition::IgnoreArmor(FName type)
-{ 
+{
 	DamageTypeDefinition *dtd = Get(type);
 	if (dtd) return dtd->NoArmor;
 	return false;
@@ -893,10 +926,10 @@ double DamageTypeDefinition::GetMobjDamageFactor(FName type, DmgFactors const * 
 		// If this was nonspecific damage, don't fall back to nonspecific search
 		if (type == NAME_None) return 1.;
 	}
-	
+
 	// If this was nonspecific damage, don't fall back to nonspecific search
-	else if (type == NAME_None) 
-	{ 
+	else if (type == NAME_None)
+	{
 		return 1.;
 	}
 	else
@@ -905,7 +938,7 @@ double DamageTypeDefinition::GetMobjDamageFactor(FName type, DmgFactors const * 
 		DamageTypeDefinition *dtd = Get(type);
 		return dtd ? dtd->DefaultFactor : 1.;
 	}
-	
+
 	{
 		DamageTypeDefinition *dtd = Get(type);
 		// Here we are looking for modifications to untyped damage

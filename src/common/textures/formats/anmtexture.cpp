@@ -1,33 +1,22 @@
 /*
 ** anmtexture.cpp
+**
 ** Texture class for reading the first frame of Build ANM files
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2020 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 **
@@ -106,7 +95,7 @@ FAnmTexture::FAnmTexture (int lumpnum, int w, int h)
 void FAnmTexture::ReadFrame(uint8_t *pixels, uint8_t *palette)
 {
 	auto lump = fileSystem.ReadFile (SourceLump);
-	auto source = lump.bytes(); 
+	auto source = lump.bytes();
 
 	std::unique_ptr<anim_t> anim = std::make_unique<anim_t>(); // note that this struct is very large and should not go onto the stack!
 	if (ANIM_LoadAnim(anim.get(), source, (int)lump.size()) >= 0)
@@ -146,7 +135,7 @@ PalettedPixels FAnmTexture::CreatePalettedPixels(int conversion, int frame)
 	{
 		remap[i] = ColorMatcher.Pick(w->palette[i*3], w->palette[i*3+1], w->palette[i*3+2]);
 	}
-	ImageHelpers::FlipNonSquareBlockRemap (pixels.Data(), w->buffer, Width, Height, Width, remap); 
+	ImageHelpers::FlipNonSquareBlockRemap (pixels.Data(), w->buffer, Width, Height, Width, remap);
 	return pixels;
 }
 
@@ -161,7 +150,7 @@ int FAnmTexture::CopyPixels(FBitmap *bmp, int conversion, int frame)
 	std::unique_ptr<workbuf> w = std::make_unique<workbuf>();
 	ReadFrame(w->buffer, w->palette);
 
-    auto dpix = bmp->GetPixels();
+	auto dpix = bmp->GetPixels();
 	for (int i = 0; i < Width * Height; i++)
 	{
 		int p = i * 4;
@@ -174,5 +163,3 @@ int FAnmTexture::CopyPixels(FBitmap *bmp, int conversion, int frame)
 
 	return -1;
 }
-
- 

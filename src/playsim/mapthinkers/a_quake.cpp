@@ -1,27 +1,21 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1994-1996 Raven Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2016 Christoph Oelckers
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-// Hexen's earthquake system, significantly enhanced
-//
-
+/*
+** a_quake.cpp
+**
+** Hexen's earthquake system, significantly enhanced
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include "doomtype.h"
 #include "doomstat.h"
@@ -52,7 +46,7 @@ IMPLEMENT_POINTERS_END
 
 void DEarthquake::Construct(AActor *center, double intensityX, double intensityY, double intensityZ, int duration,
 	double damrad, double tremrad, FSoundID quakesound, int flags,
-	double waveSpeedX, double waveSpeedY, double waveSpeedZ, double falloff, int highpoint, 
+	double waveSpeedX, double waveSpeedY, double waveSpeedZ, double falloff, int highpoint,
 	double rollIntensity, double rollWave, double damageMultiplier, double thrustMultiplier, int damage)
 {
 	m_QuakeSFX = quakesound;
@@ -121,7 +115,7 @@ void DEarthquake::Tick ()
 		Destroy ();
 		return;
 	}
-	
+
 	if (!S_IsActorPlayingSomething (m_Spot, CHAN_BODY, m_QuakeSFX))
 	{
 		S_Sound (m_Spot, CHAN_BODY, CHANF_LOOP, m_QuakeSFX, 1, ATTN_NORM);
@@ -156,7 +150,7 @@ void DEarthquake::Tick ()
 			}
 		}
 	}
-	
+
 	if (m_MiniCount > 0)
 		m_MiniCount--;
 	if (--m_Countdown == 0)
@@ -199,7 +193,7 @@ void DEarthquake::DoQuakeDamage(DEarthquake *quake, AActor *victim, bool falloff
 				damage = falloff ? (int)(m_Damage * GetFalloff(dist, m_DamageRadius) * m_DamageMultiplier) : (int)(m_Damage * m_DamageMultiplier);
 
 			damage = damage < 1 ? 1 : damage; //Do at least a tiny bit of damage when in radius.
-			
+
 			P_DamageMobj(victim, NULL, NULL, damage, NAME_Quake);
 		}
 		// Thrust pushable actor around
@@ -217,8 +211,8 @@ void DEarthquake::DoQuakeDamage(DEarthquake *quake, AActor *victim, bool falloff
 //
 // DEarthquake :: GetModWave
 //
-// QF_WAVE converts intensity into amplitude and unlocks a new property, the 
-// wave length. This is, in short, waves per second. Named waveMultiplier 
+// QF_WAVE converts intensity into amplitude and unlocks a new property, the
+// wave length. This is, in short, waves per second. Named waveMultiplier
 // because that's as the name implies: adds more waves per second.
 //
 //==========================================================================
@@ -249,7 +243,7 @@ double DEarthquake::GetModIntensity(double intensity, bool fake) const
 		bool check = !!(m_Highpoint > 0 && m_Highpoint < m_CountdownStart);
 		int divider = (check) ? m_Highpoint : m_CountdownStart;
 		int scalar;
-		
+
 		if ((m_Flags & (QF_SCALEDOWN | QF_SCALEUP)) == (QF_SCALEDOWN | QF_SCALEUP))
 		{
 			if (check)
@@ -276,14 +270,14 @@ double DEarthquake::GetModIntensity(double intensity, bool fake) const
 				scalar *= 2;
 			}
 		}
-		else 
+		else
 		{
 			if (m_Flags & QF_SCALEDOWN)
 			{
 				scalar = m_Countdown;
 			}
 			else			// QF_SCALEUP
-			{ 
+			{
 				scalar = m_CountdownStart - m_Countdown;
 				if (m_Highpoint > 0)
 				{
@@ -293,8 +287,8 @@ double DEarthquake::GetModIntensity(double intensity, bool fake) const
 						scalar = divider;
 				}
 			}
-			scalar = (scalar > divider) ? divider : scalar;			
-		}		
+			scalar = (scalar > divider) ? divider : scalar;
+		}
 		assert(divider > 0);
 		intensity = intensity * scalar / divider;
 	}
@@ -321,7 +315,7 @@ double DEarthquake::GetFalloff(double dist, double radius) const
 		assert(tremorsize > 0);
 		return (1. - ((dist - m_Falloff) / tremorsize));
 	}
-	else 
+	else
 	{ //Shouldn't happen.
 		return 1.;
 	}
@@ -391,7 +385,7 @@ int DEarthquake::StaticGetQuakeIntensities(double ticFrac, AActor *victim, FQuak
 				{
 					jiggers.RollWave = r * quake->GetModWave(ticFrac, quake->m_RollWave) * falloff * strength;
 
-					
+
 					intensity.X *= quake->GetModWave(ticFrac, quake->m_WaveSpeed.X);
 					intensity.Y *= quake->GetModWave(ticFrac, quake->m_WaveSpeed.Y);
 					intensity.Z *= quake->GetModWave(ticFrac, quake->m_WaveSpeed.Z);
@@ -406,7 +400,7 @@ int DEarthquake::StaticGetQuakeIntensities(double ticFrac, AActor *victim, FQuak
 					// [MC] Now does so. And they stack rather well. I'm a little
 					// surprised at how easy it was.
 
-					
+
 					if (quake->m_Flags & QF_RELATIVE)
 					{
 						jiggers.RelOffset += intensity;
@@ -430,7 +424,7 @@ int DEarthquake::StaticGetQuakeIntensities(double ticFrac, AActor *victim, FQuak
 
 bool P_StartQuakeXYZ(FLevelLocals *Level, AActor *activator, int tid, double intensityX, double intensityY, double intensityZ, int duration,
 	double damrad, double tremrad, FSoundID quakesfx, int flags,
-	double waveSpeedX, double waveSpeedY, double waveSpeedZ, double falloff, int highpoint, 
+	double waveSpeedX, double waveSpeedY, double waveSpeedZ, double falloff, int highpoint,
 	double rollIntensity, double rollWave, double damageMultiplier, double thrustMultiplier, int damage)
 {
 	AActor *center;
@@ -459,7 +453,7 @@ bool P_StartQuakeXYZ(FLevelLocals *Level, AActor *activator, int tid, double int
 				quakesfx, flags, waveSpeedX, waveSpeedY, waveSpeedZ, falloff, highpoint, rollIntensity, rollWave, damageMultiplier, thrustMultiplier, damage);
 		}
 	}
-	
+
 	return res;
 }
 

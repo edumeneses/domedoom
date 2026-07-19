@@ -1,3 +1,22 @@
+/*
+** specialspot.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 class SpotState : Object native play
 {
 	deprecated ("3.8") static SpotState GetSpotState(bool create = true)
@@ -9,7 +28,7 @@ class SpotState : Object native play
 	native SpecialSpot GetRandomSpot(class<Actor> type, bool onlyonce);
 	native void AddSpot(SpecialSpot spot);
 	native void RemoveSpot(SpecialSpot spot);
-	
+
 }
 
 class SpecialSpot : Actor
@@ -33,7 +52,7 @@ class SpecialSpot : Actor
 		if (sstate != NULL) sstate.RemoveSpot(self);
 		Super.OnDestroy();
 	}
-	
+
 	// Mace spawn spot ----------------------------------------------------------
 
 	// Every mace spawn spot will execute this action. The first one

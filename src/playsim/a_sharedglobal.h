@@ -1,3 +1,27 @@
+/*
+** a_sharedglobal.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2005-2016 Marisa Heit
+** Copyright 2005-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #ifndef __A_SHAREDGLOBAL_H__
 #define __A_SHAREDGLOBAL_H__
 
@@ -97,7 +121,7 @@ public:
 	void Tick ();
 	AActor *WhoFor() { return ForWho; }
 	void Cancel ();
-	
+
 
 protected:
 	float Blends[2][4];
@@ -139,7 +163,7 @@ class DEarthquake : public DThinker
 public:
 	static const int DEFAULT_STAT = STAT_EARTHQUAKE;
 	void Construct(AActor *center, double intensityX, double intensityY, double intensityZ, int duration,
-		double damrad, double tremrad, FSoundID quakesfx, int flags, 
+		double damrad, double tremrad, FSoundID quakesfx, int flags,
 		double waveSpeedX, double waveSpeedY, double waveSpeedZ, double falloff, int highpoint, double rollIntensity, double rollWave, double damageMultiplier, double thrustMultiplier, int damage);
 
 	void Serialize(FSerializer &arc);

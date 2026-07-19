@@ -1,4 +1,23 @@
 /*
+** bridge.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
+/*
 	args[0]: Bridge radius, in mapunits
 	args[1]: Bridge height, in mapunits
 	args[2]: Amount of bridge balls (if 0: Doom bridge)
@@ -100,7 +119,7 @@ class CustomBridge : Actor
 		TLGL A 300;
 		Stop;
 	}
-	
+
 	override void BeginPlay ()
 	{
 		if (args[2]) // Hexen bridge if there are balls
@@ -114,16 +133,16 @@ class CustomBridge : Actor
 			A_SetRenderStyle(1., STYLE_Normal);
 		}
 	}
-	
+
 	override void OnDestroy()
 	{
 		// Hexen originally just set a flag to make the bridge balls remove themselves in A_BridgeOrbit.
 		// But this is not safe with custom bridge balls that do not necessarily call that function.
 		// So the best course of action is to look for all bridge balls here and destroy them ourselves.
-		
+
 		let it = ThinkerIterator.Create("Actor");
 		Actor thing;
-		
+
 		while ((thing = Actor(it.Next())))
 		{
 			if (thing.target == self)
@@ -133,7 +152,7 @@ class CustomBridge : Actor
 		}
 		Super.OnDestroy();
 	}
-	
+
 
 	void A_BridgeInit(class<Actor> balltype = "BridgeBall")
 	{
@@ -152,7 +171,7 @@ class CustomBridge : Actor
 			Actor ball = Spawn(balltype, Pos, ALLOW_REPLACE);
 			ball.Angle = startangle + (45./32) * (256/ballcount) * i;
 			ball.target = self;
-			
+
 			double rotationradius = ORBIT_RADIUS;
 			if (args[4]) rotationradius = (args[4] * radius) / 100;
 
@@ -206,7 +225,7 @@ class InvisibleBridge : Actor
 		TNT1 A -1;
 		Stop;
 	}
-	
+
 	override void BeginPlay ()
 	{
 		Super.BeginPlay ();
@@ -215,7 +234,7 @@ class InvisibleBridge : Actor
 			A_SetSize(args[0]? args[0] : radius, args[1]? args[1] : height);
 		}
 	}
-	
+
 }
 
 // And some invisible bridges from Skull Tag -------------------------------

@@ -1,24 +1,19 @@
-// 
-//---------------------------------------------------------------------------
-//
-// Copyright(C) 2004-2016 Christoph Oelckers
-// All rights reserved.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
+/*
+** hw_material.cpp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2004-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include "filesystem.h"
 #include "m_png.h"
@@ -52,7 +47,7 @@ FMaterial::FMaterial(FGameTexture * tx, int scaleflags)
 	mShaderIndex = SHADER_Default;
 	sourcetex = tx;
 	auto imgtex = tx->GetTexture();
-	mTextureLayers.Push({ imgtex, scaleflags, -1 });
+	mTextureLayers.Push({ imgtex, scaleflags });
 
 	if (tx->GetUseType() == ETextureType::SWCanvas && static_cast<FWrapperTexture*>(imgtex)->GetColorFormat() == 0)
 	{
@@ -69,7 +64,6 @@ FMaterial::FMaterial(FGameTexture * tx, int scaleflags)
 		{
 			mShaderIndex = tx->GetShaderIndex();
 		}
-		mTextureLayers.Last().clampflags = CLAMP_CAMTEX;
 		// no additional layers for cameratexture
 	}
 	else
@@ -83,7 +77,7 @@ FMaterial::FMaterial(FGameTexture * tx, int scaleflags)
 		{
 			for (auto &texture : { tx->Layers->Normal.get(), tx->Layers->Specular.get() })
 			{
-				mTextureLayers.Push({ texture, 0, -1 });
+				mTextureLayers.Push({ texture, 0 });
 			}
 			mShaderIndex = SHADER_Specular;
 		}
@@ -91,7 +85,7 @@ FMaterial::FMaterial(FGameTexture * tx, int scaleflags)
 		{
 			for (auto &texture : { tx->Layers->Normal.get(), tx->Layers->Metallic.get(), tx->Layers->Roughness.get(), tx->Layers->AmbientOcclusion.get() })
 			{
-				mTextureLayers.Push({ texture, 0, -1 });
+				mTextureLayers.Push({ texture, 0 });
 			}
 			mShaderIndex = SHADER_PBR;
 		}
@@ -101,30 +95,30 @@ FMaterial::FMaterial(FGameTexture * tx, int scaleflags)
 		auto placeholder = TexMan.GameByIndex(1);
 		if (tx->Brightmap.get())
 		{
-			mTextureLayers.Push({ tx->Brightmap.get(), scaleflags, -1 });
+			mTextureLayers.Push({ tx->Brightmap.get(), scaleflags });
 			mLayerFlags |= TEXF_Brightmap;
 		}
-		else	
-		{ 
-			mTextureLayers.Push({ placeholder->GetTexture(), 0, -1 });
+		else
+		{
+			mTextureLayers.Push({ placeholder->GetTexture(), 0 });
 		}
 		if (tx->Layers && tx->Layers->Detailmap.get())
 		{
-			mTextureLayers.Push({ tx->Layers->Detailmap.get(), 0, CLAMP_NONE });
+			mTextureLayers.Push({ tx->Layers->Detailmap.get(), 0 });
 			mLayerFlags |= TEXF_Detailmap;
 		}
 		else
 		{
-			mTextureLayers.Push({ placeholder->GetTexture(), 0, -1 });
+			mTextureLayers.Push({ placeholder->GetTexture(), 0 });
 		}
 		if (tx->Layers && tx->Layers->Glowmap.get())
 		{
-			mTextureLayers.Push({ tx->Layers->Glowmap.get(), scaleflags, -1 });
+			mTextureLayers.Push({ tx->Layers->Glowmap.get(), scaleflags });
 			mLayerFlags |= TEXF_Glowmap;
 		}
 		else
 		{
-			mTextureLayers.Push({ placeholder->GetTexture(), 0, -1 });
+			mTextureLayers.Push({ placeholder->GetTexture(), 0 });
 		}
 
 		auto index = tx->GetShaderIndex();
@@ -152,7 +146,6 @@ FMaterial::FMaterial(FGameTexture * tx, int scaleflags)
 
 	mTextureLayers.ShrinkToFit();
 	tx->Material[scaleflags] = this;
-	if (tx->isHardwareCanvas()) tx->SetTranslucent(false);
 }
 
 //===========================================================================
@@ -176,7 +169,7 @@ IHardwareTexture* FMaterial::GetLayer(int i, int translation, MaterialLayerInfo*
 {
 	if ((mScaleFlags & CTF_Indexed) && i > 0 && layercallback)
 	{
-		static MaterialLayerInfo deflayer = { nullptr, 0, CLAMP_XY };
+		static MaterialLayerInfo deflayer = { nullptr, 0 };
 		if (i == 1 || i == 2)
 		{
 			if (pLayer) *pLayer = &deflayer;
@@ -197,7 +190,7 @@ IHardwareTexture* FMaterial::GetLayer(int i, int translation, MaterialLayerInfo*
 //==========================================================================
 //
 // Gets a texture from the texture manager and checks its validity for
-// GL rendering. 
+// GL rendering.
 //
 //==========================================================================
 
@@ -222,5 +215,3 @@ void DeleteMaterial(FMaterial* mat)
 {
 	delete mat;
 }
-
-

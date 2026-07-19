@@ -5,31 +5,19 @@
 ** actor property definitions and associated content.
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2016-2020 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -188,7 +176,7 @@ bool ZCCDoomCompiler::CompileFlagDefs(PClass *type, TArray<ZCC_FlagDef *> &Prope
 				}
 			}
 			else field = nullptr;
-			
+
 			FName name = FName(p->NodeName);
 
 			if(isActor)
@@ -196,7 +184,7 @@ bool ZCCDoomCompiler::CompileFlagDefs(PClass *type, TArray<ZCC_FlagDef *> &Prope
 				FString qualifiedname;
 				// Store the full qualified name and prepend some 'garbage' to the name so that no conflicts with other symbol types can happen.
 				// All these will be removed from the symbol table after the compiler finishes to free up the allocated space.
-				
+
 				for (int i = 0; i < 2; i++)
 				{
 					if (i == 0) qualifiedname.Format("@flagdef@%s", name.GetChars());
@@ -215,7 +203,7 @@ bool ZCCDoomCompiler::CompileFlagDefs(PClass *type, TArray<ZCC_FlagDef *> &Prope
 
 			if (field != nullptr)
 				type->VMType->AddNativeField(FStringf("b%s", name.GetChars()), TypeSInt32, field->Offset, 0, 1 << p->BitValue);
-		} 
+		}
 	}
 	return true;
 }
@@ -812,7 +800,7 @@ void ZCCDoomCompiler::ProcessDefaultFlag(PClassActor *cls, ZCC_FlagStmt *flg)
 	{
 		if ((fd->varflags & VARF_Deprecated) && fd->deprecationVersion <= this->mVersion)
 		{
-			Warn(flg, "Deprecated flag '%s%s%s' used, deprecated since %d.%d.%d", n1, n2 ? "." : "", n2 ? n2 : "", 
+			Warn(flg, "Deprecated flag '%s%s%s' used, deprecated since %d.%d.%d", n1, n2 ? "." : "", n2 ? n2 : "",
 				fd->deprecationVersion.major, fd->deprecationVersion.minor, fd->deprecationVersion.revision);
 		}
 		if (fd->structoffset == -1)
@@ -925,6 +913,11 @@ void ZCCDoomCompiler::InitDefaults()
 				{
 					bag.Info->SetDropItems(bag.DropItemList);
 				}
+
+				if (GetDefaultByType(ti)->IsClientSide() && ti->IsDescendantOf(NAME_Inventory))
+				{
+					Error(c->cls, "Inventory item %s cannot be client-sided", ti->TypeName.GetChars());
+				}
 			}
 		}
 	}
@@ -986,7 +979,7 @@ FxExpression *ZCCDoomCompiler::SetupActionFunction(PClass *cls, ZCC_TreeNode *af
 						{
 							Error(af, "%s is declared private and not accessible", FName(id->Identifier).GetChars());
 						}
-						
+
 						return new FxVMFunctionCall(new FxSelf(*af), afd, argumentlist, *af, false);
 					}
 					else
@@ -1020,7 +1013,7 @@ void ZCCDoomCompiler::CompileStates()
 {
 	for (auto c : Classes)
 	{
-		
+
 		if (!c->ClassType()->IsDescendantOf(RUNTIME_CLASS(AActor)))
 		{
 			if (c->States.Size()) Error(c->cls, "%s: States can only be defined for actors.", c->Type()->TypeName.GetChars());
@@ -1275,12 +1268,12 @@ int ZCCDoomCompiler::CheckActionKeyword(ZCC_FuncDeclarator* f, uint32_t &varflag
 	else
 	{
 		return 1;
-	}	
+	}
 }
 
 //==========================================================================
 //
-// AActor needs the actor info manually added to its meta data 
+// AActor needs the actor info manually added to its meta data
 // before adding any scripted fields.
 //
 //==========================================================================
@@ -1290,9 +1283,8 @@ bool ZCCDoomCompiler::PrepareMetaData(PClass *type)
 	if (type->TypeName == NAME_Actor)
 	{
 		assert(type->MetaSize == 0);
-		AddActorInfo(type);	
+		AddActorInfo(type);
 		return true;
 	}
 	return false;
 }
-

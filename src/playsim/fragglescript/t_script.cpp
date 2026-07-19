@@ -1,36 +1,26 @@
-// Emacs style mode select -*- C++ -*-
-//----------------------------------------------------------------------------
-//
-// Copyright(C) 2000 Simon Howard
-// Copyright(C) 2005-2008 Christoph Oelckers
-//
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation; either version 2 of the License, or
-// (at your option) any later version.
-// 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-// 
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//
-//--------------------------------------------------------------------------
-//
-// scripting.
-//
-// delayed scripts, running scripts, console cmds etc in here
-// the interface between FraggleScript and the rest of the game
-//
-// By Simon Howard
-//
-// (completely redone and cleaned up in 2008 by Christoph Oelckers)
-//
-//---------------------------------------------------------------------------
-//
+/*
+** t_script.cpp
+**
+** scripting
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2000 Simon Howard
+** Copyright 2005-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** delayed scripts, running scripts, console cmds etc in here
+** the interface between FraggleScript and the rest of the game
+**
+** By Simon Howard
+**
+** (completely redone and cleaned up in 2008 by Christoph Oelckers)
+*/
 
 #include "t_script.h"
 #include "a_keys.h"
@@ -123,7 +113,7 @@ void DFsScript::ClearChildren()
 DFsScript::DFsScript()
 {
 	int i;
-	
+
 	for(i=0; i<SECTIONSLOTS; i++) sections[i] = nullptr;
 	for(i=0; i<VARIABLESLOTS; i++) variables[i] = nullptr;
 	for(i=0; i<MAXSCRIPTS; i++)	children[i] = nullptr;
@@ -184,7 +174,7 @@ void DFsScript::Serialize(FSerializer &arc)
 
 void DFsScript::ParseScript(char *position, DFraggleThinker *th)
 {
-	if (position == nullptr) 
+	if (position == nullptr)
 	{
 		lastiftrue = false;
 		position = Data.Data();
@@ -192,13 +182,13 @@ void DFsScript::ParseScript(char *position, DFraggleThinker *th)
 
 	// check for valid position
 	if(position < Data.Data() || position > Data.Data() +len)
-    {
+	{
 		Printf("script %d: trying to continue from point outside script!\n", scriptnum);
 		return;
-    }
-	
-	th->trigger_obj = trigger;  // set trigger variable. 
-	
+	}
+
+	th->trigger_obj = trigger;  // set trigger variable.
+
 	try
 	{
 		FParser parse(th->Level, this);
@@ -208,10 +198,10 @@ void DFsScript::ParseScript(char *position, DFraggleThinker *th)
 	{
 		Printf ("%s\n", err.GetMessage());
 	}
-	
+
 	// dont clear global vars!
 	if(scriptnum != -1) ClearVariables();        // free variables
-	
+
 	// haleyjd
 	lastiftrue = false;
 }
@@ -237,7 +227,7 @@ IMPLEMENT_POINTERS_END
 //
 //==========================================================================
 
-DRunningScript::DRunningScript(AActor *trigger, DFsScript *owner, int index) 
+DRunningScript::DRunningScript(AActor *trigger, DFsScript *owner, int index)
 {
 	prev = next = nullptr;
 	script = owner;
@@ -253,11 +243,11 @@ DRunningScript::DRunningScript(AActor *trigger, DFsScript *owner, int index)
 	}
 	else
 	{
-		// save the script variables 
+		// save the script variables
 		for(int i=0; i<VARIABLESLOTS; i++)
 		{
 			variables[i] = owner->variables[i];
-			
+
 			if (index == 0)	// we are starting another Script:
 			{
 				// remove all the variables from the script variable list
@@ -290,11 +280,11 @@ void DRunningScript::OnDestroy()
 {
 	int i;
 	DFsVariable *current, *next;
-	
+
 	for(i=0; i<VARIABLESLOTS; i++)
-    {
+	{
 		current = variables[i];
-		
+
 		// go thru this chain
 		while(current)
 		{
@@ -303,7 +293,7 @@ void DRunningScript::OnDestroy()
 			current = next; // go to next in chain
 		}
 		variables[i] = nullptr;
-    }
+	}
 	Super::OnDestroy();
 }
 
@@ -351,7 +341,7 @@ IMPLEMENT_POINTERS_END
 //
 //==========================================================================
 
-DFraggleThinker::DFraggleThinker() 
+DFraggleThinker::DFraggleThinker()
 {
 	GlobalScript = Create<DFsScript>();
 	GC::WriteBarrier(this, GlobalScript);
@@ -425,9 +415,9 @@ void DFraggleThinker::Serialize(FSerializer &arc)
 bool DFraggleThinker::wait_finished(DRunningScript *script)
 {
 	switch(script->wait_type)
-    {
-    case wt_none: return true;        // uh? hehe
-    case wt_scriptwait:               // waiting for script to finish
+	{
+	case wt_none: return true;        // uh? hehe
+	case wt_scriptwait:               // waiting for script to finish
 		{
 			DRunningScript *current;
 			for(current = RunningScripts->next; current; current = current->next)
@@ -438,13 +428,13 @@ bool DFraggleThinker::wait_finished(DRunningScript *script)
 			}
 			return true;        // can continue now
 		}
-		
-    case wt_delay:                          // just count down
+
+	case wt_delay:                          // just count down
 		{
 			return --script->wait_data <= 0;
 		}
-		
-    case wt_tagwait:
+
+	case wt_tagwait:
 		{
 			int secnum;
 			auto itr = Level->GetSectorTagIterator(script->wait_data);
@@ -456,8 +446,8 @@ bool DFraggleThinker::wait_finished(DRunningScript *script)
 			}
 			return true;
 		}
-		
-    case wt_scriptwaitpre: // haleyjd - wait for script to start
+
+	case wt_scriptwaitpre: // haleyjd - wait for script to start
 		{
 			DRunningScript *current;
 			for(current = RunningScripts->next; current; current=current->next)
@@ -468,16 +458,16 @@ bool DFraggleThinker::wait_finished(DRunningScript *script)
 			}
 			return false; // no running instances found
 		}
-		
-    default: return true;
-    }
-	
+
+	default: return true;
+	}
+
 	return false;
 }
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -485,16 +475,16 @@ void DFraggleThinker::Tick()
 {
 	DRunningScript *current, *next;
 	int i;
-	
+
 	current = RunningScripts->next;
-    
+
 	while(current)
 	{
 		if(wait_finished(current))
 		{
 			// copy out the script variables from the
 			// runningscript
-			
+
 			for(i=0; i<VARIABLESLOTS; i++)
 			{
 				current->script->variables[i] = current->variables[i];
@@ -502,17 +492,17 @@ void DFraggleThinker::Tick()
 				current->variables[i] = nullptr;
 			}
 			current->script->trigger = current->trigger; // copy trigger
-			
-			// unhook from chain 
+
+			// unhook from chain
 			current->prev->next = current->next;
 			GC::WriteBarrier(current->prev, current->next);
-			if(current->next) 
+			if(current->next)
 			{
 				current->next->prev = current->prev;
 				GC::WriteBarrier(current->next, current->prev);
 			}
 			next = current->next;   // save before freeing
-			
+
 			// continue the script
 			current->script->ParseScript (current->script->Data.Data() + current->save_point, this);
 
@@ -554,7 +544,7 @@ size_t DFraggleThinker::PointerSubstitution (DObject *old, DObject *notOld, bool
 	size_t changed = Super::PointerSubstitution(old, notOld, nullOnFail);
 	for(unsigned i=0;i<SpawnedThings.Size();i++)
 	{
-		if (SpawnedThings[i] == static_cast<AActor*>(old)) 
+		if (SpawnedThings[i] == static_cast<AActor*>(old))
 		{
 			SpawnedThings[i] = static_cast<AActor*>(notOld);
 			changed++;
@@ -600,10 +590,10 @@ void T_PreprocessScripts(FLevelLocals *Level)
 	{
 		// run the levelscript first
 		// get the other scripts
-		
+
 		// levelscript started by player 0 'superplayer'
 		th->LevelScript->trigger = Level->Players[0]->mo;
-		
+
 		th->LevelScript->Preprocess(Level);
 		th->LevelScript->ParseScript(nullptr, th);
 	}
@@ -628,7 +618,7 @@ bool T_RunScript(FLevelLocals *Level, int snum, AActor * t_trigger)
 
 		DFsScript *script = th->LevelScript->children[snum];
 		if(!script)	return false;
-	
+
 		DRunningScript *runscr = Create<DRunningScript>(t_trigger, script, 0);
 		// hook into chain at start
 		th->AddRunningScript(runscr);

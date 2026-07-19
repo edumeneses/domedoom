@@ -1,33 +1,22 @@
 /*
-** a_movingcamera.cpp
+** movingcamera.zs
+**
 ** Cameras that move and related neat stuff
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2016 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, self list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, self list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from self software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -41,13 +30,14 @@
 == args[3] = low byte of next node's tid
 == args[4] = high byte of next node's tid
 */
+
 class InterpolationPoint : Actor
 {
-	
+
 	InterpolationPoint	Next;
 
 	bool bVisited;
-	
+
 	default
 	{
 		+NOBLOCKMAP
@@ -56,7 +46,7 @@ class InterpolationPoint : Actor
 		+NOTONAUTOMAP
 		RenderStyle "None";
 	}
-	
+
 	override void BeginPlay ()
 	{
 		Super.BeginPlay ();
@@ -68,7 +58,7 @@ class InterpolationPoint : Actor
 	void FormChain ()
 	{
 		let me = self;
-		
+
 		while (me != null)
 		{
 			if (me.bVisited) return;
@@ -83,7 +73,7 @@ class InterpolationPoint : Actor
 
 			int pt = (me.args[0] << 24) >> 24;	// this is for truncating the value to a byte, presumably because some old WAD needs it...
 			me.Pitch = clamp(pt, -89, 89);
-				
+
 			if (me.Next == null && (me.args[3] | me.args[4]))
 			{
 				A_Log("Can't find target for camera node " .. me.tid);
@@ -104,7 +94,7 @@ class InterpolationPoint : Actor
 		}
 		return node.Next == self ? node : null;
 	}
-	
+
 }
 
 /*
@@ -122,9 +112,9 @@ class InterpolationSpecial : Actor
 		+DONTSPLASH
 		+NOTONAUTOMAP
 	}
-	
+
 	override void Tick () {}		// Does absolutely nothing itself
-	
+
 }
 
 /*
@@ -143,7 +133,7 @@ class InterpolationSpecial : Actor
 ==	lastenemy = node prior to first node (if looped)
 */
 
-class PathFollower : Actor 
+class PathFollower : Actor
 {
 	default
 	{
@@ -152,12 +142,12 @@ class PathFollower : Actor
 		+NOGRAVITY
 		+DONTSPLASH
 	}
-	
+
 	bool bActive, bJustStepped;
 	InterpolationPoint PrevNode, CurrNode;
 	double Time;		// Runs from 0.0 to 1.0 between CurrNode and CurrNode.Next
 	int HoldTime;
-	
+
 	// Interpolate between p2 and p3 along a Catmull-Rom spline
 	// http://research.microsoft.com/~hollasch/cgindex/curves/catmull-rom.html
 	double Splerp (double p1, double p2, double p3, double p4)
@@ -417,7 +407,7 @@ class PathFollower : Actor
 
 		return true;
 	}
-	
+
 }
 
 /*
@@ -546,7 +536,7 @@ class MovingCamera : PathFollower
 	{
 		CameraHeight 0;
 	}
-	
+
 	override void PostBeginPlay ()
 	{
 		Super.PostBeginPlay ();
@@ -583,5 +573,5 @@ class MovingCamera : PathFollower
 		}
 		return false;
 	}
-	
+
 }

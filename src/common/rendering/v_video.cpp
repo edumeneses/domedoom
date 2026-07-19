@@ -1,33 +1,23 @@
 /*
+** v_video.cpp
+**
 ** Video basics and init code.
 **
 **---------------------------------------------------------------------------
-** Copyright 1999-2016 Randy Heit
+**
+** Copyright 1999-2016 Marisa Heit
 ** Copyright 2005-2016 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -35,36 +25,25 @@
 
 #include <stdio.h>
 
-#include "i_system.h"
-#include "c_cvars.h"
-#include "x86.h"
-#include "i_video.h"
-
 #include "c_console.h"
-
-#include "m_argv.h"
-
-#include "v_video.h"
-#include "v_text.h"
-#include "sc_man.h"
-
-#include "filesystem.h"
+#include "c_cvars.h"
 #include "c_dispatch.h"
-#include "cmdlib.h"
-#include "hardware.h"
-#include "m_png.h"
-#include "menu.h"
-#include "vm.h"
-#include "r_videoscale.h"
-#include "i_time.h"
-#include "version.h"
-#include "texturemanager.h"
 #include "i_interface.h"
+#include "i_time.h"
+#include "i_video.h"
+#include "m_argv.h"
+#include "printf.h"
 #include "v_draw.h"
-
+#include "v_font.h"
+#include "v_video.h"
+#include "version.h"
+#include "vm.h"
+#include "x86.h"
 
 EXTERN_CVAR(Int, menu_resolution_custom_width)
 EXTERN_CVAR(Int, menu_resolution_custom_height)
+
+EXTERN_FARG(devparm);
 
 CVAR(Int, win_x, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Int, win_y, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -101,42 +80,45 @@ CUSTOM_CVAR(Int, vid_maxfps, 500, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 	}
 }
 
-CUSTOM_CVAR(Int, vid_preferbackend, 1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
+CVAR(Bool, vid_shadersupport, true, CVAR_SYSTEM_ONLY);
+
+CUSTOM_CVAR(Int, vid_preferbackend, BACKEND_DEFAULT, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 {
 	// [SP] This may seem pointless - but I don't want to implement live switching just
 	// yet - I'm pretty sure it's going to require a lot of reinits and destructions to
 	// do it right without memory leaks
 
+	static_assert(0 <= BACKEND_DEFAULT && BACKEND_DEFAULT < NUM_BACKEND, "default back-end out of range");
+
 	switch(self)
 	{
+	default:
+		if (self < 0) self = NUM_BACKEND-1;
+		else if (self >= NUM_BACKEND) self = 0;
+		else if (prev > self || prev <= 0) self = self-1;
+		else if (prev < self || prev >= NUM_BACKEND-1) self = self+1;
+		return;
 #ifdef HAVE_GLES2
-	case 3:
-		self = 2;
-		return; // beware of recursions here. Assigning to 'self' will recursively call this handler again.
-	case 2:
+	case BACKEND_OPENGLES:
 		Printf("Selecting OpenGLES 2.0 backend...\n");
 		break;
 #endif
 #ifdef HAVE_VULKAN
-	case 1:
+	case BACKEND_VULKAN:
 		Printf("Selecting Vulkan backend...\n");
 		break;
 #endif
-	default:
+	case BACKEND_OPENGL:
 		Printf("Selecting OpenGL backend...\n");
+		break;
 	}
 
-	Printf("Changing the video backend requires a restart for " GAMENAME ".\n");
-}
+	vid_shadersupport = self != BACKEND_OPENGLES;
 
-int V_GetBackend()
-{
-	int v = vid_preferbackend;
-	if (v == 3) vid_preferbackend = v = 2;
-	else if (v < 0 || v > 3) v = 0;
-	return v;
+	static bool notice = false;
+	if (notice) Printf("Changing the video backend requires a restart for " GAMENAME ".\n");
+	else notice = true;
 }
-
 
 CUSTOM_CVAR(Int, uiscale, 0, CVAR_ARCHIVE | CVAR_NOINITCALL)
 {
@@ -145,14 +127,27 @@ CUSTOM_CVAR(Int, uiscale, 0, CVAR_ARCHIVE | CVAR_NOINITCALL)
 		self = 0;
 		return;
 	}
-	if (sysCallbacks.OnScreenSizeChanged) 
+	if (sysCallbacks.OnScreenSizeChanged)
 		sysCallbacks.OnScreenSizeChanged();
 	setsizeneeded = true;
 }
 
+EXTERN_CVAR(Bool, r_blendmethod);
 
-
-EXTERN_CVAR(Bool, r_blendmethod)
+FARG(width, "Configuration", "Sets " GAMENAME "'s horizontal resolution.", "x",
+	"Specifies the desired resolution of the screen. If only one of -width or -height is"
+	" specified, " GAMENAME " will try to guess the other one based on a standard aspect ratio. If"
+	" the specified resolution is not supported by your SDL/DirectDraw drivers, " GAMENAME " will"
+	" try various resolutions until it either finds one that works, or it will finally give up. To"
+	" determine which resolutions " GAMENAME " can use, use the vid_describemodes command from the"
+	" console once you have started the game.");
+FARG(height, "Configuration", "Sets " GAMENAME "'s vertical resolution.", "y",
+	"Specifies the desired resolution of the screen. If only one of -width or -height is"
+	" specified, " GAMENAME " will try to guess the other one based on a standard aspect ratio. If"
+	" the specified resolution is not supported by your SDL/DirectDraw drivers, " GAMENAME " will"
+	" try various resolutions until it either finds one that works, or it will finally give up. To"
+	" determine which resolutions " GAMENAME " can use, use the vid_describemodes command from the"
+	" console once you have started the game.");
 
 int active_con_scale();
 
@@ -250,25 +245,12 @@ void DCanvas::Resize(int width, int height, bool optimizepitch)
 	}
 	else
 	{
-		// If we couldn't figure out the CPU's L1 cache line size, assume
-		// it's 32 bytes wide.
 		if (CPU.DataL1LineSize == 0)
 		{
-			CPU.DataL1LineSize = 32;
+			CPU.DataL1LineSize = CPUInfo::AssumedDefaultCacheLineSizeBytes;
 		}
-		// The Athlon and P3 have very different caches, apparently.
-		// I am going to generalize the Athlon's performance to all AMD
-		// processors and the P3's to all non-AMD processors. I don't know
-		// how smart that is, but I don't have a vast plethora of
-		// processors to test with.
-		if (CPU.bIsAMD)
-		{
-			Pitch = width + CPU.DataL1LineSize;
-		}
-		else
-		{
-			Pitch = width + max(0, CPU.DataL1LineSize - 8);
-		}
+
+		Pitch = width + CPU.DataL1LineSize;
 	}
 	int bytes_per_pixel = Bgra ? 4 : 1;
 	Pixels.Resize(Pitch * height * bytes_per_pixel);
@@ -283,7 +265,7 @@ CCMD(clean)
 
 
 void V_UpdateModeSize (int width, int height)
-{	
+{
 	// This calculates the menu scale.
 	// The optimal scale will always be to fit a virtual 640 pixel wide display onto the screen.
 	// Exceptions are made for a few ranges where the available virtual width is > 480.
@@ -298,15 +280,15 @@ void V_UpdateModeSize (int width, int height)
 
 	int w = screen->GetWidth();
 	int h = screen->GetHeight();
-	
+
 	// clamp screen aspect ratio to 17:10, for anything wider the width will be reduced
 	double aspect = (double)w / h;
 	if (aspect > 1.7) w = int(w * 1.7 / aspect);
-	
+
 	int factor;
 	if (w < 640) factor = 1;
 	else if (w >= 1024 && w < 1280) factor = 2;
-	else if (w >= 1600 && w < 1920) factor = 3; 
+	else if (w >= 1600 && w < 1920) factor = 3;
 	else  factor = w / 640;
 
 	if (w < 1360) factor = 1;
@@ -329,7 +311,7 @@ void V_OutputResized (int width, int height)
 	twod->End();
 	setsizeneeded = true;
 	C_NewModeAdjust();
-	if (sysCallbacks.OnScreenSizeChanged) 
+	if (sysCallbacks.OnScreenSizeChanged)
 		sysCallbacks.OnScreenSizeChanged();
 }
 
@@ -355,16 +337,16 @@ bool IVideo::SetResolution ()
 //
 
 void V_InitScreenSize ()
-{ 
+{
 	const char *i;
 	int width, height, bits;
 
 	width = height = bits = 0;
 
-	if ( (i = Args->CheckValue ("-width")) )
+	if ( (i = Args->CheckValue (FArg_width)) )
 		width = atoi (i);
 
-	if ( (i = Args->CheckValue ("-height")) )
+	if ( (i = Args->CheckValue (FArg_height)) )
 		height = atoi (i);
 
 	if (width == 0)
@@ -403,7 +385,7 @@ void V_Init2()
 
 	UCVarValue val;
 
-	val.Bool = !!Args->CheckParm("-devparm");
+	val.Bool = !!Args->CheckParm(FArg_devparm);
 	ticker->SetGenericRepDefault(val, CVAR_Bool);
 
 
@@ -425,7 +407,7 @@ void V_Init2()
 CUSTOM_CVAR (Int, vid_aspect, 0, CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
 {
 	setsizeneeded = true;
-	if (sysCallbacks.OnScreenSizeChanged) 
+	if (sysCallbacks.OnScreenSizeChanged)
 		sysCallbacks.OnScreenSizeChanged();
 }
 
@@ -514,4 +496,3 @@ CUSTOM_CVAR(Float, transsouls, 0.75f, CVAR_ARCHIVE)
 		self = 1.f;
 	}
 }
-

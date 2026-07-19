@@ -1,3 +1,25 @@
+/*
+** flatvertices.h
+**
+** Creates flat vertex data for hardware rendering.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2010-2020 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #ifndef _HW__VERTEXBUFFER_H
 #define _HW__VERTEXBUFFER_H
@@ -94,7 +116,7 @@ public:
 	~FFlatVertexBuffer();
 
 	void OutputResized(int width, int height);
-	std::pair<IVertexBuffer *, IIndexBuffer *> GetBufferObjects() const 
+	std::pair<IVertexBuffer *, IIndexBuffer *> GetBufferObjects() const
 	{
 		return std::make_pair(mVertexBuffer, mIndexBuffer);
 	}
@@ -149,9 +171,9 @@ public:
 		mVertexBuffer->GPUWaitSync();
 	}
 
-	int GetPipelinePos() 
-	{ 
-		return mPipelinePos; 
+	int GetPipelinePos()
+	{
+		return mPipelinePos;
 	}
 };
 

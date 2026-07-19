@@ -1,3 +1,26 @@
+/*
+** palentry.h
+**
+** Palette and color utility functions
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 #include <algorithm>
@@ -37,7 +60,7 @@ struct PalEntry
 			return other;
 		}
 	}
-	constexpr int Luminance() const 
+	constexpr int Luminance() const
 	{
 		return (r * 77 + g * 143 + b * 37) >> 8;
 	}
@@ -96,6 +119,6 @@ constexpr inline int Luminance(int r, int g, int b)
 #define APART(c)			(((c)>>24)&0xff)
 #define RPART(c)			(((c)>>16)&0xff)
 #define GPART(c)			(((c)>>8)&0xff)
-#define BPART(c)			((c)&0xff) 
+#define BPART(c)			((c)&0xff)
 #define MAKERGB(r,g,b)		uint32_t(((r)<<16)|((g)<<8)|(b))
-#define MAKEARGB(a,r,g,b)	uint32_t(((a)<<24)|((r)<<16)|((g)<<8)|(b)) 
+#define MAKEARGB(a,r,g,b)	uint32_t(((a)<<24)|((r)<<16)|((g)<<8)|(b))

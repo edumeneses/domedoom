@@ -1,3 +1,21 @@
+/*
+** sharedmisc.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Default class for unregistered doomednums -------------------------------
 
@@ -34,7 +52,7 @@ class PatrolPoint : Actor
 		+NOTONAUTOMAP
 		RenderStyle "None";
 	}
-}	
+}
 
 // A special to execute when a monster reaches a matching patrol point ------
 
@@ -51,7 +69,7 @@ class PatrolSpecial : Actor
 		+NOTONAUTOMAP
 		RenderStyle "None";
 	}
-}	
+}
 
 // Map spot ----------------------------------------------------------------
 
@@ -67,11 +85,11 @@ class MapSpot : Actor
 		RenderStyle "None";
 		CameraHeight 0;
 	}
-}	
+}
 
 // same with different editor number for Legacy maps -----------------------
 
-class FS_Mapspot : Mapspot 
+class FS_Mapspot : Mapspot
 {
 }
 
@@ -159,7 +177,7 @@ class CustomSprite : Actor
 		TNT1 A -1;
 		Stop;
 	}
-	
+
 	override void BeginPlay ()
 	{
 		Super.BeginPlay ();
@@ -200,7 +218,7 @@ class SwitchableDecoration : Actor
 	{
 		SetStateLabel("Inactive");
 	}
-	
+
 }
 
 class SwitchingDecoration : SwitchableDecoration
@@ -221,7 +239,7 @@ class SectorFlagSetter : Actor
 		+DONTSPLASH
 		RenderStyle "None";
 	}
-	
+
 	override void BeginPlay ()
 	{
 		Super.BeginPlay ();

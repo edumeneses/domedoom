@@ -1,3 +1,26 @@
+/*
+** jitintern.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2018 Magnus Norddahl
+** Copyright 2018-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 #include "jit.h"
 
@@ -123,7 +146,7 @@ private:
 			auto absMask = cc.newDoubleConst(asmjit::kConstScopeLocal, reinterpret_cast<const double&>(absMaskInt));
 			auto absMaskXmm = newTempXmmPd();
 
-			auto epsilon = cc.newDoubleConst(asmjit::kConstScopeLocal, VM_EPSILON);
+			auto epsilon = cc.newDoubleConst(asmjit::kConstScopeLocal, EQUAL_EPSILON);
 			auto epsilonXmm = newTempXmmSd();
 
 			for (int i = 0; i < N; i++)

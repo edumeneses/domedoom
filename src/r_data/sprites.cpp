@@ -1,24 +1,21 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2005-2016 Christoph Oelckers
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
+/*
+** sprites.cpp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2005-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 
 #include "doomtype.h"
@@ -134,8 +131,8 @@ static bool R_InstallSpriteLump (FTextureID lump, unsigned frame, char rot, bool
 	if (rotation == 0)
 	{
 		// the lump should be used for all rotations
-        // false=0, true=1, but array initialised to -1
-        // allows doom to have a "no value set yet" boolean value!
+		// false=0, true=1, but array initialised to -1
+		// allows doom to have a "no value set yet" boolean value!
 		int r;
 
 		for (r = 14; r >= 0; r -= 2)
@@ -215,7 +212,7 @@ void R_InstallSprite (int num, spriteframewithrotate *sprtemp, int &maxframe)
 			// no rotations were found for that frame at all
 			//I_FatalError ("R_InstallSprite: No patches found for %s frame %c", sprites[num].name, frame+'A');
 			break;
-			
+
 		case 0:
 			// only the first rotation is needed
 			for (rot = 1; rot < 16; ++rot)
@@ -228,7 +225,7 @@ void R_InstallSprite (int num, spriteframewithrotate *sprtemp, int &maxframe)
 				sprtemp[frame].Flip = 0xFFFF;
 			}
 			break;
-					
+
 		case 1:
 			// must have all 8 frame pairs
 			for (rot = 0; rot < 8; ++rot)
@@ -270,7 +267,7 @@ void R_InstallSprite (int num, spriteframewithrotate *sprtemp, int &maxframe)
 			sprtemp[frame].rotate = 0;
 		}
 	}
-	
+
 	// allocate space for the frames present and copy sprtemp to it
 	sprites[num].numframes = maxframe;
 	sprites[num].spriteframes = uint16_t(framestart = SpriteFrames.Reserve (maxframe));
@@ -301,7 +298,7 @@ void R_InstallSprite (int num, spriteframewithrotate *sprtemp, int &maxframe)
 //	(4 chars exactly) to be used.
 // Builds the sprite rotation matrices to account
 //	for horizontally flipped sprites.
-// Will report an error if the lumps are inconsistant. 
+// Will report an error if the lumps are inconsistant.
 // Only called at startup.
 //
 // Sprite lump names are 4 characters for the actor,
@@ -312,7 +309,7 @@ void R_InstallSprite (int num, spriteframewithrotate *sprtemp, int &maxframe)
 //
 #define TEX_DWNAME(tex) MAKE_ID(tex->GetName()[0], tex->GetName()[1], tex->GetName()[2], tex->GetName()[3])
 
-void R_InitSpriteDefs () 
+void R_InitSpriteDefs ()
 {
 	struct Hasher
 	{
@@ -406,7 +403,7 @@ void R_InitSpriteDefs ()
 			sprtemp[j].Flip = 0;
 			sprtemp[j].Voxel = NULL;
 		}
-				
+
 		int maxframe = -1;
 		intname = sprites[i].dwName;
 
@@ -417,10 +414,11 @@ void R_InitSpriteDefs ()
 			auto tex = TexMan.GetGameTexture(hash);
 			if (TEX_DWNAME(tex) == intname)
 			{
-				bool res = R_InstallSpriteLump (FTextureID(hash), tex->GetName()[4] - 'A', tex->GetName()[5], false, sprtemp, maxframe);
+				if(tex->GetName().Len() < 5) I_Error("Sprite name incomplete");
+				bool res = R_InstallSpriteLump (FTextureID(hash), tex->GetName()[4] - 'A', tex->GetName().Len() >= 6 ? tex->GetName()[5] : 0, false, sprtemp, maxframe);
 
-				if (tex->GetName()[6] && res)
-					R_InstallSpriteLump (FTextureID(hash), tex->GetName()[6] - 'A', tex->GetName()[7], true, sprtemp, maxframe);
+				if (tex->GetName().Len() >= 7 && tex->GetName()[6] && res)
+					R_InstallSpriteLump (FTextureID(hash), tex->GetName()[6] - 'A', tex->GetName().Len() >= 8 ? tex->GetName()[7] : 0, true, sprtemp, maxframe);
 			}
 			hash = hashes[hash].Next;
 		}
@@ -456,7 +454,7 @@ void R_InitSpriteDefs ()
 			}
 			hash = vh->Next;
 		}
-		
+
 		R_InstallSprite ((int)i, sprtemp, maxframe);
 	}
 }
@@ -649,7 +647,7 @@ void R_InitSkins (void)
 			}
 			else if (0 == stricmp (key, "scale"))
 			{
-				Skins[i].Scale.X = clamp((float)atof (sc.String), 1.f/65536, 256.f);
+				Skins[i].Scale.X = clamp((float)atof (sc.String), EQUAL_EPSILON, 256.f);
 				Skins[i].Scale.Y = Skins[i].Scale.X;
 			}
 			else if (0 == stricmp (key, "game"))
@@ -948,7 +946,7 @@ static void R_CreateSkinTranslation (const char *palname)
 {
 	auto lump =  fileSystem.ReadFile (palname);
 	auto otherPal = lump.bytes();
- 
+
 	for (int i = 0; i < 256; ++i)
 	{
 		OtherGameSkinRemap[i] = ColorMatcher.Pick (otherPal[0], otherPal[1], otherPal[2]);

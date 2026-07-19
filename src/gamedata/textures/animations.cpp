@@ -1,33 +1,22 @@
 /*
-** r_anim.cpp
+** animations.cpp
+**
 ** Routines for handling texture animation.
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2006 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -232,7 +221,7 @@ void FTextureAnimator::InitAnimated (void)
 				// different episode ?
 				if (!(pic1 = TexMan.CheckForTexture ((const char*)(anim_p + 10) /* .startname */, ETextureType::Wall, texflags)).Exists() ||
 					!(pic2 = TexMan.CheckForTexture ((const char*)(anim_p + 1) /* .endname */, ETextureType::Wall, texflags)).Exists())
-					continue;		
+					continue;
 
 				// [RH] Bit 1 set means allow decals on walls with this texture
 				bool nodecals = !(*anim_p & 2);
@@ -263,7 +252,7 @@ void FTextureAnimator::InitAnimated (void)
 			{
 				if (tex1->GetUseType() != tex2->GetUseType())
 				{
-					// not the same type - 
+					// not the same type -
 					continue;
 				}
 
@@ -307,7 +296,7 @@ void FTextureAnimator::InitAnimDefs ()
 {
 	const BITFIELD texflags = FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_TryAny;
 	int lump, lastlump = 0;
-	
+
 	while ((lump = fileSystem.FindLump ("ANIMDEFS", &lastlump)) != -1)
 	{
 		FScanner sc(lump);
@@ -680,7 +669,7 @@ void FTextureAnimator::ParseWarp(FScanner &sc)
 		}
 
 		// No decals on warping textures, by default.
-		// Warping information is taken from the last warp 
+		// Warping information is taken from the last warp
 		// definition for this texture.
 		warper->SetNoDecals(true);
 		if (sc.GetString ())
@@ -726,6 +715,8 @@ void FTextureAnimator::ParseCameraTexture(FScanner &sc)
 	int width, height;
 	double fitwidth, fitheight;
 	FString picname;
+	int offsetx = 0;
+	int offsety = 0;
 
 	sc.MustGetString ();
 	picname = sc.String;
@@ -736,11 +727,14 @@ void FTextureAnimator::ParseCameraTexture(FScanner &sc)
 	FTextureID picnum = TexMan.CheckForTexture (picname.GetChars(), ETextureType::Flat, texflags);
 	auto canvas = new FCanvasTexture(width, height);
 	FGameTexture *viewer = MakeGameTexture(canvas, picname.GetChars(), ETextureType::Wall);
+
 	if (picnum.Exists())
 	{
 		auto oldtex = TexMan.GameTexture(picnum);
 		fitwidth = oldtex->GetDisplayWidth ();
 		fitheight = oldtex->GetDisplayHeight ();
+		offsetx = oldtex->GetDisplayLeftOffset();
+		offsety = oldtex->GetDisplayTopOffset();
 		viewer->SetUseType(oldtex->GetUseType());
 		TexMan.ReplaceTexture (picnum, viewer, true);
 	}
@@ -751,42 +745,46 @@ void FTextureAnimator::ParseCameraTexture(FScanner &sc)
 		// [GRB] No need for oldtex
 		TexMan.AddGameTexture (viewer);
 	}
-	if (sc.GetString())
+
+	while (sc.GetString())
 	{
 		if (sc.Compare ("hdr"))
 		{
 			canvas->SetHDR(true);
 		}
-		else
-		{
-			sc.UnGet();
-		}
-	}
-	if (sc.GetString())
-	{
-		if (sc.Compare ("fit"))
+		else if (sc.Compare ("fit"))
 		{
 			sc.MustGetNumber ();
 			fitwidth = sc.Number;
 			sc.MustGetNumber ();
 			fitheight = sc.Number;
 		}
-		else
-		{
-			sc.UnGet ();
-		}
-	}
-	if (sc.GetString())
-	{
-		if (sc.Compare("WorldPanning"))
+		else if (sc.Compare("WorldPanning"))
 		{
 			viewer->SetWorldPanning(true);
+		}
+		else if (sc.Compare("translucent"))
+		{
+			viewer->SetTranslucent(true);
+		}
+		else if (sc.Compare("offset"))
+		{
+			if (sc.CheckNumber())
+			{
+				offsetx = sc.Number;
+				sc.MustGetNumber();
+				offsety = sc.Number;
+			}
+
+			viewer->SetOffsets(offsetx, offsety);
 		}
 		else
 		{
 			sc.UnGet();
+			break;
 		}
 	}
+
 	canvas->aspectRatio = (float)fitwidth / (float)fitheight;
 	viewer->SetDisplaySize((float)fitwidth, (float)fitheight);
 }
@@ -1187,6 +1185,35 @@ void FTextureAnimator::UpdateAnimations (uint64_t mstime)
 	}
 }
 
+void FTextureAnimator::ResetTimers()
+{
+	for (auto& fire : mFireTextures)
+	{
+		fire.SwitchTime = 0u;
+		static_cast<FireTexture *>(fire.texture->GetTexture())->Reset();
+		fire.texture->CleanHardwareData();
+		if (fire.texture->GetSoftwareTexture())
+			delete fire.texture->GetSoftwareTexture();
+		fire.texture->SetSoftwareTexture(nullptr);
+	}
+	for (auto& anim : mAnimations)
+	{
+		anim.SwitchTime = 0u;
+		anim.CurFrame   = 0u;
+		if (anim.AnimType == FAnimDef::ANIM_OscillateDown)
+			anim.AnimType = FAnimDef::ANIM_OscillateUp;
+		if (anim.bDiscrete)
+		{
+			TexMan.SetTranslation(anim.BasePic, anim.Frames[anim.CurFrame].FramePic);
+		}
+		else
+		{
+			for (size_t i = 0u; i < anim.NumFrames; ++i)
+				TexMan.SetTranslation(anim.BasePic + i, anim.BasePic + (i + anim.CurFrame) % anim.NumFrames);
+		}
+	}
+}
+
 //==========================================================================
 //
 // operator<<
@@ -1203,4 +1230,3 @@ template<> FSerializer &Serialize(FSerializer &arc, const char *key, FDoorAnimat
 	}
 	return arc;
 }
-

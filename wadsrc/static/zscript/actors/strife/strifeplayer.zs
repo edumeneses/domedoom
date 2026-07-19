@@ -1,3 +1,23 @@
+/*
+** strifeplayer.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Rogue Entertainment
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // The player ---------------------------------------------------------------
 
 class StrifePlayer : PlayerPawn
@@ -96,7 +116,7 @@ class StrifePlayer : PlayerPawn
 		WAVE ABCD 3 A_HandLower;
 		Loop;
 	}
-	
+
 	void A_ItBurnsItBurns()
 	{
 		A_StartSound ("human/imonfire", CHAN_VOICE);
@@ -152,7 +172,7 @@ class StrifePlayer : PlayerPawn
 					psp.SetState(null);
 					return;
 				}
-				
+
 				psp.y += 9;
 				if (psp.y > WEAPONBOTTOM*2)
 				{
@@ -163,6 +183,5 @@ class StrifePlayer : PlayerPawn
 		}
 		return;
 	}
-	
+
 }
-		

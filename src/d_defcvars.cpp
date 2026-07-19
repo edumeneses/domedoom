@@ -1,27 +1,21 @@
-//-----------------------------------------------------------------------------
-// Copyright 1993-1996 id Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2016 Christoph Oelckers
-// Copyright 2019-2021 Rachael Alexanderson
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//
-// DESCRIPTION:
-//		defcvars loader split from d_main.cpp
-//
-//-----------------------------------------------------------------------------
+/*
+** d_defcvars.cpp
+**
+** defcvars loader split from d_main.cpp
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // HEADER FILES ------------------------------------------------------------
 
@@ -40,8 +34,8 @@
 void D_GrabCVarDefaults()
 {
 	int lump, lastlump = 0;
-	int lumpversion, gamelastrunversion;
-	gamelastrunversion = atoi(LASTRUNVERSION);
+	int lumpversion, lastrunversion;
+	lastrunversion = atoi(ENGINELASTRUNVERSION);
 
 	while ((lump = fileSystem.FindLump("DEFCVARS", &lastlump)) != -1)
 	{
@@ -57,13 +51,13 @@ void D_GrabCVarDefaults()
 
 		sc.MustGetString();
 		if (!sc.Compare("version"))
-			sc.ScriptError("Must declare version for defcvars! (currently: %i)", gamelastrunversion);
+			sc.ScriptError("Must declare version for defcvars! (currently: %i)", lastrunversion);
 		sc.MustGetNumber();
 		lumpversion = sc.Number;
-		if (lumpversion > gamelastrunversion)
-			sc.ScriptError("Unsupported version %i (%i supported)", lumpversion, gamelastrunversion);
+		if (lumpversion > lastrunversion)
+			sc.ScriptError("Unsupported version %i (%i supported)", lumpversion, lastrunversion);
 		if (lumpversion < 219)
-			sc.ScriptError("Version must be at least 219 (current version %i)", gamelastrunversion);
+			sc.ScriptError("Version must be at least 219 (current version %i)", lastrunversion);
 
 		FBaseCVar* var;
 		FString CurrentFindCVar;
@@ -153,7 +147,7 @@ void D_GrabCVarDefaults()
 					val.String = const_cast<char*>(sc.String);
 					var->SetGenericRepDefault(val, CVAR_String);
 				}
-				else 
+				else
 				{
 					sc.ScriptMessage("Cannot set cvar default for non-config cvar '%s'", sc.String);
 					sc.MustGetString(); // to ignore the value of the cvar
@@ -167,4 +161,3 @@ void D_GrabCVarDefaults()
 		}
 	}
 }
-

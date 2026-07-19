@@ -1,26 +1,17 @@
-// 
-//---------------------------------------------------------------------------
-//
-// Copyright(C) 2004-2016 Christoph Oelckers
-// All rights reserved.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
 /*
+** hw_precache.cpp
+**
 ** Texture precaching
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2004-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
 **
 */
 
@@ -100,7 +91,7 @@ void hw_PrecacheTexture(uint8_t *texhitlist, TMap<PClassActor*, bool> &actorhitl
 	TMap<FTexture*, bool> allTextures;
 	TArray<FTexture*> layers;
 
-	// First collect the potential max. texture set 
+	// First collect the potential max. texture set
 	for (int i = 1; i < TexMan.NumTextures(); i++)
 	{
 		auto gametex = TexMan.GameByIndex(i);
@@ -319,7 +310,7 @@ void hw_PrecacheTexture(uint8_t *texhitlist, TMap<PClassActor*, bool> &actorhitl
 		FModelRenderer* renderer = new FHWModelRenderer(nullptr, *screen->RenderState(), -1);
 		for (unsigned i = 0; i < Models.Size(); i++)
 		{
-			if (modellist[i]) 
+			if (modellist[i])
 				Models[i]->BuildVertexBuffer(renderer);
 		}
 		delete renderer;
@@ -332,4 +323,3 @@ void hw_PrecacheTexture(uint8_t *texhitlist, TMap<PClassActor*, bool> &actorhitl
 	delete[] spritelist;
 	delete[] modellist;
 }
-

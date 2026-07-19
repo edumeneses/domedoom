@@ -1,3 +1,23 @@
+/*
+** korax.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 //===========================================================================
 // Korax Variables
 //	tracer		last teleport destination
@@ -110,14 +130,14 @@ class Korax : Actor
 		KORX E 5 Bright;
 		Goto See;
 	}
-	
-	
+
+
 	void A_KoraxStep()
-	{ 
-		A_StartSound("KoraxStep"); 
-		A_Chase(); 
-	}	
-	
+	{
+		A_StartSound("KoraxStep");
+		A_Chase();
+	}
+
 	//============================================================================
 	//
 	// A_KoraxChase
@@ -254,7 +274,7 @@ class Korax : Actor
 		{
 			"WraithFX1", "Demon1FX1", "Demon2FX1", "FireDemonMissile", "CentaurFX", "SerpentFX"
 		};
-		static const sound sounds[] = 
+		static const sound sounds[] =
 		{
 			"WraithMissileFire", "DemonMissileFire", "DemonMissileFire", "FireDemonAttack", "CentaurLeaderAttack", "SerpentLeaderAttack"
 		};
@@ -386,7 +406,7 @@ class KoraxSpirit : Actor
 		RenderStyle "Translucent";
 		Alpha 0.4;
 	}
-	
+
 	States
 	{
 	Spawn:
@@ -396,7 +416,7 @@ class KoraxSpirit : Actor
 		SPIR DEFGHI 5;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_KSpiritSeeker
@@ -430,7 +450,7 @@ class KoraxSpirit : Actor
 		}
 		VelFromAngle();
 
-		if (!(Level.maptime&15) 
+		if (!(Level.maptime&15)
 			|| pos.z > target.pos.z + target.Default.Height
 			|| pos.z + height < target.pos.z)
 		{
@@ -487,7 +507,7 @@ class KoraxBolt : Actor
 {
 	const KORAX_BOLT_HEIGHT		= 48.;
 	const KORAX_BOLT_LIFETIME		= 3;
-	
+
 	Default
 	{
 		Radius 15;
@@ -497,7 +517,7 @@ class KoraxBolt : Actor
 		-ACTIVATEIMPACT
 		RenderStyle "Add";
 	}
-	
+
 	States
 	{
 	Spawn:
@@ -506,7 +526,7 @@ class KoraxBolt : Actor
 		MLFX IJKLM 2 Bright A_KBolt;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_KBolt

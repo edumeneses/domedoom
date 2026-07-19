@@ -1,23 +1,21 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2016 Magnus Norddahl
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
+/*
+** r_visiblesprite.cpp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2016 Magnus Norddahl
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,6 +42,7 @@
 #include "swrenderer/viewport/r_viewport.h"
 #include "r_memory.h"
 #include "swrenderer/r_renderthread.h"
+#include "m_round.h"
 
 EXTERN_CVAR(Bool, r_fullbrightignoresectorcolor);
 
@@ -178,7 +177,7 @@ namespace swrenderer
 		// killough 3/27/98:
 		// Clip the sprite against deep water and/or fake ceilings.
 		// [RH] rewrote this to be based on which part of the sector is really visible
-		
+
 		auto viewport = thread->Viewport.get();
 
 		double scale = viewport->InvZtoScale * spr->idepth;
@@ -194,7 +193,7 @@ namespace swrenderer
 			if (spr->FakeFlatStat != WaterFakeSide::AboveCeiling)
 			{
 				double hz = spr->heightsec->floorplane.ZatPoint(spr->gpos.XY());
-				int h = xs_RoundToInt(viewport->CenterY - (hz - viewport->viewpoint.Pos.Z) * scale);
+				int h = RoundHalfUp(viewport->CenterY - (hz - viewport->viewpoint.Pos.Z) * scale);
 
 				if (spr->FakeFlatStat == WaterFakeSide::BelowFloor)
 				{ // seen below floor: clip top
@@ -216,7 +215,7 @@ namespace swrenderer
 			if (spr->FakeFlatStat != WaterFakeSide::BelowFloor && !(spr->heightsec->MoreFlags & SECMF_FAKEFLOORONLY))
 			{
 				double hz = spr->heightsec->ceilingplane.ZatPoint(spr->gpos.XY());
-				int h = xs_RoundToInt(viewport->CenterY - (hz - viewport->viewpoint.Pos.Z) * scale);
+				int h = RoundHalfUp(viewport->CenterY - (hz - viewport->viewpoint.Pos.Z) * scale);
 
 				if (spr->FakeFlatStat == WaterFakeSide::AboveCeiling)
 				{ // seen above ceiling: clip bottom
@@ -239,7 +238,7 @@ namespace swrenderer
 		// killough 3/27/98: end special clipping for deep water / fake ceilings
 		else if (!spr->IsVoxel() && spr->floorclip)
 		{ // [RH] Move floorclip stuff from R_DrawVisSprite to here
-			int clip = xs_RoundToInt(viewport->CenterY - (spr->texturemid - spr->pic->GetHeight() + spr->floorclip) * spr->yscale);
+			int clip = RoundHalfUp(viewport->CenterY - (spr->texturemid - spr->pic->GetHeight() + spr->floorclip) * spr->yscale);
 			if (clip < botclip)
 			{
 				botclip = max<short>(0, clip);
@@ -259,7 +258,7 @@ namespace swrenderer
 						hz = spr->fakefloor->bottom.plane->Zat0();
 					}
 				}
-				int h = xs_RoundToInt(viewport->CenterY - (hz - viewport->viewpoint.Pos.Z) * scale);
+				int h = RoundHalfUp(viewport->CenterY - (hz - viewport->viewpoint.Pos.Z) * scale);
 				if (h < botclip)
 				{
 					botclip = max<short>(0, h);
@@ -280,7 +279,7 @@ namespace swrenderer
 						hz = spr->fakeceiling->top.plane->Zat0();
 					}
 				}
-				int h = xs_RoundToInt(viewport->CenterY - (hz - viewport->viewpoint.Pos.Z) * scale);
+				int h = RoundHalfUp(viewport->CenterY - (hz - viewport->viewpoint.Pos.Z) * scale);
 				if (h > topclip)
 				{
 					topclip = short(min(h, viewheight));
@@ -353,7 +352,7 @@ namespace swrenderer
 			if (group.x1 >= x2 || group.x2 <= x1 || group.neardepth > spr->depth)
 				continue;
 
-			if (group.fardepth < spr->depth) 
+			if (group.fardepth < spr->depth)
 			{
 				int r1 = max<int>(group.x1, x1);
 				int r2 = min<int>(group.x2, x2);
@@ -482,8 +481,8 @@ namespace swrenderer
 			{
 				fillshort(cliptop + x2, viewwidth - x2, viewheight);
 			}
-			int minvoxely = spr->gzt <= hzt ? 0 : xs_RoundToInt((spr->gzt - hzt) / spr->yscale);
-			int maxvoxely = spr->gzb > hzb ? INT_MAX : xs_RoundToInt((spr->gzt - hzb) / spr->yscale);
+			int minvoxely = spr->gzt <= hzt ? 0 : RoundHalfUp((spr->gzt - hzt) / spr->yscale);
+			int maxvoxely = spr->gzb > hzb ? INT_MAX : RoundHalfUp((spr->gzt - hzb) / spr->yscale);
 			spr->Render(thread, cliptop, clipbot, minvoxely, maxvoxely, clip3DFloor);
 		}
 		spr->Light.BaseColormap = colormap;

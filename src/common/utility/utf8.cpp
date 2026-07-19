@@ -1,37 +1,29 @@
 /*
 ** utf8.cpp
+**
 ** UTF-8 utilities
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2019 Christoph Oelckers
-** All rights reserved.
+** Copyright 2019-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
-#include <stdint.h>
+
+#include <cstdint>
+#include <string>
+
 #include "tarray.h"
 #include "utf8.h"
 
@@ -84,7 +76,7 @@ int utf8_encode(int32_t codepoint, uint8_t *buffer, int *size)
 //
 //==========================================================================
 
-int utf8_decode(const uint8_t *src, int *size) 
+int utf8_decode(const uint8_t *src, int *size)
 {
 	int c = src[0];
 	int r;
@@ -99,10 +91,10 @@ int utf8_decode(const uint8_t *src, int *size)
 	if (c1 < 0x80 || c1 >= 0xc0) return -1;
 	c1 &= 0x3f;
 
-	if ((c & 0xE0) == 0xC0) 
+	if ((c & 0xE0) == 0xC0)
 	{
 		r = ((c & 0x1F) << 6) | c1;
-		if (r >= 128) 
+		if (r >= 128)
 		{
 			*size = 2;
 			return r;
@@ -114,10 +106,10 @@ int utf8_decode(const uint8_t *src, int *size)
 	if (c2 < 0x80 || c2 >= 0xc0) return -1;
 	c2 &= 0x3f;
 
-	if ((c & 0xF0) == 0xE0) 
+	if ((c & 0xF0) == 0xE0)
 	{
 		r = ((c & 0x0F) << 12) | (c1 << 6) | c2;
-		if (r >= 2048 && (r < 55296 || r > 57343)) 
+		if (r >= 2048 && (r < 55296 || r > 57343))
 		{
 			*size = 3;
 			return r;
@@ -129,10 +121,10 @@ int utf8_decode(const uint8_t *src, int *size)
 	if (c3 < 0x80 || c1 >= 0xc0) return -1;
 	c3 &= 0x3f;
 
-	if ((c & 0xF8) == 0xF0) 
+	if ((c & 0xF8) == 0xF0)
 	{
 		r = ((c & 0x07) << 18) | (c1 << 12) | (c2 << 6) | c3;
-		if (r >= 65536 && r <= 1114111) 
+		if (r >= 65536 && r <= 1114111)
 		{
 			*size = 4;
 			return r;
@@ -186,13 +178,15 @@ uint16_t win1252map[] = {
 //
 // reads one character from the string.
 // This can handle both ISO 8859-1/Windows-1252 and UTF-8, as well as mixed strings
-// between both encodings, which may happen if inconsistent encoding is 
+// between both encodings, which may happen if inconsistent encoding is
 // used between different files in a mod.
 //
 //==========================================================================
 
 int GetCharFromString(const uint8_t *&string)
 {
+	if (!string) return 0;
+
 	int z;
 
 	z = *string;
@@ -208,7 +202,7 @@ int GetCharFromString(const uint8_t *&string)
 		}
 		return z;
 	}
-	else 
+	else
 	{
 		int size = 0;
 		auto chr = utf8_decode(string, &size);
@@ -225,8 +219,8 @@ int GetCharFromString(const uint8_t *&string)
 //==========================================================================
 //
 // convert a potentially mixed-encoded string to pure UTF-8
-// this returns a pointer to a static buffer, 
-// assuming that its caller will immediately process the result. 
+// this returns a pointer to a static buffer,
+// assuming that its caller will immediately process the result.
 //
 //==========================================================================
 
@@ -234,10 +228,12 @@ static TArray<char> UTF8String;
 
 const char *MakeUTF8(const char *outline, int *numchars)
 {
+	if (numchars) *numchars = 0;
+	if (!outline) return nullptr;
+
 	UTF8String.Clear();
 	const uint8_t *in = (const uint8_t*)outline;
 
-	if (numchars) *numchars = 0;
 	while (int chr = GetCharFromString(in))
 	{
 		int size = 0;
@@ -1218,4 +1214,3 @@ std::wstring WideString(const char* cin)
 	}
 	return buildbuffer;
 }
-

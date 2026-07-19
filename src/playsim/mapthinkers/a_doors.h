@@ -1,3 +1,22 @@
+/*
+** a_doors.h
+**
+** Door animation code (opening/closing)
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 //
@@ -17,16 +36,10 @@ public:
 		doorWaitClose,
 	};
 
-	void Construct(sector_t *sector);
-	void Construct(sector_t *sec, EVlDoor type, double speed, int delay, int lightTag, int topcountdown);
-
-	void Serialize(FSerializer &arc);
-	void Tick ();
-protected:
 	EVlDoor		m_Type;
 	double	 	m_TopDist;
 	double		m_BotDist, m_OldFloorDist;
-	vertex_t	*m_BotSpot;
+	vertex_t* m_BotSpot;
 	double	 	m_Speed;
 
 	// 1 = up, 0 = waiting at top, -1 = down
@@ -40,6 +53,12 @@ protected:
 
 	int			m_LightTag;
 
+	void Construct(sector_t *sector);
+	void Construct(sector_t *sec, EVlDoor type, double speed, int delay, int lightTag, int topcountdown);
+
+	void Serialize(FSerializer &arc);
+	void Tick ();
+protected:
 	void DoorSound (bool raise, class DSeqNode *curseq=NULL) const;
 
 private:

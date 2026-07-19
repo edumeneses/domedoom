@@ -1,39 +1,23 @@
 /*
-** thingdef-parse.cpp
+** thingdef_parse.cpp
 **
 ** Actor definitions - all parser related code
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2002-2016 Christoph Oelckers
-** Copyright 2004-2016 Randy Heit
-** All rights reserved.
+** Copyright 2004-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
-** 4. When not used as part of ZDoom or a ZDoom derivative, this code will be
-**    covered by the terms of the GNU General Public License as published by
-**    the Free Software Foundation; either version 2 of the License, or (at
-**    your option) any later version.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: LicenseRef-ZDoom-Conditional
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -53,6 +37,9 @@
 void ParseOldDecoration(FScanner &sc, EDefinitionType def, PNamespace *ns);
 EXTERN_CVAR(Bool, strictdecorate);
 
+FARG_ADVANCED(allowdecoratecrossincludes, "Deprecated", "",
+	"This disables the check that normally prevents external DECORATE lumps from overriding those"
+	" with the same name in the main .pk3");
 
 //==========================================================================
 //
@@ -539,16 +526,16 @@ static int ParseMorphStyle (FScanner &sc)
 {
  	static const FParseValue morphstyles[]={
 		{ "MRF_ADDSTAMINA",			MORPH_ADDSTAMINA},
-		{ "MRF_FULLHEALTH",			MORPH_FULLHEALTH}, 
-		{ "MRF_UNDOBYTOMEOFPOWER",	MORPH_UNDOBYTOMEOFPOWER},  
+		{ "MRF_FULLHEALTH",			MORPH_FULLHEALTH},
+		{ "MRF_UNDOBYTOMEOFPOWER",	MORPH_UNDOBYTOMEOFPOWER},
 		{ "MRF_UNDOBYCHAOSDEVICE",	MORPH_UNDOBYCHAOSDEVICE},
-		{ "MRF_FAILNOTELEFRAG",		MORPH_FAILNOTELEFRAG}, 
-		{ "MRF_FAILNOLAUGH",		MORPH_FAILNOLAUGH}, 
-		{ "MRF_WHENINVULNERABLE",	MORPH_WHENINVULNERABLE}, 
+		{ "MRF_FAILNOTELEFRAG",		MORPH_FAILNOTELEFRAG},
+		{ "MRF_FAILNOLAUGH",		MORPH_FAILNOLAUGH},
+		{ "MRF_WHENINVULNERABLE",	MORPH_WHENINVULNERABLE},
 		{ "MRF_LOSEACTUALWEAPON",	MORPH_LOSEACTUALWEAPON},
-		{ "MRF_NEWTIDBEHAVIOUR",	MORPH_NEWTIDBEHAVIOUR}, 
-		{ "MRF_UNDOBYDEATH",		MORPH_UNDOBYDEATH}, 
-		{ "MRF_UNDOBYDEATHFORCED",	MORPH_UNDOBYDEATHFORCED},  
+		{ "MRF_NEWTIDBEHAVIOUR",	MORPH_NEWTIDBEHAVIOUR},
+		{ "MRF_UNDOBYDEATH",		MORPH_UNDOBYDEATH},
+		{ "MRF_UNDOBYDEATHFORCED",	MORPH_UNDOBYDEATHFORCED},
 		{ "MRF_UNDOBYDEATHSAVES",	MORPH_UNDOBYDEATHSAVES},
 		{ "MRF_UNDOALWAYS",			MORPH_UNDOALWAYS },
 		{ "MRF_TRANSFERTRANSLATION", MORPH_TRANSFERTRANSLATION },
@@ -633,7 +620,7 @@ static FState *CheckState(FScanner &sc, PClass *type)
 			state += v;
 			return state;
 		}
-		else 
+		else
 		{
 			sc.ScriptMessage("Invalid state assignment");
 			FScriptPosition::ErrorCounter++;
@@ -752,7 +739,7 @@ static bool ParsePropertyParams(FScanner &sc, FPropertyInfo *prop, AActor *defau
 			case 'M':	// special case. An expression-aware parser will not need this.
 				conv.i = ParseMorphStyle(sc);
 				break;
-				
+
 			case 'N':	// special case. An expression-aware parser will not need this.
 				conv.i = ParseThingActivation(sc);
 				break;
@@ -797,14 +784,14 @@ static bool ParsePropertyParams(FScanner &sc, FPropertyInfo *prop, AActor *defau
 			p++;
 			// Hack for some properties that have to allow comma less
 			// parameter lists for compatibility.
-			if ((optcomma = (*p == '_'))) 
+			if ((optcomma = (*p == '_')))
 				p++;
 
-			if (nocomma) 
+			if (nocomma)
 			{
 				continue;
 			}
-			else if (*p == 0) 
+			else if (*p == 0)
 			{
 				break;
 			}
@@ -820,7 +807,7 @@ static bool ParsePropertyParams(FScanner &sc, FPropertyInfo *prop, AActor *defau
 					else break;
 				}
 			}
-			else 
+			else
 			{
 				if (!optcomma) sc.MustGetStringName(",");
 				else sc.CheckString(",");
@@ -939,7 +926,7 @@ static void DispatchScriptProperty(FScanner &sc, PProperty *prop, AActor *defaul
 static void ParseActorProperty(FScanner &sc, Baggage &bag)
 {
 	static const char *statenames[] = {
-		"Spawn", "See", "Melee", "Missile", "Pain", "Death", "XDeath", "Burn", 
+		"Spawn", "See", "Melee", "Missile", "Pain", "Death", "XDeath", "Burn",
 		"Ice", "Raise", "Crash", "Crush", "Wound", "Disintegrate", "Heal", NULL };
 
 	FString propname = sc.String;
@@ -1049,7 +1036,7 @@ static PClassActor *ParseActorHeader(FScanner &sc, Baggage *bag)
 
 	// Get actor name
 	sc.MustGetString();
-	
+
 	char *colon = strchr(sc.String, ':');
 	if (colon != NULL)
 	{
@@ -1068,7 +1055,7 @@ static PClassActor *ParseActorHeader(FScanner &sc, Baggage *bag)
 			colon = sc.String + 1;
 		}
 	}
-		
+
 	if (colon != NULL)
 	{
 		if (colon[0] == 0)
@@ -1099,13 +1086,13 @@ static PClassActor *ParseActorHeader(FScanner &sc, Baggage *bag)
 		}
 	}
 
-	// Now, after the actor names have been parsed, it is time to switch to C-mode 
+	// Now, after the actor names have been parsed, it is time to switch to C-mode
 	// for the rest of the actor definition.
 	sc.SetCMode (true);
-	if (sc.CheckNumber()) 
+	if (sc.CheckNumber())
 	{
 		if (sc.Number>=-1 && sc.Number<32768) DoomEdNum = sc.Number;
-		else 
+		else
 		{
 			// does not need to be fatal.
 			sc.ScriptMessage ("DoomEdNum must be in the range [-1,32767]");
@@ -1156,7 +1143,7 @@ static void ParseActor(FScanner &sc, PNamespace *ns)
 	Baggage bag;
 
 	bag.Namespace = ns;
-	bag.Version = { 2, 0, 0 };	
+	bag.Version = { 2, 0, 0 };
 	bag.fromDecorate = true;
 	bag.ScriptPosition = sc;
 	info = ParseActorHeader(sc, &bag);
@@ -1280,7 +1267,7 @@ void ParseDecorate (FScanner &sc, PNamespace *ns)
 		{
 			sc.MustGetString();
 			// This check needs to remain overridable for testing purposes.
-			if (fileSystem.GetFileContainer(sc.LumpNum) == 0 && !Args->CheckParm("-allowdecoratecrossincludes"))
+			if (fileSystem.GetFileContainer(sc.LumpNum) == 0 && !Args->CheckParm(FArg_allowdecoratecrossincludes))
 			{
 				int includefile = fileSystem.GetFileContainer(fileSystem.CheckNumForFullName(sc.String, true));
 				if (includefile != 0)
@@ -1305,7 +1292,7 @@ void ParseDecorate (FScanner &sc, PNamespace *ns)
 
 		case ';':
 			// ';' is the start of a comment in the non-cmode parser which
-			// is used to parse parts of the DECORATE lump. If we don't add 
+			// is used to parse parts of the DECORATE lump. If we don't add
 			// a check here the user will only get weird non-informative
 			// error messages if a semicolon is found.
 			sc.ScriptError("Unexpected ';'");

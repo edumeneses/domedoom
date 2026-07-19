@@ -1,3 +1,23 @@
+/*
+** weaponmissile.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Rogue Entertainment
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // Mini-Missile Launcher ----------------------------------------------------
 
 class MiniMissileLauncher : StrifeWeapon
@@ -39,7 +59,7 @@ class MiniMissileLauncher : StrifeWeapon
 		MMIS F 0 A_ReFire;
 		Goto Ready;
 	}
-	
+
 	//============================================================================
 	//
 	// A_FireMiniMissile
@@ -59,7 +79,7 @@ class MiniMissileLauncher : StrifeWeapon
 			if (!weapon.DepleteAmmo (weapon.bAltFire))
 				return;
 		}
-		
+
 		double savedangle = angle;
 		angle += Random2[MiniMissile]() * (11.25 / 256) * AccuracyFactor();
 		player.mo.PlayAttacking2 ();
@@ -67,7 +87,7 @@ class MiniMissileLauncher : StrifeWeapon
 		angle = savedangle;
 	}
 }
-	
+
 
 // Rocket Trail -------------------------------------------------------------
 
@@ -135,4 +155,3 @@ class MiniMissile : Actor
 		Stop;
 	}
 }
-

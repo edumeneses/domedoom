@@ -1,45 +1,24 @@
 /*
 ** i_system.cpp
+**
 ** Timers, pre-console output, IWAD selection, and misc system routines.
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2009 Randy Heit
-** Copyright (C) 2007-2012 Skulltag Development Team
-** Copyright (C) 2007-2016 Zandronum Development Team
-** Copyright (C) 2017-2022 GZDoom Development Team
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2007-2012 Skulltag Development Team
+** Copyright 2007-2016 Zandronum Development Team
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
-** 4. Redistributions in any form must be accompanied by information on how to
-**    obtain complete source code for the software and any accompanying software
-**    that uses the software. The source code must either be included in the
-**    distribution or be available for no more than the cost of distribution plus
-**    a nominal fee, and must be freely redistributable under reasonable
-**    conditions. For an executable file, complete source code means the source
-**    code for all modules it contains. It does not include source code for
-**    modules or files that typically accompany the major components of the
-**    operating system on which the executable file runs.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: LicenseRef-Almost-Sleepycat
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -86,8 +65,9 @@
 #include "cmdlib.h"
 #include "i_interface.h"
 #include "i_mainwindow.h"
+#include "stringtable.h"
 
-#include "launcherwindow.h"
+#include "widgets/launcherwindow.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -150,7 +130,7 @@ static HCURSOR CustomCursor;
 //
 //==========================================================================
 
-void I_DetectOS(void)
+FString I_DetectOS(void)
 {
 	OSVERSIONINFOEX info;
 	const char *osname;
@@ -177,7 +157,7 @@ void I_DetectOS(void)
 			{
 				osname = (info.wProductType == VER_NT_WORKSTATION) ? "7" : "Server 2008 R2";
 			}
-			else if (info.dwMinorVersion == 2)	
+			else if (info.dwMinorVersion == 2)
 			{
 				// Starting with Windows 8.1, you need to specify in your manifest
 				// the highest version of Windows you support, which will also be the
@@ -204,12 +184,14 @@ void I_DetectOS(void)
 		break;
 	}
 
-	if (!batchrun) Printf ("OS: Windows %s (NT %lu.%lu) Build %lu\n    %s\n",
-			osname,
-			info.dwMajorVersion, info.dwMinorVersion,
-			info.dwBuildNumber, info.szCSDVersion);
+	auto nicename = FStringf("Windows %s (NT %lu.%lu) Build %lu %s",
+		osname,
+		info.dwMajorVersion, info.dwMinorVersion,
+		info.dwBuildNumber, info.szCSDVersion);
 
 	sys_ostype = osname;
+
+	return nicename;
 }
 
 //==========================================================================
@@ -237,12 +219,12 @@ void CalculateCPUSpeed()
 		ClockCalibration.Reset();
 
 		// Count cycles for at least 55 milliseconds.
-        // The performance counter may be very low resolution compared to CPU
-        // speeds today, so the longer we count, the more accurate our estimate.
-        // On the other hand, we don't want to count too long, because we don't
-        // want the user to notice us spend time here, since most users will
-        // probably never use the performance statistics.
-        min_diff = freq.LowPart * 11 / 200;
+		// The performance counter may be very low resolution compared to CPU
+		// speeds today, so the longer we count, the more accurate our estimate.
+		// On the other hand, we don't want to count too long, because we don't
+		// want the user to notice us spend time here, since most users will
+		// probably never use the performance statistics.
+		min_diff = freq.LowPart * 11 / 200;
 
 		// just in case we were launched with a custom priority class, keep it
 		DWORD OldPriorityClass = GetPriorityClass(GetCurrentProcess());
@@ -313,7 +295,7 @@ static void PrintToStdOut(const char *cpt, HANDLE StdOut)
 
 	DWORD bytes_written;
 	WriteFile(StdOut, printData.GetChars(), (DWORD)printData.Len(), &bytes_written, NULL);
-	if (terminal) 
+	if (terminal)
 		WriteFile(StdOut, "\033[0m", 4, &bytes_written, NULL);
 }
 
@@ -638,15 +620,15 @@ bool I_WriteIniFailed(const char* filename)
 	char *lpMsgBuf;
 	FString errortext;
 
-	FormatMessageA (FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-					FORMAT_MESSAGE_FROM_SYSTEM | 
+	FormatMessageA (FORMAT_MESSAGE_ALLOCATE_BUFFER |
+					FORMAT_MESSAGE_FROM_SYSTEM |
 					FORMAT_MESSAGE_IGNORE_INSERTS,
 		NULL,
 		GetLastError(),
 		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
 		(LPSTR)&lpMsgBuf,
 		0,
-		NULL 
+		NULL
 	);
 	errortext.Format ("The config file %s could not be written:\n%s", filename, lpMsgBuf);
 	LocalFree (lpMsgBuf);
@@ -842,19 +824,14 @@ void I_OpenShellFolder(const char* infolder)
 	}
 }
 
-bool I_IsDarkMode()
+FString FStringTable::GetSystemLocale()
 {
-    DWORD value = 1; // default to light
-    DWORD size = sizeof(value);
+	wchar_t LocaleName[LOCALE_NAME_MAX_LENGTH];
 
-    HKEY hKey;
-    if (RegOpenKeyExW(HKEY_CURRENT_USER,
-                      L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-                      0, KEY_READ, &hKey) == ERROR_SUCCESS)
-    {
-        RegQueryValueExW(hKey, L"AppsUseLightTheme", nullptr, nullptr, reinterpret_cast<LPBYTE>(&value), &size);
-        RegCloseKey(hKey);
-    }
+	if (GetUserDefaultLocaleName(LocaleName, LOCALE_NAME_MAX_LENGTH) > 0)
+	{
+		return FString(LocaleName);
+	}
 
-    return value == 0; // 0 means dark mode
+	return "en-US";
 }

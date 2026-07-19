@@ -1,29 +1,19 @@
-// 
-//---------------------------------------------------------------------------
-//
-// Copyright(C) 2002-2018 Christoph Oelckers
-// All rights reserved.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
 /*
-** gl_light.cpp
+** hw_lighting.cpp
+**
 ** Light level / fog management / dynamic lights
 **
-**/
+**---------------------------------------------------------------------------
+**
+** Copyright 2002-2018 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include "c_cvars.h"
 #include "r_sky.h"
@@ -35,7 +25,7 @@
 static float distfogtable[2][256];	// light to fog conversion table for black fog
 
 CVAR(Int, gl_weaponlight, 8, CVAR_ARCHIVE);
-CVAR(Bool, gl_enhanced_nightvision, true, CVAR_ARCHIVE|CVAR_NOINITCALL)
+CVAR(Bool, gl_enhanced_nightvision, false, CVAR_ARCHIVE|CVAR_NOINITCALL)
 
 //==========================================================================
 //
@@ -84,11 +74,12 @@ int CalcLightLevel(ELightMode lightmode, int lightlevel, int rellight, bool weap
 
 	bool darklightmode = (isDarkLightMode(lightmode)) || (isSoftwareLighting(lightmode) && blendfactor > 0);
 
-	if ((darklightmode && lightlevel < 192 && !weapon) || (weapon && weaponPureLightLevel))
+	// [Nash] 14 June 2026 - disabled pure light level temporarily. Will be fixed after UZDoom v5.0
+	if (darklightmode && lightlevel < 192 && !weapon)
 	{
 		if (lightlevel > 100)
 		{
-			light = xs_CRoundToInt(192.f - (192 - lightlevel)* 1.87f);
+			light = RoundHalfEven(192.f - (192 - lightlevel)* 1.87f);
 			if (light + rellight < 20)
 			{
 				light = 20 + (light + rellight - 20) / 5;
@@ -153,7 +144,7 @@ PalEntry CalcLightColor(ELightMode lightmode, int light, PalEntry pe, int blendf
 //
 //	Rules for fog:
 //
-//  1. If bit 4 of gl_lightmode is set always use the level's fog density. 
+//  1. If bit 4 of gl_lightmode is set always use the level's fog density.
 //     This is what Legacy's GL render does.
 //	2. black fog means no fog and always uses the distfogtable based on the level's fog density setting
 //	3. If outside fog is defined and the current fog color is the same as the outside fog
@@ -249,7 +240,7 @@ bool CheckFog(FLevelLocals* Level, sector_t *frontsector, sector_t *backsector, 
 	{
 		// case 3: level has fog density set
 	}
-	else 
+	else
 	{
 		// case 4: use light level
 		if (frontsector->lightlevel >= 248) return false;
@@ -269,14 +260,13 @@ bool CheckFog(FLevelLocals* Level, sector_t *frontsector, sector_t *backsector, 
 		// case 3: level has fog density set
 		return false;
 	}
-	else 
+	else
 	{
 		// case 4: use light level
 		if (backsector->lightlevel < 248) return false;
 	}
 
 	// in all other cases this might create more problems than it solves.
-	return ((frontsector->GetTexture(sector_t::ceiling)!=skyflatnum || 
+	return ((frontsector->GetTexture(sector_t::ceiling)!=skyflatnum ||
 			 backsector->GetTexture(sector_t::ceiling)!=skyflatnum));
 }
-

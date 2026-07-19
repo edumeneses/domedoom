@@ -1,3 +1,20 @@
+/*
+** hw_texcontainer.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2013-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 #include "tarray.h"
@@ -61,7 +78,7 @@ private:
 
  	TranslatedTexture * GetTexID(int translation, int scaleflags)
 	{
-		// Allow negative indices to pass through unchanged. 
+		// Allow negative indices to pass through unchanged.
 		// This is needed for allowing the client to allocate slots that aren't matched to a palette, e.g. Build's indexed variants.
 		if (translation >= 0)
 		{
@@ -84,7 +101,7 @@ private:
 		}
 
 		translation |= (scaleflags << 24);
-		// normally there aren't more than very few different 
+		// normally there aren't more than very few different
 		// translations here so this isn't performance critical.
 		unsigned index = hwTex_Translated.FindEx([=](auto &element)
 		{
@@ -123,7 +140,7 @@ public:
 	}
 
 	//===========================================================================
-	// 
+	//
 	// Deletes all allocated resources and considers translations
 	//
 	//===========================================================================
@@ -172,4 +189,3 @@ public:
 
 
 };
-

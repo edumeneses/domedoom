@@ -1,3 +1,22 @@
+/*
+** sigil.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Rogue Entertainment
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // The Almighty Sigil! ------------------------------------------------------
 
@@ -5,7 +24,7 @@ class Sigil : Weapon
 {
 	// NUmPieces gets stored in 'health', so that it can be quickly accessed by ACS's GetSigilPieces function.
 	int downpieces;
-	
+
 	Default
 	{
 		Weapon.Kickback 100;
@@ -19,7 +38,7 @@ class Sigil : Weapon
 		Inventory.Icon "I_SGL1";
 		Inventory.PickupMessage "$TXT_SIGIL";
 	}
-	
+
 	States(Actor)
 	{
 	Spawn:
@@ -76,7 +95,7 @@ class Sigil : Weapon
 		Wait;
 		SIGH E 1 Bright A_Raise;
 		Wait;
-	
+
 	Fire:
 		SIGH A 0 Bright A_SelectSigilAttack;
 
@@ -116,7 +135,7 @@ class Sigil : Weapon
 		SIGF C 0 Bright A_Light0;
 		Stop;
 	}
-	
+
 
 	//============================================================================
 	//
@@ -355,7 +374,7 @@ class Sigil : Weapon
 	action void A_FireSigil4 ()
 	{
 		FTranslatedLineTarget t;
-		
+
 		if (player == null || player.ReadyWeapon == null)
 			return;
 

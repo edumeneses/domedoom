@@ -1,23 +1,21 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2016 Magnus Norddahl
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
+/*
+** r_portal.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2016 Magnus Norddahl
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #pragma once
 
@@ -33,17 +31,17 @@ namespace swrenderer
 	{
 	public:
 		RenderPortal(RenderThread *thread);
-		
+
 		void SetMainPortal();
 		void CopyStackedViewParameters();
-	
+
 		void RenderPlanePortals();
 		void RenderLinePortals();
 
 		void AddLinePortal(line_t *linedef, int x1, int x2, const short *topclip, const short *bottomclip);
 
 		RenderThread *Thread = nullptr;
-	
+
 		int WindowLeft = 0;
 		int WindowRight = 0;
 		uint16_t MirrorFlags = 0;
@@ -64,7 +62,7 @@ namespace swrenderer
 		double stacked_visibility = 0.0;
 		DVector3 stacked_viewpos;
 		DRotator stacked_angle;
-		
+
 		int numskyboxes = 0; // For ADD_STAT(skyboxes)
 
 		void SetInSkyBox(FSectorPortal *portal) { SectorPortalsInSkyBox.insert(portal); }
@@ -74,7 +72,7 @@ namespace swrenderer
 	private:
 		void RenderLinePortal(PortalDrawseg* pds, int depth);
 		void RenderLinePortalHighlight(PortalDrawseg* pds);
-		
+
 		TArray<DVector3> viewposStack;
 		TArray<VisiblePlane *> visplaneStack;
 		TArray<PortalDrawseg *> WallPortals;

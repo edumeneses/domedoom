@@ -1,48 +1,54 @@
 /*
 ** findfile.cpp
-** Warpper around the native directory scanning API
+**
+** Wrapper around the native directory scanning API
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2016 Randy Heit
+**
+** Copyright 1998-2016 Marisa Heit
 ** Copyright 2005-2020 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
 
-#include "findfile.h"
-#include "zstring.h"
-#include "cmdlib.h"
-#include "printf.h"
-#include "configfile.h"
-#include "i_system.h"
-#include "fs_findfile.h"
+#include <cstring>
 
 #ifdef __unix__
+#include <dirent.h>
 #include <sys/stat.h>
 #endif // __unix__
+
+#include "c_console.h"
+#include "c_cvars.h"
+#include "cmdlib.h"
+#include "configfile.h"
+#include "findfile.h"
+#include "fs_findfile.h"
+#include "m_misc.h"
+#include "printf.h"
+#include "zstring.h"
+
+CUSTOM_CVARD(Int, i_exit_on_not_found, REQUIRE_DEFAULT, CVAR_ARCHIVE|CVAR_GLOBALCONFIG, "Exits game if a specified file is not found") {
+	int masked = self & REQUIRE_ALL;
+	if (self != masked) self = masked;
+};
+
+#ifdef _WIN32
+static constexpr char PATH_SEPARATOR = ';';
+#else
+static constexpr char PATH_SEPARATOR = ':';
+#endif
 
 //==========================================================================
 //
@@ -50,7 +56,7 @@
 //
 //==========================================================================
 
-bool D_AddFile(std::vector<std::string>& wadfiles, const char* file, bool check, int position, FConfigFile* config, bool optional)
+bool D_AddFile(std::vector<FileSys::ResourceName>& wadfiles, const char* file, bool check, int position, FConfigFile* config, bool optional)
 {
 	if (file == nullptr || *file == '\0')
 	{
@@ -90,13 +96,13 @@ bool D_AddFile(std::vector<std::string>& wadfiles, const char* file, bool check,
 				closedir(d);
 				if (!found)
 				{
-					//Printf("Can't find file '%s' in '%s'\n", filename.GetChars(), basepath.GetChars());
+					DPrintf(DMSG_WARNING, "Can't find file '%s' in '%s'\n", filename.GetChars(), basepath.GetChars());
 					return false;
 				}
 			}
 			else
 			{
-				Printf("Can't open directory '%s'\n", basepath.GetChars());
+				DPrintf(DMSG_WARNING, "Can't open directory '%s'\n", basepath.GetChars());
 				return false;
 			}
 		}
@@ -116,8 +122,8 @@ bool D_AddFile(std::vector<std::string>& wadfiles, const char* file, bool check,
 
 	std::string f = file;
 	for (auto& c : f) if (c == '\\') c = '/';
-	if (position == -1) wadfiles.push_back(f);
-	else wadfiles.insert(wadfiles.begin() + position, f);
+	if (position == -1) wadfiles.push_back({ f, optional });
+	else wadfiles.insert(wadfiles.begin() + position, { f, optional });
 	return true;
 }
 
@@ -127,31 +133,46 @@ bool D_AddFile(std::vector<std::string>& wadfiles, const char* file, bool check,
 //
 //==========================================================================
 
-void D_AddWildFile(std::vector<std::string>& wadfiles, const char* value, const char *extension, FConfigFile* config, bool optional)
+void D_AddWildFile(std::vector<FileSys::ResourceName>& wadfiles, const char* value, const char *extension, FConfigFile* config, bool optional)
 {
 	if (value == nullptr || *value == '\0')
 	{
 		return;
 	}
+
 	const char* wadfile = BaseFileSearch(value, extension, false, config);
 
 	if (wadfile != nullptr)
 	{
 		D_AddFile(wadfiles, wadfile, true, -1, config, optional);
+		return;
 	}
-	else 
+
+	// Try pattern matching
+	FileSys::FileList list;
+	auto path = ExtractFilePath(value);
+	auto name = ExtractFileBase(value, true);
+	if (path.IsEmpty()) path = ".";
+
+	bool found = false;
+	if (FileSys::ScanDirectory(list, path.GetChars(), name.GetChars(), true))
 	{
-		// Try pattern matching
-		FileSys::FileList list;
-		auto path = ExtractFilePath(value);
-		auto name = ExtractFileBase(value, true);
-		if (path.IsEmpty()) path = ".";
-		if (FileSys::ScanDirectory(list, path.GetChars(), name.GetChars(), true))
-		{ 
-			for(auto& entry : list)
-			{
-				D_AddFile(wadfiles, entry.FilePath.c_str(), true, -1, config, optional);
-			}
+		for(auto& entry : list)
+		{
+			D_AddFile(wadfiles, entry.FilePath.c_str(), true, -1, config, optional);
+			found = true;
+		}
+	}
+
+	if (!found)
+	{
+		if (optional)
+		{
+			D_FileNotFound(REQUIRE_OPTFILE, "optional wad", value);
+		}
+		else
+		{
+			D_FileNotFound(REQUIRE_FILE, "wad", value);
 		}
 	}
 }
@@ -164,7 +185,7 @@ void D_AddWildFile(std::vector<std::string>& wadfiles, const char* value, const 
 //
 //==========================================================================
 
-void D_AddConfigFiles(std::vector<std::string>& wadfiles, const char* section, const char* extension, FConfigFile *config, bool optional)
+void D_AddConfigFiles(std::vector<FileSys::ResourceName>& wadfiles, const char* section, const char* extension, FConfigFile *config, bool optional)
 {
 	if (config && config->SetSection(section))
 	{
@@ -194,7 +215,7 @@ void D_AddConfigFiles(std::vector<std::string>& wadfiles, const char* section, c
 //
 //==========================================================================
 
-void D_AddDirectory(std::vector<std::string>& wadfiles, const char* dir, const char *filespec, FConfigFile* config, bool optional)
+void D_AddDirectory(std::vector<FileSys::ResourceName>& wadfiles, const char* dir, const char *filespec, FConfigFile* config, bool optional)
 {
 	FileSys::FileList list;
 	if (FileSys::ScanDirectory(list, dir, "*.wad", true))
@@ -209,6 +230,8 @@ void D_AddDirectory(std::vector<std::string>& wadfiles, const char* dir, const c
 	}
 }
 
+static FString BFSwad; // outside the function to evade C++'s insane rules for constructing static variables inside functions.
+
 //==========================================================================
 //
 // BaseFileSearch
@@ -219,26 +242,27 @@ void D_AddDirectory(std::vector<std::string>& wadfiles, const char* dir, const c
 //
 //==========================================================================
 
-static FString BFSwad; // outside the function to evade C++'s insane rules for constructing static variables inside functions.
-
-const char* BaseFileSearch(const char* file, const char* ext, bool lookfirstinprogdir, FConfigFile* config)
+const char* _BaseFileSearch(FString prefix, const char*file, const char* ext, bool lookfirstinprogdir, FConfigFile* config)
 {
 	if (file == nullptr || *file == '\0')
 	{
 		return nullptr;
 	}
+
 	if (lookfirstinprogdir)
 	{
-		BFSwad.Format("%s%s%s", progdir.GetChars(), progdir.Back() == '/' ? "" : "/", file);
+		BFSwad = prefix / progdir / file;
+		DEBUG_LOG("%s", BFSwad.GetChars());
 		if (DirEntryExists(BFSwad.GetChars()))
 		{
 			return BFSwad.GetChars();
 		}
 	}
 
-	if (DirEntryExists(file))
+	BFSwad = prefix / file;
+	if (DirEntryExists(BFSwad.GetChars()))
 	{
-		BFSwad.Format("%s", file);
+		DEBUG_LOG("%s", BFSwad.GetChars());
 		return BFSwad.GetChars();
 	}
 
@@ -256,7 +280,8 @@ const char* BaseFileSearch(const char* file, const char* ext, bool lookfirstinpr
 				dir = NicePath(value);
 				if (dir.IsNotEmpty())
 				{
-					BFSwad.Format("%s%s%s", dir.GetChars(), dir.Back() == '/' ? "" : "/", file);
+					BFSwad = prefix / dir / file;
+					DEBUG_LOG("%s", BFSwad.GetChars());
 					if (DirEntryExists(BFSwad.GetChars()))
 					{
 						return BFSwad.GetChars();
@@ -265,9 +290,8 @@ const char* BaseFileSearch(const char* file, const char* ext, bool lookfirstinpr
 			}
 			else if (stricmp(key, "RecursivePath") == 0)
 			{
-				FString dir;
-
-				dir = NicePath(value);
+				FString dir = prefix / NicePath(value);
+				DEBUG_LOG("%s", dir.GetChars());
 				if (dir.IsNotEmpty())
 				{
 					if (dir.Back() == '/')
@@ -276,9 +300,29 @@ const char* BaseFileSearch(const char* file, const char* ext, bool lookfirstinpr
 					// Folders can't be used here since those are going to be checked
 					// recursively, so only find actual files.
 					FString path = RecursiveFileExists(dir, file);
+					DEBUG_LOG("%s", path.GetChars());
 					if (path.IsNotEmpty())
 					{
 						return path.GetChars();
+					}
+				}
+			}
+			else if (stricmp(key, "PathList") == 0)
+			{
+				FString dir;
+				TArray<FString> dirlist = ExpandEnvVars(value).Split(PATH_SEPARATOR, FString::TOK_SKIPEMPTY);
+
+				for (FString& dirname : dirlist)
+				{
+					dir = NicePath(dirname.GetChars());
+					if (dir.IsNotEmpty())
+					{
+						BFSwad = prefix / dir / file;
+						DEBUG_LOG("%s", BFSwad.GetChars());
+						if (DirEntryExists(BFSwad.GetChars()))
+						{
+							return BFSwad.GetChars();
+						}
 					}
 				}
 			}
@@ -292,6 +336,51 @@ const char* BaseFileSearch(const char* file, const char* ext, bool lookfirstinpr
 		DefaultExtension(tmp, ext);
 		return BaseFileSearch(tmp.GetChars(), nullptr, lookfirstinprogdir, config);
 	}
+
 	return nullptr;
 }
 
+
+const char* BaseFileSearch(const char* file, const char* ext, bool lookfirstinprogdir, FConfigFile* config)
+{
+	if (file == nullptr || *file == '\0')
+	{
+		return nullptr;
+	}
+
+	const char *prefix = nullptr;
+
+#ifdef __linux__
+	prefix = getenv("APPDIR");
+#endif
+
+	if (prefix)
+	{
+		auto result = _BaseFileSearch(prefix, file, ext, lookfirstinprogdir, config);
+		if (result) return result;
+	}
+
+	return _BaseFileSearch("", file, ext, lookfirstinprogdir, config);
+}
+
+
+//==========================================================================
+//
+// D_FileNotFound
+//
+// Prints warning that a file is not found. If test flag in
+// i_exit_on_not_found is set, exits game with fatal error.
+//
+//==========================================================================
+
+void D_FileNotFound(EFileRequirements test, const char* type, const char* file)
+{
+	Printf("%s not found: %s\n", type, file);
+
+	if (!(i_exit_on_not_found & test)) return;
+
+	I_FatalError(
+		"Cannot find %s \'%s\'\n"
+		"To ignore this error and continue, set cvar i_exit_on_not_found to %d\n"
+	, type, file, i_exit_on_not_found-test);
+}

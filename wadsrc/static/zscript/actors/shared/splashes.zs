@@ -1,3 +1,21 @@
+/*
+** splashes.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Water --------------------------------------------------------------------
 
@@ -8,8 +26,8 @@ class WaterSplash : Actor
 		Radius 2;
 		Height 4;
 		Gravity 0.125;
-		+NOBLOCKMAP 
-		+MISSILE 
+		+NOBLOCKMAP
+		+MISSILE
 		+DROPOFF
 		+NOTELEPORT
 		+CANNOTPUSH
@@ -97,8 +115,8 @@ class SludgeChunk : Actor
 		Radius 2;
 		Height 4;
 		Gravity 0.125;
-		+NOBLOCKMAP 
-		+MISSILE 
+		+NOBLOCKMAP
+		+MISSILE
 		+DROPOFF
 		+NOTELEPORT
 		+CANNOTPUSH
@@ -147,8 +165,8 @@ class BloodSplash : Actor
 		Radius 2;
 		Height 4;
 		Gravity 0.125;
-		+NOBLOCKMAP 
-		+MISSILE 
+		+NOBLOCKMAP
+		+MISSILE
 		+DROPOFF
 		+NOTELEPORT
 		+CANNOTPUSH
@@ -196,8 +214,8 @@ class SlimeChunk : Actor
 		Radius 2;
 		Height 4;
 		Gravity 0.125;
-		+NOBLOCKMAP 
-		+MISSILE 
+		+NOBLOCKMAP
+		+MISSILE
 		+DROPOFF
 		+NOTELEPORT
 		+CANNOTPUSH
@@ -243,7 +261,7 @@ class RocketSmokeTrail : Actor
 		VSpeed 1;
 		+NOBLOCKMAP
 		+NOCLIP
-		+NOGRAVITY 
+		+NOGRAVITY
 		+DONTSPLASH
 		+NOTELEPORT
 	}
@@ -261,8 +279,8 @@ class GrenadeSmokeTrail : Actor
 	{
 		RenderStyle "Translucent";
 		Alpha 0.4;
-		+NOBLOCKMAP 
-		+NOCLIP 
+		+NOBLOCKMAP
+		+NOCLIP
 		+DONTSPLASH
 		+NOTELEPORT
 		Gravity 0.1;

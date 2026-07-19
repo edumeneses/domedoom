@@ -1,36 +1,33 @@
 /*
-** optionmenuitems.txt
+** optionmenuitems.zs
+**
 ** Control items for option menus
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2010-2017 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
+
+enum GrayCheckMode
+{
+	None = 0, // ?
+	Gray = 1 << 0,
+	Hide = 1 << 1,
+	Inv  = 1 << 2,
+};
 
 class OptionMenuItem : MenuItemBase
 {
@@ -38,7 +35,7 @@ class OptionMenuItem : MenuItemBase
 	bool mCentered;
 	CVar mGrayCheck;
 	int mGrayCheckVal;
-	bool mHideInsteadOfGraying;
+	int mGrayCheckMode;
 
 	protected void Init(
 		String label,
@@ -46,7 +43,7 @@ class OptionMenuItem : MenuItemBase
 		bool center = false,
 		CVar graycheck = null,
 		int graycheckVal = 0,
-		bool hideInsteadOfGraying = false
+		name graycheckMode = 'Gray'
 	)
 	{
 		Super.Init(0, 0, command);
@@ -54,7 +51,20 @@ class OptionMenuItem : MenuItemBase
 		mCentered = center;
 		mGrayCheck = graycheck;
 		mGrayCheckVal = graycheckVal;
-		mHideInsteadOfGraying = hideInsteadOfGraying;
+
+		switch (graycheckMode)
+		{
+		case 'Gray':    mGrayCheckMode = Gray;     break;
+		case 'Hide':    mGrayCheckMode = Hide;     break;
+		case 'GrayInv': mGrayCheckMode = Gray|Inv; break;
+		case 'HideInv': mGrayCheckMode = Hide|Inv; break;
+		default:
+			if (mGrayCheck == null) break;
+			ThrowAbortException(
+				"Unknown graycheckMode '%s'. Expected Gray|Hide|GrayInv|HideInv",
+				graycheckMode
+			);
+		}
 	}
 
 	protected void drawText(int x, int y, int color, String text, bool grayed = false)
@@ -84,14 +94,25 @@ class OptionMenuItem : MenuItemBase
 		return (14 * CleanXfac_1);
 	}
 
+	bool ViewTest(GrayCheckMode flag)
+	{
+		if (mGrayCheck != null)
+		{
+			bool match = mGrayCheck.GetInt() == mGrayCheckVal;
+			if (mGrayCheckMode == flag) return match;
+			if (mGrayCheckMode == flag|Inv) return !match;
+		}
+		return false;
+	}
+
 	virtual bool IsGrayed()
 	{
-		return !mHideInsteadOfGraying && mGrayCheck != null && mGrayCheck.GetInt() == mGrayCheckVal;
+		return ViewTest(Gray);
 	}
 
 	override bool Visible()
 	{
-		return !(mHideInsteadOfGraying && mGrayCheck != null && mGrayCheck.GetInt() == mGrayCheckVal);
+		return !ViewTest(Hide);
 	}
 
 	override bool Selectable()
@@ -125,9 +146,17 @@ class OptionMenuItem : MenuItemBase
 class OptionMenuItemSubmenu : OptionMenuItem
 {
 	int mParam;
-	OptionMenuItemSubmenu Init(String label, Name command, int param = 0, bool centered = false)
+	OptionMenuItemSubmenu Init(
+		String label,
+		Name command,
+		int param = 0,
+		bool centered = false,
+		CVar graycheck = null,
+		int graycheckVal = 0,
+		name graycheckMode = 'Hide'
+	)
 	{
-		Super.init(label, command, centered);
+		Super.init(label, command, centered, graycheck, graycheckVal, graycheckMode);
 		mParam = param;
 		return self;
 	}
@@ -135,7 +164,7 @@ class OptionMenuItemSubmenu : OptionMenuItem
 	override int Draw(OptionMenuDescriptor desc, int y, int indent, bool selected)
 	{
 		int x = drawLabel(indent, y, selected? OptionMenuSettings.mFontColorSelection : OptionMenuSettings.mFontColorMore);
-		if (mCentered) 
+		if (mCentered)
 		{
 			return x - 16*CleanXfac_1;
 		}
@@ -159,9 +188,17 @@ class OptionMenuItemSubmenu : OptionMenuItem
 class OptionMenuItemLabeledSubmenu : OptionMenuItemSubmenu
 {
 	CVar mLabelCVar;
-	OptionMenuItemSubmenu Init(String label, CVar labelcvar, Name command, int param = 0)
+	OptionMenuItemSubmenu Init(
+		String label,
+		CVar labelcvar,
+		Name command,
+		int param = 0,
+		CVar graycheck = null,
+		int graycheckVal = 0,
+		name graycheckMode = 'Hide'
+	)
 	{
-		Super.init(label, command, false);
+		Super.init(label, command, param, false, graycheck, graycheckVal, graycheckMode);
 		mLabelCVar = labelcvar;
 		return self;
 	}
@@ -189,9 +226,17 @@ class OptionMenuItemCommand : OptionMenuItemSubmenu
 	bool mCloseOnSelect;
 	private bool mUnsafe;
 
-	OptionMenuItemCommand Init(String label, Name command, bool centered = false, bool closeonselect = false)
+	OptionMenuItemCommand Init(
+		String label,
+		Name command,
+		bool centered = false,
+		bool closeonselect = false,
+		CVar graycheck = null,
+		int graycheckVal = 0,
+		name graycheckMode = 'Hide'
+	)
 	{
-		Super.Init(label, command, 0, centered);
+		Super.Init(label, command, 0, centered, graycheck, graycheckVal, graycheckMode);
 		ccmd = command;
 		mCloseOnSelect = closeonselect;
 		mUnsafe = true;
@@ -207,7 +252,7 @@ class OptionMenuItemCommand : OptionMenuItemSubmenu
 		{
 			let m = OptionMenu(Menu.GetCurrentMenu());
 			// don't execute if no menu is active
-			if (m == null) return false;	
+			if (m == null) return false;
 			// don't execute if this item cannot be found in the current menu.
 			if (m.GetItem(mAction) != self) return false;
 		}
@@ -234,10 +279,16 @@ class OptionMenuItemSafeCommand : OptionMenuItemCommand
 {
 	String mPrompt;
 
-
-	OptionMenuItemSafeCommand Init(String label, Name command, String prompt = "")
+	OptionMenuItemSafeCommand Init(
+		String label,
+		Name command,
+		String prompt = "",
+		CVar graycheck = null,
+		int graycheckVal = 0,
+		name graycheckMode = 'Gray'
+	)
 	{
-		Super.Init(label, command);
+		Super.Init(label, command, false, false, graycheck, graycheckVal, graycheckMode);
 		mPrompt = prompt;
 		return self;
 	}
@@ -286,20 +337,20 @@ class OptionMenuItemOptionBase : OptionMenuItem
 		CVar graycheck,
 		int center,
 		int graycheckVal = 0,
-		bool hideInsteadOfGraying = false
+		name graycheckMode = 'Gray'
 	)
 	{
-		Super.Init(label, command, false, graycheck, graycheckVal, hideInsteadOfGraying);
+		Super.Init(label, command, false, graycheck, graycheckVal, graycheckMode);
 		mValues = values;
 		mCenter = center;
 	}
 
 	override bool SetString(int i, String newtext)
 	{
-		if (i == OP_VALUES) 
+		if (i == OP_VALUES)
 		{
 			int cnt = OptionValues.GetCount(mValues);
-			if (cnt >= 0) 
+			if (cnt >= 0)
 			{
 				mValues = newtext;
 				int s = GetSelection();
@@ -392,10 +443,10 @@ class OptionMenuItemOption : OptionMenuItemOptionBase
 		CVar graycheck = null,
 		int center = 0,
 		int graycheckVal = 0,
-		bool hideInsteadOfGraying = false
+		name graycheckMode = 'Gray'
 	)
 	{
-		Super.Init(label, command, values, graycheck, center, graycheckVal, hideInsteadOfGraying);
+		Super.Init(label, command, values, graycheck, center, graycheckVal, graycheckMode);
 		mCVar = CVar.FindCVar(mAction);
 		if (mCVar) SetCVarDescription(mCVar, label);
 		return self;
@@ -412,7 +463,7 @@ class OptionMenuItemOption : OptionMenuItemOptionBase
 			{
 				let f = mCVar.GetFloat();
 				for(int i = 0; i < cnt; i++)
-				{ 
+				{
 					if (f ~== OptionValues.GetValue(mValues, i))
 					{
 						Selection = i;
@@ -451,6 +502,17 @@ class OptionMenuItemOption : OptionMenuItemOptionBase
 			}
 		}
 	}
+
+	override bool MenuEvent (int mkey, bool fromcontroller)
+	{
+		if (mkey == Menu.MKEY_Clear && mCVar != null)
+		{
+			mCVar.ResetToDefault();
+			Menu.MenuSound("menu/change");
+			return true;
+		}
+		return Super.MenuEvent(mkey, fromcontroller);
+	}
 }
 
 //=============================================================================
@@ -474,7 +536,7 @@ class EnterKey : Menu
 
 	override bool TranslateKeyboardEvents()
 	{
-		return false; 
+		return false;
 	}
 
 	private void SetMenuMessage(int which)
@@ -665,9 +727,15 @@ class OptionMenuItemStaticText : OptionMenuItem
 	int mColor;
 
 	// this function is only for use from MENUDEF, it needs to do some strange things with the color for backwards compatibility.
-	OptionMenuItemStaticText Init(String label, int cr = -1)
+	OptionMenuItemStaticText Init(
+		String label,
+		int cr = -1,
+		CVar graycheck = null,
+		int graycheckVal = 0,
+		name graycheckMode = 'Hide'
+	)
 	{
-		Super.Init(label, 'None', true);
+		Super.Init(label, 'None', true, graycheck, graycheckVal, graycheckMode);
 		mColor = OptionMenuSettings.mFontColor;
 		if ((cr & 0xffff0000) == 0x12340000) mColor = cr & 0xffff;
 		else if (cr > 0) mColor = OptionMenuSettings.mFontColorHeader;
@@ -707,9 +775,17 @@ class OptionMenuItemStaticTextSwitchable : OptionMenuItem
 	int mCurrent;
 
 	// this function is only for use from MENUDEF, it needs to do some strange things with the color for backwards compatibility.
-	OptionMenuItemStaticTextSwitchable Init(String label, String label2, Name command, int cr = -1)
+	OptionMenuItemStaticTextSwitchable Init(
+		String label,
+		String label2,
+		Name command,
+		int cr = -1,
+		CVar graycheck = null,
+		int graycheckVal = 0,
+		name graycheckMode = 'Hide'
+	)
 	{
-		Super.Init(label, command, true);
+		Super.Init(label, command, true, graycheck, graycheckVal, graycheckMode);
 		mAltText = label2;
 		mCurrent = 0;
 
@@ -739,7 +815,7 @@ class OptionMenuItemStaticTextSwitchable : OptionMenuItem
 
 	override bool SetValue(int i, int val)
 	{
-		if (i == 0) 
+		if (i == 0)
 		{
 			mCurrent = val;
 			return true;
@@ -749,7 +825,7 @@ class OptionMenuItemStaticTextSwitchable : OptionMenuItem
 
 	override bool SetString(int i, String newtext)
 	{
-		if (i == 0) 
+		if (i == 0)
 		{
 			mAltText = newtext;
 			return true;
@@ -771,11 +847,21 @@ class OptionMenuItemStaticTextSwitchable : OptionMenuItem
 
 class OptionMenuSliderBase : OptionMenuItem
 {
+	CONST HELD_RESET_TICS = 6;
+
 	// command is a CVAR
+	CVar mCVar;
 	double mMin, mMax, mStep;
 	int mShowValue;
 	int mDrawX;
 	int mSliderShort;
+	double mDisplayScale;
+	String mValueFormat;
+
+	protected int mHeldTics;
+	protected int mHeldTimer;
+	protected int mHeldDir;
+	protected TextEnterMenu mEnter;
 
 	protected void Init(
 		String label,
@@ -786,16 +872,29 @@ class OptionMenuSliderBase : OptionMenuItem
 		Name command = 'none',
 		CVar graycheck = null,
 		int graycheckVal = 0,
-		bool hideInsteadOfGraying = false
+		name graycheckMode = 'Gray',
+		double displayScale = 1.0,
+		String valueFormat = ""
 	)
 	{
-		Super.Init(label, command, false, graycheck, graycheckVal, hideInsteadOfGraying);
+		Super.Init(label, command, false, graycheck, graycheckVal, graycheckMode);
 		mMin = min;
 		mMax = max;
 		mStep = step;
 		mShowValue = showval;
 		mDrawX = 0;
 		mSliderShort = 0;
+		mCVar = CVar.FindCVar(command);
+		mDisplayScale = displayScale;
+		mValueFormat = valueFormat;
+
+		mHeldTics = mHeldTimer = mHeldDir = 0;
+		mEnter = null;
+
+		if (mDisplayScale <= 0)
+		{
+			mDisplayScale = 1.0;
+		}
 	}
 
 	virtual double GetSliderValue()
@@ -803,13 +902,191 @@ class OptionMenuSliderBase : OptionMenuItem
 		return 0;
 	}
 
+	protected String GetSliderValueText(double val)
+	{
+		if (mShowValue < 0)
+		{
+			return "";
+		}
+
+		if (mEnter != null)
+		{
+			return mEnter.GetText()..Menu.OptionFont().GetCursor();
+		}
+
+		return FormatSliderValue(val);
+	}
+
 	virtual void SetSliderValue(double val)
 	{
 	}
 
-	override bool Selectable(void)
+	override bool Selectable()
 	{
 		return !IsGrayed();
+	}
+
+	protected virtual bool CanInputSliderValue()
+	{
+		return mShowValue >= 0;
+	}
+
+	protected virtual String FormatSliderValue(double val)
+	{
+		int fracdigits = mShowValue;
+		if (fracdigits < 0)
+		{
+			fracdigits = 0;
+		}
+
+		String numFormat = String.Format("%%.%df", fracdigits);
+		String numStr = String.Format(numFormat, val * mDisplayScale);
+
+		if (mValueFormat == "")
+		{
+			return numStr;
+		}
+
+		return String.Format(StringTable.Localize(mValueFormat), numStr);
+	}
+
+	protected virtual double ParseSliderValue(String text, double fallback)
+	{
+		if (text == "")
+		{
+			return fallback;
+		}
+
+		return text.ToDouble() / mDisplayScale;
+	}
+
+	protected virtual double GetHoldStepSize(int heldTics)
+	{
+		if (heldTics <= 9 || mStep <= 0)
+		{
+			return mStep;
+		}
+
+		double range = mMax - mMin;
+		if (range <= 0)
+		{
+			return mStep;
+		}
+
+		double rangePercent = heldTics > 17 ? 0.05 : 0.02;
+		double delta = range * rangePercent;
+
+		int steps = max(1, int(ceil(delta / mStep)));
+		return steps * mStep;
+	}
+
+	protected double ClampSliderValue(double val)
+	{
+		if (val ~== 0)
+		{
+			val = 0;
+		}
+		return clamp(val, mMin, mMax);
+	}
+
+	protected double SlideValue(double val, int dir)
+	{
+		if (mHeldDir != dir)
+		{
+			mHeldDir = dir;
+			mHeldTics = 0;
+		}
+
+		mHeldTimer = HELD_RESET_TICS;
+		++mHeldTics;
+
+		return ClampSliderValue(val + dir * GetHoldStepSize(mHeldTics));
+	}
+
+	protected void StartSliderValueInput(bool fromcontroller)
+	{
+		if (!CanInputSliderValue())
+		{
+			return;
+		}
+
+		ResetHoldState();
+		Menu.MenuSound("menu/choose");
+
+		mEnter = TextEnterMenu.OpenTextEnter
+		(
+			Menu.GetCurrentMenu(),
+			Menu.OptionFont(),
+			"",
+			-1,
+			fromcontroller
+		);
+		mEnter.ActivateMenu();
+	}
+
+	protected void EndSliderValueInput(bool accepted)
+	{
+		if (mEnter == null)
+		{
+			return;
+		}
+
+		if (accepted)
+		{
+			String text = mEnter.GetText();
+			if (text != "")
+			{
+				double val = ParseSliderValue(text, GetSliderValue());
+				SetSliderValue(ClampSliderValue(val));
+				Menu.MenuSound("menu/change");
+			}
+		}
+
+		mEnter = null;
+		ResetHoldState();
+	}	
+
+	protected String FitEnteredSliderValueText(String text, int maxWidth)
+	{
+		if (maxWidth <= 0)
+		{
+			return "";
+		}
+
+		if (Menu.OptionWidth(text, false) * CleanXfac_1 <= maxWidth)
+		{
+			return text;
+		}
+
+		if (mEnter != null)
+		{
+			String truncated = text;
+			while (truncated.Length() > 0 && Menu.OptionWidth(truncated, false) * CleanXfac_1 > maxWidth)
+			{
+				let [chr, next] = truncated.GetNextCodePoint(0);
+				truncated = truncated.Mid(next);
+			}
+			return truncated;
+		}
+
+		return text;
+	}
+
+	protected void ResetHoldState()
+	{
+		mHeldTics = mHeldTimer = mHeldDir = 0;
+	}
+
+	override void Ticker()
+	{
+		if (mHeldTimer > 0)
+		{
+			--mHeldTimer;
+		}
+		else
+		{
+			ResetHoldState();
+		}
 	}
 
 	//=============================================================================
@@ -826,23 +1103,31 @@ class OptionMenuSliderBase : OptionMenuItem
 
 	protected void DrawSlider (int x, int y, double min, double max, double cur, int fracdigits, int indent, bool grayed = false)
 	{
-		String formater = String.format("%%.%df", fracdigits);	// The format function cannot do the '%.*f' syntax.
 		String textbuf;
-		double range;
-		int maxlen = 0;
+		int textWidth;
+		
+		double ccur = clamp(cur, min, max) - min;
+		double range = max - min;
+		if (range <= 0)
+		{
+			range = 1;
+		}
+
 		int right = x + (12*16 + 4) * CleanXfac_1;	// length of slider. This uses the old ConFont and 
 		int cy = y + CleanYFac;
 
-		range = max - min;
-		double ccur = clamp(cur, min, max) - min;
-
 		if (fracdigits >= 0)
 		{
-			textbuf = String.format(formater, max);
-			maxlen = Menu.OptionWidth(textbuf) * CleanXfac_1;
+			String minbuf = FormatSliderValue(min);
+			String maxbuf = FormatSliderValue(max);
+			textbuf = GetSliderValueText(cur);
+
+			int minWidth = Menu.OptionWidth(minbuf, false) * CleanXfac_1;
+			int maxWidth = Menu.OptionWidth(maxbuf, false) * CleanXfac_1;
+			textWidth = max(minWidth, maxWidth);
 		}
 
-		mSliderShort = right + maxlen > screen.GetWidth();
+		mSliderShort = right + textWidth > screen.GetWidth();
 
 		if (!mSliderShort)
 		{
@@ -857,10 +1142,10 @@ class OptionMenuSliderBase : OptionMenuItem
 			right -= 5*8*CleanXfac;
 		}
 
-		if (fracdigits >= 0 && right + maxlen <= screen.GetWidth())
+		if (fracdigits >= 0 && right + textWidth <= screen.GetWidth())
 		{
-			textbuf = String.format(formater, cur);
-			drawText(right, y, Font.CR_DARKGRAY, textbuf, grayed);
+			int maxWidth = screen.GetWidth() - right - 4;
+			drawText(right, y, Font.CR_DARKGRAY, FitEnteredSliderValueText(textbuf, maxWidth), grayed);
 		}
 	}
 
@@ -868,31 +1153,54 @@ class OptionMenuSliderBase : OptionMenuItem
 	//=============================================================================
 	override int Draw(OptionMenuDescriptor desc, int y, int indent, bool selected)
 	{
-		drawLabel(indent, y, selected? OptionMenuSettings.mFontColorSelection : OptionMenuSettings.mFontColor, IsGrayed());
+		drawLabel(indent, y, selected ? OptionMenuSettings.mFontColorSelection : OptionMenuSettings.mFontColor, IsGrayed());
 		mDrawX = indent + CursorSpace();
-		DrawSlider (mDrawX, y, mMin, mMax, GetSliderValue(), mShowValue, indent, IsGrayed());
+		DrawSlider(mDrawX, y, mMin, mMax, GetSliderValue(), mShowValue, indent, IsGrayed());
 		return indent;
 	}
 
 	//=============================================================================
 	override bool MenuEvent (int mkey, bool fromcontroller)
 	{
-		double value = GetSliderValue();
+		switch (mkey)
+		{
+			case Menu.MKEY_Enter:
+				if (CanInputSliderValue())
+				{
+					StartSliderValueInput(fromcontroller);
+					return true;
+				}
+				return OptionMenuItem.MenuEvent(mkey, fromcontroller);
 
-		if (mkey == Menu.MKEY_Left)
-		{
-			value -= mStep;
+			case Menu.MKEY_Input:
+				EndSliderValueInput(true);
+				return true;
+
+			case Menu.MKEY_Abort:
+				EndSliderValueInput(false);
+				return true;
+
+			case Menu.MKEY_Left:
+				SetSliderValue(SlideValue(GetSliderValue(), -1));
+				break;
+
+			case Menu.MKEY_Right:
+				SetSliderValue(SlideValue(GetSliderValue(), 1));
+				break;
+
+			case Menu.MKEY_Clear:
+				ResetHoldState();
+				if (mCVar)
+				{
+					SetSliderValue(ClampSliderValue(mCVar.GetDefaultFloat()));
+				}
+				break;
+
+			default:
+				ResetHoldState();
+				return OptionMenuItem.MenuEvent(mkey, fromcontroller);
 		}
-		else if (mkey == Menu.MKEY_Right)
-		{
-			value += mStep;
-		}
-		else
-		{
-			return OptionMenuItem.MenuEvent(mkey, fromcontroller);
-		}
-		if (value ~== 0) value = 0;	// This is to prevent formatting anomalies with very small values
-		SetSliderValue(clamp(value, mMin, mMax));
+
 		Menu.MenuSound("menu/change");
 		return true;
 	}
@@ -919,6 +1227,8 @@ class OptionMenuSliderBase : OptionMenuItem
 
 		x = clamp(x, slide_left, slide_right);
 		double v = mMin + ((x - slide_left) * (mMax - mMin)) / (slide_right - slide_left);
+		v = ClampSliderValue(v);
+
 		if (v != GetSliderValue())
 		{
 			SetSliderValue(v);
@@ -928,6 +1238,8 @@ class OptionMenuSliderBase : OptionMenuItem
 		{
 			lm.SetFocus(self);
 		}
+
+		ResetHoldState();
 		return true;
 	}
 
@@ -941,7 +1253,7 @@ class OptionMenuSliderBase : OptionMenuItem
 
 class OptionMenuItemSlider : OptionMenuSliderBase
 {
-	CVar mCVar;
+	double scale;
 
 	OptionMenuItemSlider Init(
 		String label,
@@ -952,11 +1264,13 @@ class OptionMenuItemSlider : OptionMenuSliderBase
 		int showval = 1,
 		CVar graycheck = null,
 		int graycheckVal = 0,
-		bool hideInsteadOfGraying = false
+		name graycheckMode = 'Gray',
+		double displayScale = 1.0,
+		String valueFormat = ""
 	)
 	{
-		Super.Init(label, min, max, step, showval, command, graycheck, graycheckVal, hideInsteadOfGraying);
-		mCVar =CVar.FindCVar(command);
+		Super.Init(label, min, max, step, showval, command, graycheck, graycheckVal, graycheckMode, displayScale, valueFormat);
+		scale = (10 ** mShowValue) * displayScale;
 		return self;
 	}
 
@@ -964,19 +1278,16 @@ class OptionMenuItemSlider : OptionMenuSliderBase
 	{
 		if (mCVar != null)
 		{
-			return mCVar.GetFloat();
+			return round(mCVar.GetFloat()*scale)/scale;
 		}
-		else
-		{
-			return 0;
-		}
+		return 0;
 	}
 
 	override void SetSliderValue(double val)
 	{
 		if (mCVar != null)
 		{
-			mCVar.SetFloat(val);
+			mCVar.SetFloat(round(val*scale)/scale);
 		}
 	}
 }
@@ -998,10 +1309,10 @@ class OptionMenuItemColorPicker : OptionMenuItem
 		Name command,
 		CVar graycheck = null,
 		int graycheckVal = 0,
-		bool hideInsteadOfGraying = false
+		name graycheckMode = 'Gray'
 	)
 	{
-		Super.Init(label, command, false, graycheck, graycheckVal, hideInsteadOfGraying);
+		Super.Init(label, command, false, graycheck, graycheckVal, graycheckMode);
 		CVar cv = CVar.FindCVar(command);
 		if (cv != null && cv.GetRealType() != CVar.CVAR_Color) cv = null;
 		mCVar = cv;
@@ -1064,6 +1375,18 @@ class OptionMenuItemColorPicker : OptionMenuItem
 	{
 		return !isGrayed();
 	}
+
+	override bool MenuEvent (int mkey, bool fromcontroller)
+	{
+		if (mkey == Menu.MKEY_Clear)
+		{
+			SetValue(CPF_RESET, 0);
+			Menu.MenuSound("menu/change");
+			return true;
+		}
+
+		return Super.MenuEvent(mkey, fromcontroller);
+	}
 }
 
 //=============================================================================
@@ -1083,10 +1406,10 @@ class OptionMenuFieldBase : OptionMenuItem
 		Name command,
 		CVar graycheck = null,
 		int graycheckVal = 0,
-		bool hideInsteadOfGraying = false
+		name graycheckMode = 'Gray'
 	)
 	{
-		Super.Init(label, command, false, graycheck, graycheckVal, hideInsteadOfGraying);
+		Super.Init(label, command, false, graycheck, graycheckVal, graycheckMode);
 		mCVar = CVar.FindCVar(mAction);
 	}
 
@@ -1152,10 +1475,10 @@ class OptionMenuItemTextField : OptionMenuFieldBase
 		Name command,
 		CVar graycheck = null,
 		int graycheckVal = 0,
-		bool hideInsteadOfGraying = false
+		name graycheckMode = 'Gray'
 	)
 	{
-		Super.Init(label, command, graycheck, graycheckVal, hideInsteadOfGraying);
+		Super.Init(label, command, graycheck, graycheckVal, graycheckMode);
 		mEnter = null;
 		return self;
 	}
@@ -1163,7 +1486,7 @@ class OptionMenuItemTextField : OptionMenuFieldBase
 	override String Represent()
 	{
 		if (mEnter) return mEnter.GetText() .. Menu.OptionFont().GetCursor();
-		else 
+		else
 		{
 			bool b;
 			String s;
@@ -1233,10 +1556,10 @@ class OptionMenuItemNumberField : OptionMenuFieldBase
 		float step = 1,
 		CVar graycheck = null,
 		int graycheckVal = 0,
-		bool hideInsteadOfGraying = false
+		name graycheckMode = 'Gray'
 	)
 	{
-		Super.Init(label, command, graycheck, graycheckVal, hideInsteadOfGraying);
+		Super.Init(label, command, graycheck, graycheckVal, graycheckMode);
 		mMinimum = min(minimum, maximum);
 		mMaximum = max(minimum, maximum);
 		mStep = max(1, step);
@@ -1300,15 +1623,15 @@ class OptionMenuItemScaleSlider : OptionMenuItemSlider
 		double min,
 		double max,
 		double step,
-		String zero,
+		String zero = "$OPTVAL_OFF",
 		String negone = "",
 		CVar graycheck = null,
 		int graycheckVal = 0,
-		bool hideInsteadOfGraying = false
+		name graycheckMode = 'Gray',
+		int showval = 0
 	)
 	{
-		Super.Init(label, command, min, max, step, 0, graycheck, graycheckVal, hideInsteadOfGraying);
-		mCVar =CVar.FindCVar(command);
+		Super.Init(label, command, min, max, step, showval, graycheck, graycheckVal, graycheckMode);
 		TextZero = zero;
 		TextNEgOne = negone;
 		mClickVal = -10;
@@ -1320,10 +1643,13 @@ class OptionMenuItemScaleSlider : OptionMenuItemSlider
 	{
 		drawLabel(indent, y, selected? OptionMenuSettings.mFontColorSelection : OptionMenuSettings.mFontColor);
 
-		int Selection = int(GetSliderValue());
-		if ((Selection == 0 || Selection == -1) && mClickVal <= 0)
+		double Selection = GetSliderValue();
+		bool is_min = Selection <= mMin || Selection <= 0;
+		bool is_sub = Selection <= -1;
+
+		if (is_min || is_sub && mClickVal <= 0)
 		{
-			String text = Selection == 0? TextZero : Selection == -1? TextNegOne  : "";
+			String text = is_min? TextZero : is_sub? TextNegOne  : "";
 			drawValue(indent, y, OptionMenuSettings.mFontColorValue, text, isGrayed());
 		}
 		else
@@ -1381,10 +1707,10 @@ class OptionMenuItemFlagOption : OptionMenuItemOption
 		CVar greycheck = null,
 		int center = 0,
 		int graycheckVal = 0,
-		bool hideInsteadOfGraying = false
+		name graycheckMode = 'Gray'
 	)
 	{
-		Super.Init(label, command, values, greycheck, center, graycheckVal, hideInsteadOfGraying);
+		Super.Init(label, command, values, greycheck, center, graycheckVal, graycheckMode);
 		mBitShift = bitShift;
 
 		return self;

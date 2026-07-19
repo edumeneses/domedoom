@@ -1,3 +1,21 @@
+/*
+** statscreen_coop.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 class CoopStatusScreen : StatusScreen
 {
@@ -155,7 +173,7 @@ class CoopStatusScreen : StatusScreen
 				else
 					stillticking = true;
 			}
-		
+
 			if (!stillticking)
 			{
 				PlaySound("intermission/nextstage");
@@ -206,7 +224,7 @@ class CoopStatusScreen : StatusScreen
 				else
 					stillticking = true;
 			}
-		
+
 			if (!stillticking)
 			{
 				PlaySound("intermission/cooptotal");
@@ -301,7 +319,7 @@ class CoopStatusScreen : StatusScreen
 			if (ScreenJobRunner.IsPlayerReady(i)) // Bots are automatically assumed ready, to prevent confusion
 				screen.DrawTexture(readyico, true, x - (readysize.Y * CleanXfac), y, DTA_CleanNoMove, true);
 
-			Color thiscolor = GetRowColor(player, i == consoleplayer);
+			int thiscolor = GetRowColor(player, i == consoleplayer);
 			if (player.mo.ScoreIcon.isValid())
 			{
 				screen.DrawTexture(player.mo.ScoreIcon, true, icon_x, y, DTA_CleanNoMove, true);
@@ -389,9 +407,9 @@ class CoopStatusScreen : StatusScreen
 		}
 
 		int y = DrawPatchOrText(oldy, entering, enteringPatch, "$WI_ENTERING");
-		
+
 		// If the displayed info is made of patches we need some additional offsetting here.
-		
+
 		if (ispatch)
 		{
 			int h1 = BigFont.GetHeight() - BigFont.GetDisplacement();
@@ -408,12 +426,12 @@ class CoopStatusScreen : StatusScreen
 
 		y = DrawName(y, wbs.LName1, lnametexts[1]);
 
-		if (wbs.LName1.isValid() && authortexts[1].length() > 0) 
+		if (wbs.LName1.isValid() && authortexts[1].length() > 0)
 		{
 			// Consdider the ascender height of the following text.
 			y += author.mFont.GetMaxAscender(authortexts[1]) * scaleFactorY;
 		}
-			
+
 		DrawScoreboard(DrawAuthor(y, authortexts[1]));
 	}
 }

@@ -4,36 +4,20 @@
 ** Actor definitions
 **
 **---------------------------------------------------------------------------
-** Copyright 2002-2008 Christoph Oelckers
-** Copyright 2004-2008 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2004-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
-** 4. When not used as part of ZDoom or a ZDoom derivative, this code will be
-**    covered by the terms of the GNU General Public License as published by
-**    the Free Software Foundation; either version 2 of the License, or (at
-**    your option) any later version.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: LicenseRef-ZDoom-Conditional
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -55,6 +39,7 @@
 #include "thingdef.h"
 #include "zcc_parser.h"
 #include "zcc_compile_doom.h"
+#include "r_vanillatrans.h"
 
 // EXTERNAL FUNCTION PROTOTYPES --------------------------------------------
 void InitThingdef();
@@ -166,7 +151,7 @@ void SetImplicitArgs(TArray<PType *> *args, TArray<uint32_t> *argflags, TArray<F
 	if (funcflags & VARF_Method)
 	{
 		// implied self pointer
-		if (args != nullptr)		args->Push(NewPointer(cls, !!(funcflags & VARF_ReadOnly))); 
+		if (args != nullptr)		args->Push(NewPointer(cls, !!(funcflags & VARF_ReadOnly)));
 		if (argflags != nullptr)	argflags->Push(VARF_Implicit | VARF_ReadOnly);
 		if (argnames != nullptr)	argnames->Push(NAME_self);
 	}
@@ -220,7 +205,7 @@ PFunction *CreateAnonymousFunction(PContainerType *containingclass, PType *retur
 	// Functions that only get flagged for actors do not need the additional two context parameters.
 	int fflags = (flags& (SUF_OVERLAY | SUF_WEAPON | SUF_ITEM)) ? VARF_Action | VARF_Method : VARF_Method;
 
-	// [ZZ] give anonymous functions the scope of their class 
+	// [ZZ] give anonymous functions the scope of their class
 	//      (just give them VARF_Play, whatever)
 	fflags |= VARF_Play;
 
@@ -422,6 +407,7 @@ void ParseScripts()
 	int lump, lastlump = 0;
 	FScriptPosition::ResetErrorCounter();
 
+	bool firstLump = true;
 	while ((lump = fileSystem.FindLump("ZSCRIPT", &lastlump)) != -1)
 	{
 		ZCCParseState state;
@@ -442,6 +428,18 @@ void ParseScripts()
 			Printf(TEXTCOLOR_ORANGE "%d warnings while compiling %s\n", FScriptPosition::WarnCounter, fileSystem.GetFileFullPath(lump).c_str());
 		}
 
+		if (firstLump)
+		{
+			// Only the core Actors defined in the engine should ever auto to non-transparent as too many things have likely
+			// relied on the forced transparency for their aesthetic. Dehacked Actors should also auto to it, but that's
+			// handled elsewhere when those classes are created.
+			for (auto cls : PClass::AllClasses)
+			{
+				if (cls->IsDescendantOf(NAME_Actor) && (GetDefaultByType(cls)->renderflags & RF_ZDOOMTRANS))
+					AutoTrans[cls->TypeName] = true;
+			}
+		}
+		firstLump = false;
 	}
 }
 
@@ -459,6 +457,18 @@ void LoadActors()
 
 	FScriptPosition::StrictErrors = strictdecorate;
 	ParseAllDecorate();
+
+	// If preferring vanilla, check if any Actors from DECORATE/ZScript were relying on transparency.
+	for (auto cls : PClass::AllClasses)
+	{
+		if (cls->IsDescendantOf(NAME_Actor) && (GetDefaultByType(cls)->renderflags & RF_ZDOOMTRANS) &&
+		    !AutoTrans.CheckKey(cls->TypeName) && static_cast<PClassActor*>(cls)->ActorInfo()->Replacement == nullptr)
+		{
+			bModdedTransPresent = true;
+			break;
+		}
+	}
+
 	SynthesizeFlagFields();
 
 	FunctionBuildList.Build();
@@ -522,7 +532,7 @@ void LoadActors()
 
 		if (ti->bDecorateClass && ti->IsDescendantOf(NAME_StateProvider))
 		{
-			// either a DECORATE based weapon or CustomInventory. 
+			// either a DECORATE based weapon or CustomInventory.
 			// These are subject to relaxed rules for user variables in states.
 			// Although there is a runtime check for bogus states, let's do a quick analysis if any of the known entry points
 			// hits an unsafe state. If we can find something here it can be handled wuth a compile error rather than a runtime error.

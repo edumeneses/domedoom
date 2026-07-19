@@ -1,3 +1,25 @@
+/*
+** vk_hwbuffer.h
+**
+** Vulkan backend
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2016-2020 Magnus Norddahl
+**
+** SPDX-License-Identifier: Zlib
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 #include "hwrenderer/data/buffers.h"
@@ -8,7 +30,7 @@
 #ifdef _MSC_VER
 // silence bogus warning C4250: 'VkHardwareVertexBuffer': inherits 'VkHardwareBuffer::VkHardwareBuffer::SetData' via dominance
 // According to internet infos, the warning is erroneously emitted in this case.
-#pragma warning(disable:4250) 
+#pragma warning(disable:4250)
 #endif
 
 class VulkanRenderDevice;

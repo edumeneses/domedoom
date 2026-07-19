@@ -1,32 +1,23 @@
 /*
 ** c_cvars.h
 **
+**
+**
 **---------------------------------------------------------------------------
-** Copyright 1998-2006 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -75,8 +66,9 @@ enum
 	CVAR_CONFIG_ONLY		= 1 << 18, // do not save var to savegame and do not send it across network.
 	CVAR_ZS_CUSTOM			= 1 << 19, // Custom CVar backed by a ZScript class
 	CVAR_ZS_CUSTOM_CLONE	= 1 << 20, // Clone of a Custom ZScript CVar
-	
+
 	CVAR_SYSTEM_ONLY		= 1 << 21, // System-related cvar that should only ever be changed by the user
+	CVAR_HIDDEN				= 1 << 22, // Don't show in console tab complete
 };
 
 enum ECVarType
@@ -158,6 +150,8 @@ public:
 	virtual ~FBaseCVar ();
 
 	inline const char *GetName () const { return VarName.GetChars(); }
+	inline size_t GetNameLen () const { return VarName.Len(); }
+	inline FName GetFName () const { return VarFName; }
 	inline uint32_t GetFlags () const { return Flags; }
 
 	void CmdSet (const char *newval);
@@ -246,6 +240,7 @@ protected:
 	static UCVarValue FromString (const char *value, ECVarType type);
 
 	FString VarName;
+	FName VarFName;
 	FString SafeValue;
 	FString Description;
 	FString ToggleMessages[2];
@@ -274,7 +269,7 @@ private:
 	friend FBaseCVar *FindCVarSub (const char *var_name, int namelen);
 	friend void UnlatchCVars (void);
 	friend void DestroyCVarsFlagged (uint32_t flags);
-	friend void C_ArchiveCVars (FConfigFile *f, uint32_t filter);
+	friend void C_ArchiveCVars (FConfigFile *f, uint32_t filter, uint32_t allow);
 	friend void C_SetCVarsToDefaults (void);
 	friend void FilterCompactCVars (TArray<FBaseCVar *> &cvars, uint32_t filter);
 	friend void C_DeinitConsole();
@@ -318,7 +313,7 @@ void UnlatchCVars (void);
 void DestroyCVarsFlagged (uint32_t flags);
 
 // archive cvars to FILE f
-void C_ArchiveCVars (FConfigFile *f, uint32_t filter);
+void C_ArchiveCVars (FConfigFile *f, uint32_t filter, uint32_t allow = 0);
 
 // initialize cvars to default values after they are created
 void C_SetCVarsToDefaults (void);
@@ -456,6 +451,7 @@ public:
 		{ UCVarValue val; val.String = const_cast<char *>(stringrep); SetGenericRep (val, CVAR_String); return stringrep; }
 	inline operator const char * () const { return mValue.GetChars(); }
 	inline const char *operator *() const { return mValue.GetChars(); }
+	inline int Length() const { return mValue.Len(); }
 
 protected:
 	virtual UCVarValue DoSet (UCVarValue value, ECVarType type);
@@ -625,7 +621,7 @@ class FBoolCVarRef
 public:
 	int operator= (const FBoolCVarRef&) = delete;
 	int operator= (FBoolCVarRef&&) = delete;
-	
+
 	inline bool operator= (bool val) { *ref = val; return val; }
 	inline operator bool () const { return **ref; }
 	inline bool operator *() const { return **ref; }
@@ -637,7 +633,7 @@ class FIntCVarRef
 {
 	FIntCVar* ref;
 public:
-	
+
 	int operator= (const FIntCVarRef&) = delete;
 	int operator= (FIntCVarRef&&) = delete;
 
@@ -655,7 +651,7 @@ class FFloatCVarRef
 public:
 	int operator= (const FFloatCVarRef&) = delete;
 	int operator= (FFloatCVarRef&&) = delete;
-	
+
 	float operator= (float val) { *ref = val; return val; }
 	inline operator float () const { return **ref; }
 	inline float operator *() const { return **ref; }
@@ -669,8 +665,9 @@ class FStringCVarRef
 public:
 	int operator= (const FStringCVarRef&) = delete;
 	int operator= (FStringCVarRef&&) = delete;
-	
+
 	const char* operator= (const char* val) { *ref = val; return val; }
+	const char* operator= (FString val) { *ref = val.GetChars(); return *ref; }
 	inline operator const char* () const { return **ref; }
 	inline const char* operator *() const { return **ref; }
 	inline FStringCVar* operator->() { return ref; }
@@ -683,7 +680,7 @@ class FColorCVarRef
 public:
 	int operator= (const FColorCVarRef&) = delete;
 	int operator= (FColorCVarRef&&) = delete;
-	
+
 	//uint32_t operator= (uint32_t val) { *ref = val; return val; }
 	inline operator uint32_t () const { return **ref; }
 	inline uint32_t operator *() const { return **ref; }
@@ -729,7 +726,7 @@ inline FBaseCVar *cvar_forceset (const char *var_name, const uint8_t *value) { r
 
 constexpr UCVarValue::UCVarValue(FIntCVarRef& v) : Pointer(&v) { }
 
-struct FCVarDecl
+struct FCVarDecl : FAutoSegEntry<FCVarDecl>
 {
 	void * refAddr;
 	ECVarType type;
@@ -738,6 +735,9 @@ struct FCVarDecl
 	UCVarValue defaultval;
 	const char *description;
 	void* callbackp; // actually a function pointer with unspecified arguments. C++ does not like that much...
+
+	FCVarDecl(void * r, ECVarType t, unsigned int f, const char * n, UCVarValue v, const char * d, void * c)
+	: FAutoSegEntry(AutoSegs::CVarDecl, this), refAddr(r), type(t), flags(f), name(n), defaultval(v), description(d), callbackp(c) {}
 };
 
 
@@ -747,60 +747,36 @@ void C_RestoreCVars (void);
 
 void C_ForgetCVars (void);
 
-
-#if defined(_MSC_VER)
-#pragma section(SECTION_VREG,read)
-
-#define MSVC_VSEG __declspec(allocate(SECTION_VREG))
-#define GCC_VSEG
-#else
-#define MSVC_VSEG
-#define GCC_VSEG __attribute__((section(SECTION_VREG))) __attribute__((used))
-#endif
-
-#define CUSTOM_CVAR(type,name,def,flags) \
-	static void cvarfunc_##name(F##type##CVar &, F##type##CVar::ValueType); \
-	F##type##CVarRef name; \
-	static FCVarDecl cvardecl_##name = { &name, CVAR_##type, (flags), #name, CVarValue<CVAR_##type>(def), nullptr, reinterpret_cast<void*>(cvarfunc_##name) }; \
-	extern FCVarDecl const *const cvardeclref_##name; \
-	MSVC_VSEG FCVarDecl const *const cvardeclref_##name GCC_VSEG = &cvardecl_##name; \
-	static void cvarfunc_##name(F##type##CVar &self, F##type##CVar::ValueType prev)
-
-
-#define CUSTOM_CVAR_NAMED(type,name,cname,def,flags) \
-	static void cvarfunc_##name(F##type##CVar &, F##type##CVar::ValueType); \
-	F##type##CVarRef name; \
-	static FCVarDecl cvardecl_##name = { &name, CVAR_##type, (flags), #cname, CVarValue<CVAR_##type>(def), nullptr, reinterpret_cast<void*>(cvarfunc_##name) }; \
-	extern FCVarDecl const *const cvardeclref_##name; \
-	MSVC_VSEG FCVarDecl const *const cvardeclref_##name GCC_VSEG = &cvardecl_##name; \
-	static void cvarfunc_##name(F##type##CVar &self, F##type##CVar::ValueType prev)
-
-#define CVAR(type,name,def,flags) \
-	F##type##CVarRef name; \
-	static FCVarDecl cvardecl_##name = { &name, CVAR_##type, (flags), #name, CVarValue<CVAR_##type>(def), nullptr, nullptr}; \
-	extern FCVarDecl const *const cvardeclref_##name; \
-	MSVC_VSEG FCVarDecl const *const cvardeclref_##name GCC_VSEG = &cvardecl_##name;
-
 #define EXTERN_CVAR(type,name) extern F##type##CVarRef name;
 
-#define CUSTOM_CVARD(type,name,def,flags,descr) \
-	static void cvarfunc_##name(F##type##CVar &, F##type##CVar::ValueType); \
-	F##type##CVarRef name; \
-	static FCVarDecl cvardecl_##name = { &name, CVAR_##type, (flags), #name, CVarValue<CVAR_##type>(def), descr, reinterpret_cast<void*>(cvarfunc_##name) }; \
-	extern FCVarDecl const *const cvardeclref_##name; \
-	MSVC_VSEG FCVarDecl const *const cvardeclref_##name GCC_VSEG = &cvardecl_##name; \
+#define __CVAR_VALUE_DECLARATION(type,name) \
+	F##type##CVarRef name;
+#define __CVAR_VALUE_DEFINITION(type,name,cname,def,flags,descr,funcptr) \
+	static FCVarDecl cvardecl_##name = { &name, CVAR_##type, (flags), #cname, CVarValue<CVAR_##type>(def), descr, reinterpret_cast<void*>(funcptr)};
+
+#define __CVAR_CALLBACK_DECLARATION(type,name) \
+	static void cvarfunc_##name(F##type##CVar &, F##type##CVar::ValueType);
+#define __CVAR_CALLBACK_DEFINITION(type,name) \
 	static void cvarfunc_##name(F##type##CVar &self, F##type##CVar::ValueType prev)
 
-#define CVARD(type,name,def,flags, descr) \
-	F##type##CVarRef name; \
-	static FCVarDecl cvardecl_##name = { &name, CVAR_##type, (flags), #name, CVarValue<CVAR_##type>(def), descr, nullptr}; \
-	extern FCVarDecl const *const cvardeclref_##name; \
-	MSVC_VSEG FCVarDecl const *const cvardeclref_##name GCC_VSEG = &cvardecl_##name;
+#define CVARD_NAMED(type,name,cname,def,flags,descr) \
+	__CVAR_VALUE_DECLARATION(type,name) \
+	__CVAR_VALUE_DEFINITION(type,name,cname,def,flags,descr,NULL)
 
-#define CVARD_NAMED(type,name,varname,def,flags, descr) \
-	F##type##CVarRef name; \
-	static FCVarDecl cvardecl_##name = { &name, CVAR_##type, (flags), #varname, CVarValue<CVAR_##type>(def), descr, nullptr}; \
-	extern FCVarDecl const *const cvardeclref_##name; \
-	MSVC_VSEG FCVarDecl const *const cvardeclref_##name GCC_VSEG = &cvardecl_##name;
+#define CUSTOM_CVARD_NAMED(type,name,cname,def,flags,descr) \
+	__CVAR_CALLBACK_DECLARATION(type,name) \
+	__CVAR_VALUE_DECLARATION(type,name) \
+	__CVAR_VALUE_DEFINITION(type,name,cname,def,flags,descr,cvarfunc_##name) \
+	__CVAR_CALLBACK_DEFINITION(type,name)
+
+#define DEPR_CVAR(type,name,def,reason) \
+	[[deprecated(reason)]] __CVAR_VALUE_DECLARATION(type,name) \
+	ALLOW_DEPRECATED(__CVAR_VALUE_DEFINITION(type,name,name,def,CVAR_HIDDEN,nullptr,NULL), "so we don't get a warning immediately")
+
+#define CUSTOM_CVAR_NAMED(type,name,cname,def,flags) CUSTOM_CVARD_NAMED(type,name,cname,def,flags,nullptr)
+#define CUSTOM_CVARD(type,name,def,flags,descr) CUSTOM_CVARD_NAMED(type,name,name,def,flags,descr)
+#define CVARD(type,name,def,flags, descr) CVARD_NAMED(type,name,name,def,flags, descr)
+#define CUSTOM_CVAR(type,name,def,flags) CUSTOM_CVARD(type,name,def,flags,nullptr)
+#define CVAR(type,name,def,flags) CVARD(type,name,def,flags, nullptr)
 
 #endif //__C_CVARS_H__

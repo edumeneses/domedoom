@@ -4,33 +4,20 @@
 ** Base classes for resource file management
 **
 **---------------------------------------------------------------------------
-** Copyright 2009 Christoph Oelckers
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 2009-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **---------------------------------------------------------------------------
 **
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
 **
 */
 
@@ -83,12 +70,12 @@ std::string ExtractBaseName(const char* path, bool include_extension)
 	return std::string();
 }
 
-void strReplace(std::string& str, const char *from, const char* to) 
+void strReplace(std::string& str, const char *from, const char* to)
 {
 	if (*from == 0)
 		return;
 	size_t start_pos = 0;
-	while ((start_pos = str.find(from, start_pos)) != std::string::npos) 
+	while ((start_pos = str.find(from, start_pos)) != std::string::npos)
 	{
 		str.replace(start_pos, strlen(from), to);
 		start_pos += strlen(to);
@@ -106,7 +93,7 @@ bool FResourceFile::IsFileInFolder(const char* const resPath)
 	// Checks a special case when <somefile.wad> was put in
 	// <myproject> directory inside <myproject.zip>
 
-    const auto dirName = ExtractBaseName(FileName);
+	const auto dirName = ExtractBaseName(FileName);
 	const auto fileName = ExtractBaseName(resPath, true);
 	const std::string filePath = dirName + '/' + fileName;
 
@@ -160,7 +147,7 @@ static int nulPrintf(FSMessageLevel msg, const char* fmt, ...)
 	return 0;
 }
 
-FResourceFile *FResourceFile::DoOpenResourceFile(const char *filename, FileReader &file, bool containeronly, LumpFilterInfo* filter, FileSystemMessageFunc Printf, StringPool* sp)
+FResourceFile *FResourceFile::DoOpenResourceFile(const char *filename, FileReader &file, bool containeronly, LumpFilterInfo* filter, FileSystemMessageFunc Printf, StringPool* sp, bool optional)
 {
 	if (!file.isOpen()) return nullptr;
 	if (Printf == nullptr) Printf = nulPrintf;
@@ -168,28 +155,43 @@ FResourceFile *FResourceFile::DoOpenResourceFile(const char *filename, FileReade
 	{
 		if (containeronly && func == CheckLump) break;
 		FResourceFile *resfile = func(filename, file, filter, Printf, sp);
-		if (resfile != NULL) return resfile;
+		if (resfile != NULL)
+		{
+			resfile->SetOptional(optional);
+			return resfile;
+		}
 	}
 	return NULL;
 }
 
-FResourceFile *FResourceFile::OpenResourceFile(const char *filename, FileReader &file, bool containeronly, LumpFilterInfo* filter, FileSystemMessageFunc Printf, StringPool* sp)
+FResourceFile *FResourceFile::OpenResourceFile(const char *filename, FileReader &file, bool containeronly, LumpFilterInfo* filter, FileSystemMessageFunc Printf, StringPool* sp, bool optional)
 {
-	return DoOpenResourceFile(filename, file, containeronly, filter, Printf, sp);
+	return DoOpenResourceFile(filename, file, containeronly, filter, Printf, sp, optional);
 }
 
 
-FResourceFile *FResourceFile::OpenResourceFile(const char *filename, bool containeronly, LumpFilterInfo* filter, FileSystemMessageFunc Printf, StringPool* sp)
+FResourceFile *FResourceFile::OpenResourceFile(const char *filename, bool containeronly, LumpFilterInfo* filter, FileSystemMessageFunc Printf, StringPool* sp, bool optional)
 {
 	FileReader file;
 	if (!file.OpenFile(filename)) return nullptr;
-	return DoOpenResourceFile(filename, file, containeronly, filter, Printf, sp);
+	return DoOpenResourceFile(filename, file, containeronly, filter, Printf, sp, optional);
 }
 
-FResourceFile *FResourceFile::OpenDirectory(const char *filename, LumpFilterInfo* filter, FileSystemMessageFunc Printf, StringPool* sp)
+
+FResourceFile *FResourceFile::OpenResourceFileMemory(const char *filename, const void * data, size_t len, bool containeronly, LumpFilterInfo* filter, FileSystemMessageFunc Printf, StringPool* sp, bool optional)
+{
+	FileReader file;
+	if (!file.OpenMemory(data, len)) return nullptr;
+	return DoOpenResourceFile(filename, file, containeronly, filter, Printf, sp, optional);
+}
+
+FResourceFile *FResourceFile::OpenDirectory(const char *filename, LumpFilterInfo* filter, FileSystemMessageFunc Printf, StringPool* sp, bool optional)
 {
 	if (Printf == nullptr) Printf = nulPrintf;
-	return CheckDir(filename, false, filter, Printf, sp);
+	auto resFile = CheckDir(filename, false, filter, Printf, sp);
+	if (resFile != nullptr)
+		resFile->SetOptional(optional);
+	return resFile;
 }
 
 //==========================================================================
@@ -302,7 +304,7 @@ int entrycmp(const void* a, const void* b)
 {
 	FResourceEntry* rec1 = (FResourceEntry*)a;
 	FResourceEntry* rec2 = (FResourceEntry*)b;
-	// we are comparing lowercase UTF-8 here 
+	// we are comparing lowercase UTF-8 here
 	return strcmp(rec1->FileName, rec2->FileName);
 }
 
@@ -316,12 +318,15 @@ int entrycmp(const void* a, const void* b)
 //
 //==========================================================================
 
-void FResourceFile::GenerateHash()
+void FResourceFile::GenerateHash(bool no_reader)
 {
 	// hash the directory after sorting
 	using namespace FileSys::md5;
 
-	auto n = snprintf(Hash, 48, "%08X-%04X-", (unsigned)Reader.GetLength(), NumLumps);
+	// FIXME: Directories do not have a file reader from which they
+	// can generate a full hash. However, we need to generate
+	// *something* to avoid reading uninitialized memory later.
+	auto n = snprintf(Hash, 48, "%08X-%04X-", no_reader ? 0 : (unsigned)Reader.GetLength(), NumLumps);
 
 	md5_state_t state;
 	md5_init(&state);
@@ -331,7 +336,7 @@ void FResourceFile::GenerateHash()
 	{
 		auto name = getName(i);
 		auto size = Length(i);
-		if (name == nullptr) 
+		if (name == nullptr)
 			continue;
 		md5_append(&state, (const uint8_t*)name, (unsigned)strlen(name) + 1);
 		md5_append(&state, (const uint8_t*)&size, sizeof(size));
@@ -341,6 +346,8 @@ void FResourceFile::GenerateHash()
 	{
 		n += snprintf(Hash + n, 3, "%02X", c);
 	}
+
+	HashGenerated = true;
 }
 
 //==========================================================================
@@ -593,7 +600,7 @@ bool FResourceFile::FindPrefixRange(const char* filter, uint32_t maxlump, uint32
 			break;
 		else if (cmp < 0)
 			min = mid + 1;
-		else		
+		else
 			max = mid - 1;
 	}
 	if (max < min)

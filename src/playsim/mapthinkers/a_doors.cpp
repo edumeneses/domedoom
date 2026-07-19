@@ -1,30 +1,22 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2016 Christoph Oelckers
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-// DESCRIPTION: Door animation code (opening/closing)
-//		[RH] Removed sliding door code and simplified for Hexen-ish specials
-//
-//-----------------------------------------------------------------------------
-
-
+/*
+** a_doors.cpp
+**
+** Door animation code (opening/closing)
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** [RH] Removed sliding door code and simplified for Hexen-ish specials
+*/
 
 #include "doomdef.h"
 #include "p_local.h"
@@ -40,6 +32,7 @@
 #include "g_levellocals.h"
 #include "animations.h"
 #include "texturemanager.h"
+#include "vm.h"
 
 EXTERN_CVAR(Bool, net_repeatableactioncooldown)
 
@@ -65,6 +58,17 @@ void DDoor::Serialize(FSerializer &arc)
 		("topcountdown", m_TopCountdown)
 		("lighttag", m_LightTag);
 }
+
+DEFINE_FIELD(DDoor, m_Type)
+DEFINE_FIELD(DDoor, m_TopDist)
+DEFINE_FIELD(DDoor, m_BotSpot)
+DEFINE_FIELD(DDoor, m_BotDist)
+DEFINE_FIELD(DDoor, m_OldFloorDist)
+DEFINE_FIELD(DDoor, m_Speed)
+DEFINE_FIELD(DDoor, m_Direction)
+DEFINE_FIELD(DDoor, m_TopWait)
+DEFINE_FIELD(DDoor, m_TopCountdown)
+DEFINE_FIELD(DDoor, m_LightTag)
 
 //============================================================================
 //
@@ -99,18 +103,18 @@ void DDoor::Tick ()
 				m_Direction = -1; // time to go back down
 				DoorSound (false);
 				break;
-				
+
 			case doorCloseWaitOpen:
 				m_Direction = 1;
 				DoorSound (true);
 				break;
-				
+
 			default:
 				break;
 			}
 		}
 		break;
-		
+
 	case 2:
 		//	INITIAL WAIT
 		if (!--m_TopCountdown)
@@ -122,13 +126,13 @@ void DDoor::Tick ()
 				m_Type = doorRaise;
 				DoorSound (true);
 				break;
-				
+
 			default:
 				break;
 			}
 		}
 		break;
-		
+
 	case -1:
 		// DOWN
 		res = m_Sector->MoveCeiling (m_Speed, m_BotDist, -1, m_Direction, false);
@@ -136,7 +140,7 @@ void DDoor::Tick ()
 		// killough 10/98: implement gradual lighting effects
 		if (m_LightTag != 0 && m_TopDist != -m_Sector->floorplane.fD())
 		{
-			Level->EV_LightTurnOnPartway (m_LightTag, 
+			Level->EV_LightTurnOnPartway (m_LightTag,
 				(m_Sector->ceilingplane.fD() + m_Sector->floorplane.fD()) / (m_TopDist + m_Sector->floorplane.fD()));
 		}
 
@@ -150,12 +154,12 @@ void DDoor::Tick ()
 				m_Sector->ceilingdata = nullptr;	//jff 2/22/98
 				Destroy ();						// unlink and free
 				break;
-				
+
 			case doorCloseWaitOpen:
 				m_Direction = 0;
 				m_TopCountdown = m_TopWait;
 				break;
-				
+
 			default:
 				break;
 			}
@@ -166,7 +170,7 @@ void DDoor::Tick ()
 			{
 			case doorClose:				// DO NOT GO BACK UP!
 				break;
-				
+
 			default:
 				m_Direction = 1;
 				DoorSound (true);
@@ -174,11 +178,11 @@ void DDoor::Tick ()
 			}
 		}
 		break;
-		
+
 	case 1:
 		// UP
 		res = m_Sector->MoveCeiling (m_Speed, m_TopDist, -1, m_Direction, false);
-		
+
 		// killough 10/98: implement gradual lighting effects
 		if (m_LightTag != 0 && m_TopDist != -m_Sector->floorplane.fD())
 		{
@@ -195,13 +199,13 @@ void DDoor::Tick ()
 				m_Direction = 0; // wait at top
 				m_TopCountdown = m_TopWait;
 				break;
-				
+
 			case doorCloseWaitOpen:
 			case doorOpen:
 				m_Sector->ceilingdata = nullptr;	//jff 2/22/98
 				Destroy ();						// unlink and free
 				break;
-				
+
 			default:
 				break;
 			}
@@ -276,7 +280,7 @@ void DDoor::DoorSound(bool raise, DSeqNode *curseq) const
 		default:	/* Doom and Hexen */
 			snd = "DoorNormal";
 			break;
-			
+
 		case GAME_Heretic:
 			snd = "HereticDoor";
 			break;
@@ -511,7 +515,7 @@ bool FLevelLocals::EV_DoDoor (DDoor::EVlDoor type, line_t *line, AActor *thing,
 			if (CreateThinker<DDoor>(sec, type, speed, delay, lightTag, topcountdown))
 				rtn = true;
 		}
-				
+
 	}
 	return rtn;
 }
@@ -532,7 +536,7 @@ void DAnimatedDoor::Construct(sector_t *sec)
 void DAnimatedDoor::Serialize(FSerializer &arc)
 {
 	Super::Serialize (arc);
-	
+
 	arc("line1", m_Line1)
 		("line2", m_Line2)
 		("frame", m_Frame)
@@ -835,4 +839,3 @@ bool FLevelLocals::EV_SlidingDoor (line_t *line, AActor *actor, int tag, int spe
 	}
 	return rtn;
 }
-

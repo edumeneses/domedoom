@@ -1,27 +1,17 @@
-// 
-//---------------------------------------------------------------------------
-//
-// Copyright(C) 2000-2016 Christoph Oelckers
-// All rights reserved.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
 /*
 ** hw_weapon.cpp
+**
 ** Weapon sprite utilities
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2000-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
 **
 */
 
@@ -56,7 +46,7 @@ EXTERN_CVAR(Bool, r_drawplayersprites)
 EXTERN_CVAR(Bool, r_deathcamera)
 
 
-CVARD(Bool, gl_weapon_purelightlevel, false, CVAR_GLOBALCONFIG | CVAR_ARCHIVE, "Makes the lighting on weapon sprites (or models) purely match the sector's light level you're standing in");
+CVARD(Bool, gl_weapon_purelightlevel, false, CVAR_GLOBALCONFIG | CVAR_ARCHIVE, "[This feature is temporarily disabled] Makes the lighting on weapon sprites (or models) purely match the sector's light level you're standing in");
 
 //==========================================================================
 //
@@ -176,7 +166,10 @@ static bool isBright(DPSprite *psp)
 static WeaponPosition2D GetWeaponPosition2D(player_t *player, double ticFrac)
 {
 	WeaponPosition2D w;
-	P_BobWeapon(player, &w.bobx, &w.boby, Net_ModifyFrac(ticFrac));
+	BobType = PSPB_2D;
+	FVector2 interp = PlayerBob[player - players].Interpolate2D(Net_ModifyFrac(ticFrac));
+	w.bobx = interp.X;
+	w.boby = interp.Y;
 
 	// Interpolate the main weapon layer once so as to be able to add it to other layers.
 	if ((w.weapon = player->FindPSprite(PSP_WEAPON)) != nullptr)
@@ -204,7 +197,8 @@ static WeaponPosition2D GetWeaponPosition2D(player_t *player, double ticFrac)
 static WeaponPosition3D GetWeaponPosition3D(player_t *player, double ticFrac)
 {
 	WeaponPosition3D w;
-	P_BobWeapon3D(player, &w.translation, &w.rotation, Net_ModifyFrac(ticFrac));
+	BobType = PSPB_3D;
+	PlayerBob[player - players].Interpolate3D(w.translation, w.rotation, Net_ModifyFrac(ticFrac));
 
 	// Interpolate the main weapon layer once so as to be able to add it to other layers.
 	if ((w.weapon = player->FindPSprite(PSP_WEAPON)) != nullptr)
@@ -220,7 +214,7 @@ static WeaponPosition3D GetWeaponPosition3D(player_t *player, double ticFrac)
 			w.wx = (float)(w.weapon->oldx + (w.weapon->x - w.weapon->oldx) * frac);
 			w.wy = (float)(w.weapon->oldy + (w.weapon->y - w.weapon->oldy) * frac);
 		}
-		
+
 		auto weaponActor = w.weapon->GetCaller();
 
 		if (weaponActor && weaponActor->IsKindOf(NAME_Weapon))
@@ -336,7 +330,7 @@ WeaponLighting HWDrawInfo::GetWeaponLighting(sector_t *viewsector, const DVector
 		auto fakesec = hw_FakeFlat(viewsector, in_area, false);
 
 		// calculate light level for weapon sprites
-		l.lightlevel = hw_ClampLight(fakesec->lightlevel);
+		l.lightlevel = RescaleLightLevel(fakesec->lightlevel);
 
 		// calculate colormap for weapon sprites
 		if (viewsector->e->XFloor.ffloors.Size() && !(Level->flags3 & LEVEL3_NOCOLOREDSPRITELIGHTING))
@@ -358,7 +352,7 @@ WeaponLighting HWDrawInfo::GetWeaponLighting(sector_t *viewsector, const DVector
 				if (lightbottom < pos.Z)
 				{
 					l.cm = lightlist[i].extra_colormap;
-					l.lightlevel = hw_ClampLight(*lightlist[i].p_lightlevel);
+					l.lightlevel = RescaleLightLevel(*lightlist[i].p_lightlevel);
 					break;
 				}
 			}
@@ -426,9 +420,9 @@ void HUDSprite::SetBright(bool isbelow)
 //
 //==========================================================================
 
-bool HUDSprite::GetWeaponRenderStyle(DPSprite *psp, AActor *playermo, sector_t *viewsector, WeaponLighting &lighting)
+bool HUDSprite::GetWeaponRenderStyle(DPSprite *psp, AActor *playermo, sector_t *viewsector, WeaponLighting &lighting, double ticFrac)
 {
-	auto rs = psp->GetRenderStyle(playermo->RenderStyle, playermo->Alpha);
+	auto rs = psp->GetRenderStyle(playermo->RenderStyle, playermo->InterpolatedAlpha(ticFrac));
 
 	visstyle_t vis;
 
@@ -561,6 +555,10 @@ bool HUDSprite::GetWeaponRect(HWDrawInfo *di, DPSprite *psp, float sx, float sy,
 	// handled here by multiplying SCREENWIDTH by 200 instead of
 	// 240, but now the baseScale var defines this from now on.
 	scale = psp->baseScale.Y * (SCREENHEIGHT*vw) / (SCREENWIDTH * 240.0f);
+
+	// Canvas textures are stored upside down
+	if (tex && tex->isHardwareCanvas()) scale *= -1;
+
 	y1 = viewwindowy + vh / 2 - (ftexturemid * scale);
 	y2 = y1 + (r.height * scale) + 1;
 
@@ -619,7 +617,7 @@ bool HUDSprite::GetWeaponRect(HWDrawInfo *di, DPSprite *psp, float sx, float sy,
 		FAngle rot = FAngle::fromDeg(float((flip) ? -psp->rotation.Degrees() : psp->rotation.Degrees()));
 		const float cosang = rot.Cos();
 		const float sinang = rot.Sin();
-		
+
 		float xcenter, ycenter;
 		const float width = x2 - x1;
 		const float height = y2 - y1;
@@ -663,8 +661,8 @@ bool HUDSprite::GetWeaponRect(HWDrawInfo *di, DPSprite *psp, float sx, float sy,
 
 		Vert.v[i] = t;
 	}
-	
-	// [MC] If this is absolutely necessary, uncomment it. It just checks if all the vertices 
+
+	// [MC] If this is absolutely necessary, uncomment it. It just checks if all the vertices
 	// are all off screen either to the right or left, but is it honestly needed?
 	/*
 	if ((
@@ -700,7 +698,7 @@ void HWDrawInfo::PreparePlayerSprites2D(sector_t * viewsector, area_t in_area)
 	static PClass * wpCls = PClass::FindClass("Weapon");
 	static unsigned ModifyBobLayerVIndex = GetVirtualIndex(wpCls, "ModifyBobLayer");
 	static VMFunction * ModifyBobLayerOrigFunc = wpCls->Virtuals.Size() > ModifyBobLayerVIndex ? wpCls->Virtuals[ModifyBobLayerVIndex] : nullptr;
-	
+
 	AActor * playermo = players[consoleplayer].camera;
 	player_t * player = playermo->player;
 
@@ -731,7 +729,7 @@ void HWDrawInfo::PreparePlayerSprites2D(sector_t * viewsector, area_t in_area)
 	for (DPSprite *psp = player->psprites; psp != nullptr && psp->GetID() < PSP_TARGETCENTER; psp = psp->GetNext())
 	{
 		if (!psp->GetState()) continue;
-		
+
 		FSpriteModelFrame *smf = FindModelFrame(psp->Caller, psp->GetSprite(), psp->GetFrame(), false);
 
 		// This is an 'either-or' proposition. This maybe needs some work to allow overlays with weapon models but as originally implemented this just won't work.
@@ -742,7 +740,7 @@ void HWDrawInfo::PreparePlayerSprites2D(sector_t * viewsector, area_t in_area)
 		hudsprite.mframe = smf;
 		hudsprite.weapon = psp;
 
-		if (!hudsprite.GetWeaponRenderStyle(psp, camera, viewsector, light)) continue;
+		if (!hudsprite.GetWeaponRenderStyle(psp, camera, viewsector, light, vp.TicFrac)) continue;
 
 		if(ModifyBobLayer && (psp->Flags & PSPF_ADDBOB))
 		{
@@ -776,13 +774,13 @@ void HWDrawInfo::PreparePlayerSprites2D(sector_t * viewsector, area_t in_area)
 void HWDrawInfo::PreparePlayerSprites3D(sector_t * viewsector, area_t in_area)
 {
 	static PClass * wpCls = PClass::FindClass("Weapon");
-	
+
 	static unsigned ModifyBobLayer3DVIndex = GetVirtualIndex(wpCls, "ModifyBobLayer3D");
 	static unsigned ModifyBobPivotLayer3DVIndex = GetVirtualIndex(wpCls, "ModifyBobPivotLayer3D");
 
 	static VMFunction * ModifyBobLayer3DOrigFunc = wpCls->Virtuals.Size() > ModifyBobLayer3DVIndex ? wpCls->Virtuals[ModifyBobLayer3DVIndex] : nullptr;
 	static VMFunction * ModifyBobPivotLayer3DOrigFunc = wpCls->Virtuals.Size() > ModifyBobPivotLayer3DVIndex ? wpCls->Virtuals[ModifyBobPivotLayer3DVIndex] : nullptr;
-	
+
 	AActor * playermo = players[consoleplayer].camera;
 	player_t * player = playermo->player;
 
@@ -832,7 +830,7 @@ void HWDrawInfo::PreparePlayerSprites3D(sector_t * viewsector, area_t in_area)
 		if(ModifyBobLayer3D && (psp->Flags & PSPF_ADDBOB))
 		{
 			DVector3 t, r;
-			
+
 			VMReturn returns[2];
 
 			returns[0].Vec3At(&t);
@@ -857,14 +855,14 @@ void HWDrawInfo::PreparePlayerSprites3D(sector_t * viewsector, area_t in_area)
 			weap.pivot = FVector3(p);
 		}
 
-		if (!hudsprite.GetWeaponRenderStyle(psp, camera, viewsector, light)) continue;
+		if (!hudsprite.GetWeaponRenderStyle(psp, camera, viewsector, light, vp.TicFrac)) continue;
 
 		FVector2 spos = BobWeapon3D(weap, psp, hudsprite.translation, hudsprite.rotation, hudsprite.pivot, Net_ModifyObjectFrac(psp, vp.TicFrac));
 
 		hudsprite.dynrgb[0] = hudsprite.dynrgb[1] = hudsprite.dynrgb[2] = 0;
 		hudsprite.lightindex = -1;
 		// set the lighting parameters
-		if (hudsprite.RenderStyle.BlendOp != STYLEOP_Shadow && Level->HasDynamicLights && !isFullbrightScene() && gl_light_sprites)
+		if (hudsprite.RenderStyle.BlendOp != STYLEOP_Shadow && Level->HasDynamicLights && !isFullbrightScene() && gl_light_sprites && !(playermo->renderflags2 & RF2_NODYNAMICLIGHTING))
 		{
 			hw_GetDynModelLight(playermo, lightdata);
 			hudsprite.lightindex = screen->mLights->UploadLights(lightdata);
@@ -877,7 +875,7 @@ void HWDrawInfo::PreparePlayerSprites3D(sector_t * viewsector, area_t in_area)
 			}
 		}
 
-		// [BB] In the HUD model step we just render the model and break out. 
+		// [BB] In the HUD model step we just render the model and break out.
 		hudsprite.mx = spos.X;
 		hudsprite.my = spos.Y;
 
@@ -891,8 +889,8 @@ void HWDrawInfo::PreparePlayerSprites(sector_t * viewsector, area_t in_area)
 
 	AActor * playermo = players[consoleplayer].camera;
 	player_t * player = playermo->player;
-	
-    const auto &vp = Viewpoint;
+
+	const auto &vp = Viewpoint;
 
 	AActor *camera = vp.camera;
 
@@ -905,7 +903,7 @@ void HWDrawInfo::PreparePlayerSprites(sector_t * viewsector, area_t in_area)
 		return;
 
 	const bool hudModelStep = IsHUDModelForPlayerAvailable(camera->player);
-	
+
 	if(hudModelStep)
 	{
 		PreparePlayerSprites3D(viewsector,in_area);
@@ -957,7 +955,7 @@ void HWDrawInfo::PrepareTargeterSprites(double ticfrac)
 		if (psp->GetState() != nullptr && (psp->GetID() != PSP_TARGETCENTER || CrosshairImage == nullptr))
 		{
 			hudsprite.weapon = psp;
-			
+
 			if (hudsprite.GetWeaponRect(this, psp, psp->x, psp->y, player, Net_ModifyObjectFrac(psp, ticfrac)))
 			{
 				hudsprites.Push(hudsprite);
@@ -965,4 +963,3 @@ void HWDrawInfo::PrepareTargeterSprites(double ticfrac)
 		}
 	}
 }
-

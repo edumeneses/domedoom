@@ -1,3 +1,23 @@
+/*
+** weaponskullrod.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // Skull (Horn) Rod ---------------------------------------------------------
 
 class SkullRod : HereticWeapon
@@ -33,7 +53,7 @@ class SkullRod : HereticWeapon
 		HROD B 0 A_ReFire;
 		Goto Ready;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_FireSkullRodPL1
@@ -61,7 +81,7 @@ class SkullRod : HereticWeapon
 		}
 	}
 
-	
+
 }
 
 class SkullRodPowered : SkullRod
@@ -90,7 +110,7 @@ class SkullRodPowered : SkullRod
 		HROD C 2 A_ReFire;
 		Goto Ready;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_FireSkullRodPL2
@@ -103,7 +123,7 @@ class SkullRodPowered : SkullRod
 	action void A_FireSkullRodPL2()
 	{
 		FTranslatedLineTarget t;
-		
+
 		if (player == null)
 		{
 			return;
@@ -115,7 +135,7 @@ class SkullRodPowered : SkullRod
 			if (!weapon.DepleteAmmo (weapon.bAltFire))
 				return;
 		}
-		// Use MissileActor instead of the first return value from P_SpawnPlayerMissile 
+		// Use MissileActor instead of the first return value from P_SpawnPlayerMissile
 		// because we need to give info to it, even if it exploded immediately.
 		Actor mo, MissileActor;
 		[mo, MissileActor] = SpawnPlayerMissile ("HornRodFX2", angle, pLineTarget: t);
@@ -129,7 +149,7 @@ class SkullRodPowered : SkullRod
 		}
 	}
 
-	
+
 }
 
 // Horn Rod FX 1 ------------------------------------------------------------
@@ -187,7 +207,7 @@ class HornRodFX2 : Actor
 
 	States
 	{
-	Spawn:	
+	Spawn:
 		FX00 C 3 BRIGHT;
 		FX00 D 3 BRIGHT A_SeekerMissile(10, 30);
 		FX00 E 3 BRIGHT;
@@ -202,7 +222,7 @@ class HornRodFX2 : Actor
 		FX00 G 1 A_SkullRodStorm;
 		Wait;
 	}
-	
+
 	override int DoSpecialDamage (Actor target, int damage, Name damagetype)
 	{
 		Sorcerer2 s2 = Sorcerer2(target);
@@ -213,7 +233,7 @@ class HornRodFX2 : Actor
 		}
 		return damage;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_AddPlayerRain
@@ -270,7 +290,7 @@ class HornRodFX2 : Actor
 		}
 		ActiveSound = "misc/rain";
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_HideInCeiling
@@ -286,7 +306,7 @@ class HornRodFX2 : Actor
 		bMissile = false;
 		Vel = (0,0,0);
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_SkullRodStorm
@@ -300,7 +320,7 @@ class HornRodFX2 : Actor
 			"RainPillar1", "RainPillar2", "RainPillar3", "RainPillar4",
 			"RainPillar5", "RainPillar6", "RainPillar7", "RainPillar8"
 		};
-		
+
 		if (health-- == 0)
 		{
 			A_StopSound (CHAN_BODY);
@@ -333,13 +353,13 @@ class HornRodFX2 : Actor
 		Vector3 spawnpos = Vec2OffsetZ(xo, yo, pos.z);
 		Actor mo = Spawn("RainPillar", spawnpos, ALLOW_REPLACE);
 		if (!mo) return;
-		
+
 		// Find the ceiling above the spawn location. This may come from 3D floors but will not reach through portals.
 		// (should probably be fixed for portals, too.)
 		double newz = mo.CurSector.NextHighestCeilingAt(mo.pos.x, mo.pos.y, mo.pos.z, mo.pos.z, FFCF_NOPORTALS) - mo.height;
 		mo.SetZ(newz);
 
-		if (multiplayer && target.player)
+		if (multiplayer && target && target.player)
 		{
 			mo.A_SetTranslation(translations[target.PlayerNumber()]);
 		}
@@ -350,7 +370,7 @@ class HornRodFX2 : Actor
 		if (ActiveSound > 0) A_StartSound(ActiveSound, CHAN_BODY, CHANF_LOOPING);
 	}
 
-	
+
 }
 
 // Rain pillar 1 ------------------------------------------------------------
@@ -385,7 +405,7 @@ class RainPillar : Actor
 		FX22 GHI 4 BRIGHT;
 		Stop;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_RainImpact
@@ -421,7 +441,7 @@ class RainPillar : Actor
 class RainTracker : Inventory
 {
 	Actor Rain1, Rain2;
-	
+
 	Default
 	{
 		+INVENTORY.UNDROPPABLE

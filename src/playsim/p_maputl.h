@@ -1,3 +1,30 @@
+/*
+** p_maputl.h
+**
+** Movement/collision utility functions
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2017 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** For code that originates from ZDoom the following applies:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #ifndef __P_MAPUTL_H
 #define __P_MAPUTL_H
 
@@ -139,11 +166,11 @@ struct polyblock_t;
 // This is a dynamic array which holds its first MAX_STATIC entries in normal
 // variables to avoid constant allocations which this would otherwise
 // require.
-// 
+//
 // When collecting touched portal groups the normal cases are either
 // no portals == one group or
 // two portals = two groups
-// 
+//
 // Anything with more can happen but far less infrequently, so this
 // organization helps avoiding the overhead from heap allocations
 // in the vast majority of situations.
@@ -310,7 +337,7 @@ class FBlockThingsIterator
 	void SwitchBlock(int x, int y);
 	void ClearHash();
 
-	// The following is only for use in the path traverser 
+	// The following is only for use in the path traverser
 	// and therefore declared private.
 	FBlockThingsIterator(FLevelLocals *);
 
@@ -378,7 +405,7 @@ protected:
 
 	virtual void AddLineIntercepts(int bx, int by);
 	virtual void AddThingIntercepts(int bx, int by, FBlockThingsIterator &it, bool compatible);
-	FPathTraverse(FLevelLocals *l) 
+	FPathTraverse(FLevelLocals *l)
 	{
 		Level = l;
 	}

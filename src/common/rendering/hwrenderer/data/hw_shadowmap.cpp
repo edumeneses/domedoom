@@ -1,24 +1,19 @@
-// 
-//---------------------------------------------------------------------------
-// 1D dynamic shadow maps (API independent part)
-// Copyright(C) 2017 Magnus Norddahl
-// All rights reserved.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
+/*
+** hw_shadowmap.cpp
+**
+** 1D dynamic shadow maps (API independent part)
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2017 Magnus Norddahl
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include "hw_shadowmap.h"
 #include "hw_cvars.h"
@@ -34,7 +29,7 @@
 	the fragment shader (main.fp) needs to sample from row 20. That is, the V texture coordinate needs
 	to be 20.5/1024.
 
-    The texel row for each light is split into four parts. One for each direction, like a cube texture,
+	The texel row for each light is split into four parts. One for each direction, like a cube texture,
 	but then only in 2D where this reduces itself to a square. When main.fp samples from the shadow map
 	it first decides in which direction the fragment is (relative to the light), like cubemap sampling does
 	for 3D, but once again just for the 2D case.
@@ -68,14 +63,17 @@ ADD_STAT(shadowmap)
 	return out;
 }
 
-CUSTOM_CVAR(Int, gl_shadowmap_quality, 512, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CUSTOM_CVAR(Int, gl_shadowmap_quality, 1024, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 {
 	switch (self)
 	{
-	case 128:
-	case 256:
-	case 512:
-	case 1024:
+	case 2<<6: // 128
+	case 2<<7: // 256
+	case 2<<8: // 512
+	case 2<<9: // 1024
+	case 2<<10: // 2048
+	case 2<<11: // 4096
+	case 2<<12: // 8192
 		break;
 	default:
 		self = 128;
@@ -153,4 +151,3 @@ IShadowMap::~IShadowMap()
 {
 	Reset();
 }
-

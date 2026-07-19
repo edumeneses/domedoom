@@ -1,3 +1,22 @@
+/*
+** wraith.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Wraith -------------------------------------------------------------------
 
@@ -74,7 +93,7 @@ class Wraith : Actor
 		WRT2 I 1 A_FreezeDeathChunks;
 		Wait;
 	}
-	
+
 	//============================================================================
 	//
 	// A_WraithInit
@@ -236,8 +255,8 @@ class WraithBuried : Wraith
 		+INVISIBLE
 		PainChance 0;
 	}
-	
-	
+
+
 	States
 	{
 	Spawn:
@@ -251,7 +270,7 @@ class WraithBuried : Wraith
 	Chase:
 		Goto Super::See;
 	}
-	
+
 	//============================================================================
 	//
 	// A_WraithRaiseInit
@@ -291,7 +310,7 @@ class WraithBuried : Wraith
 		SpawnDirt (radius);
 	}
 
-	
+
 }
 
 // Wraith FX 1 --------------------------------------------------------------
@@ -328,7 +347,7 @@ class WraithFX1 : Actor
 		WRBL I 3 Bright;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_WraithFX2 - spawns sparkle tail of missile
@@ -357,7 +376,7 @@ class WraithFX1 : Actor
 		}
 	}
 
-	
+
 }
 
 // Wraith FX 2 --------------------------------------------------------------

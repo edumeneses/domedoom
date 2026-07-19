@@ -1,3 +1,22 @@
+/*
+** hexenspecialdecs.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Winged Statue (no skull) -------------------------------------------------
 
@@ -77,7 +96,7 @@ class TreeDestructible : Actor
 		TRDT OP 5;
 		TRDT Q -1;
 		Stop;
-	} 
+	}
 }
 
 
@@ -105,7 +124,7 @@ class Pottery1 : Actor
 		POT1 A 0 A_PotteryExplode;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_PotteryExplode
@@ -178,7 +197,7 @@ class Pottery3 : Pottery1
 class PotteryBit : Actor
 {
 	State LoopState;
-	
+
 	Default
 	{
 		Radius 5;
@@ -217,7 +236,7 @@ class PotteryBit : Actor
 		PBIT J 1 A_PotteryCheck;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_PotteryChooseBit
@@ -286,7 +305,7 @@ class ZCorpseLynchedNoHeart : Actor
 		CPS5 A 140 A_CorpseBloodDrip;
 		Loop;
 	}
-	
+
 	override void PostBeginPlay ()
 	{
 		Super.PostBeginPlay ();
@@ -384,7 +403,7 @@ class ZCorpseSitting : Actor
 		CPS6 A 1 A_CorpseExplode;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_CorpseExplode
@@ -438,7 +457,7 @@ class LeafSpawner : Actor
 		TNT1 A 20 A_LeafSpawn;
 		Loop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_LeafSpawn
@@ -500,7 +519,7 @@ class Leaf1 : Actor
 		LEF3 D 10 A_LeafCheck;
 		Wait;
 	}
-	
+
 	//============================================================================
 	//
 	// A_LeafThrust
@@ -749,7 +768,7 @@ class ZSuitOfArmor : Actor
 		ZSUI A 1 A_SoAExplode;
 		Stop;
 	}
-	
+
 	//===========================================================================
 	//
 	// A_SoAExplode - Suit of Armor Explode
@@ -879,7 +898,7 @@ class ZBell : Actor
 		BBLL A 1 A_BellReset2;
 		Goto Spawn;
 	}
-	
+
 	override void Activate (Actor activator)
 	{
 		if (health > 0)
@@ -1001,4 +1020,3 @@ class HWaterDrip : Actor
 		Stop;
 	}
 }
-

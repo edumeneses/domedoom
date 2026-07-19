@@ -1,5 +1,24 @@
-// Mauler -------------------------------------------------------------------
-// The scatter version
+/*
+** weaponmauler.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Rogue Entertainment
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
+// Mauler Scatter version----------------------------------------------------
 
 class Mauler : StrifeWeapon
 {
@@ -41,7 +60,7 @@ class Mauler : StrifeWeapon
 		TRPD A -1;
 		Stop;
 	}
-		
+
 	//============================================================================
 	//
 	// A_FireMauler1
@@ -64,12 +83,12 @@ class Mauler : StrifeWeapon
 		{
 			if (!weap.DepleteAmmo (weap.bAltFire, true))
 				return;
-			
+
 		}
 		player.mo.PlayAttacking2 ();
 
 		double pitch = BulletSlope ();
-			
+
 		for (int i = 0 ; i < 20 ; i++)
 		{
 			int damage = 5 * random[Mauler1](1, 3);
@@ -122,7 +141,7 @@ class Mauler2 : Mauler
 		MAUL E 2 A_ReFire;
 		Goto Ready;
 	}
-	
+
 	//============================================================================
 	//
 	// A_FireMauler2Pre
@@ -168,7 +187,7 @@ class Mauler2 : Mauler
 				return;
 		}
 		player.mo.PlayAttacking2 ();
-		
+
 		SpawnPlayerMissile ("MaulerTorpedo");
 		DamageMobj (self, null, 20, 'Disintegrate');
 		Thrust(7.8125, Angle+180.);
@@ -230,7 +249,7 @@ class MaulerTorpedo : Actor
 		THIT DE 8 Bright;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_MaulerTorpedoWave
@@ -290,5 +309,3 @@ class MaulerTorpedoWave : Actor
 	}
 
 }
-
-

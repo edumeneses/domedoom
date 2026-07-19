@@ -1,28 +1,17 @@
-// 
-//---------------------------------------------------------------------------
-//
-// Copyright(C) 2004-2016 Christoph Oelckers
-// All rights reserved.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
 /*
 ** gl_shader.cpp
 **
 ** GLSL shader handling
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2004-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
 **
 */
 
@@ -111,7 +100,7 @@ static FString CreateProgramCacheName(bool create)
 {
 	FString path = M_GetCachePath(create);
 	if (create) CreatePath(path.GetChars());
-	path << "/shadercache.zdsc";
+	path << "/glshadercache";
 	return path;
 }
 
@@ -258,7 +247,7 @@ FString ProcessShaderError(const char * shaderError, TArray<FString> &filenames_
 			else if((state == READING_LINE_COLON && err[cur] == ':') || (state == READING_LINE_PARENTHESES && err[cur] == ')'))
 			{
 				FString line_num_str = err.Mid(state_start, cur - state_start);
-				
+
 				if(state == READING_LINE_PARENTHESES)
 				{
 					cur+= 3; // skip ") :"
@@ -270,7 +259,7 @@ FString ProcessShaderError(const char * shaderError, TArray<FString> &filenames_
 
 				int64_t old_len = cur - line_start;
 				FString new_err = "File '" + filenames_for_error[lump_num - 1] + "', Line " + line_num_str + ": ";
-				
+
 				int64_t diff = new_err.Len() - old_len;
 
 				err = err.Left(line_start) + new_err + err.Mid(line_start + old_len);
@@ -323,12 +312,12 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 			vec4 uClipLine;
 
 			float uGlobVis;			// uGlobVis = R_GetGlobVis(r_visibility) / 32.0
-			int uPalLightLevels;	
+			int uPalLightLevels;
 			int uViewHeight;		// Software fuzz scaling
 			float uClipHeight;
 			float uClipHeightDirection;
 			int uShadowmapFilter;
-			
+
 			int uLightBlendMode;
 
 			float uThickFogDistance;
@@ -488,7 +477,7 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 
 	if ((gl.flags & RFL_SHADER_STORAGE_BUFFER) && screen->allowSSBO())
 		vp_comb << "#version 430 core\n#define SUPPORTS_SHADOWMAPS\n";
-	else 
+	else
 		vp_comb << "#version 330 core\n";
 
 	bool lightbuffertype = screen->mLights->GetBufferType();
@@ -974,7 +963,7 @@ bool FShaderCollection::CompileNextShader()
 		{
 			mCompileIndex = 0;
 			mCompileState++;
-			
+
 		}
 	}
 	else if (mCompileState == 1)

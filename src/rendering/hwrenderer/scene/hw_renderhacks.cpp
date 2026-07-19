@@ -1,27 +1,17 @@
-// 
-//---------------------------------------------------------------------------
-//
-// Copyright(C) 2000-2016 Christoph Oelckers
-// All rights reserved.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
 /*
-** gl_renderhacks.cpp
+** hw_renderhacks.cpp
+**
 ** Handles missing upper and lower textures and self referencing sector hacks
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2000-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
 **
 */
 
@@ -93,12 +83,12 @@ void HWDrawInfo::DispatchRenderHacks()
 
 static gl_subsectorrendernode *NewSubsectorRenderNode()
 {
-    return (gl_subsectorrendernode*)RenderDataAllocator.Alloc(sizeof(gl_subsectorrendernode));
+	return (gl_subsectorrendernode*)RenderDataAllocator.Alloc(sizeof(gl_subsectorrendernode));
 }
 
 static gl_floodrendernode *NewFloodRenderNode()
 {
-    return (gl_floodrendernode*)RenderDataAllocator.Alloc(sizeof(gl_floodrendernode));
+	return (gl_floodrendernode*)RenderDataAllocator.Alloc(sizeof(gl_floodrendernode));
 }
 
 //==========================================================================
@@ -175,8 +165,8 @@ int HWDrawInfo::CreateOtherPlaneVertices(subsector_t *sub, const secplane_t *pla
 
 void HWDrawInfo::AddOtherFloorPlane(int sector, gl_subsectorrendernode * node)
 {
-    auto pNode = otherFloorPlanes.CheckKey(sector);
-    
+	auto pNode = otherFloorPlanes.CheckKey(sector);
+
 	node->next = pNode? *pNode : nullptr;
 	node->lightindex = SetupLightsForOtherPlane(node->sub, lightdata, &Level->sectors[sector].floorplane);
 	node->vertexindex = CreateOtherPlaneVertices(node->sub, &Level->sectors[sector].floorplane);
@@ -185,9 +175,9 @@ void HWDrawInfo::AddOtherFloorPlane(int sector, gl_subsectorrendernode * node)
 
 void HWDrawInfo::AddOtherCeilingPlane(int sector, gl_subsectorrendernode * node)
 {
-    auto pNode = otherCeilingPlanes.CheckKey(sector);
-    
-    node->next = pNode? *pNode : nullptr;
+	auto pNode = otherCeilingPlanes.CheckKey(sector);
+
+	node->next = pNode? *pNode : nullptr;
 	node->lightindex = SetupLightsForOtherPlane(node->sub, lightdata, &Level->sectors[sector].ceilingplane);
 	node->vertexindex = CreateOtherPlaneVertices(node->sub, &Level->sectors[sector].ceilingplane);
 	otherCeilingPlanes[sector] = node;
@@ -315,7 +305,7 @@ void HWDrawInfo::AddLowerMissingTexture(side_t * side, subsector_t *sub, float B
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 bool HWDrawInfo::DoOneSectorUpper(subsector_t * subsec, float Planez, area_t in_area)
@@ -373,7 +363,7 @@ bool HWDrawInfo::DoOneSectorUpper(subsector_t * subsec, float Planez, area_t in_
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 bool HWDrawInfo::DoOneSectorLower(subsector_t * subsec, float Planez, area_t in_area)
@@ -472,7 +462,7 @@ bool HWDrawInfo::DoFakeBridge(subsector_t * subsec, float Planez, area_t in_area
 			}
 
 			// This is an exact height match which means we don't have to do any further checks for this sector
-			// No texture checks though! 
+			// No texture checks though!
 			if (sec->GetPlaneTexZ(sector_t::floor) == Planez) continue;
 		}
 		if (!DoFakeBridge(backsub, Planez, in_area)) return false;
@@ -525,7 +515,7 @@ bool HWDrawInfo::DoFakeCeilingBridge(subsector_t * subsec, float Planez, area_t 
 			}
 
 			// This is an exact height match which means we don't have to do any further checks for this sector
-			// No texture checks though! 
+			// No texture checks though!
 			if (sec->GetPlaneTexZ(sector_t::ceiling) == Planez) continue;
 		}
 		if (!DoFakeCeilingBridge(backsub, Planez, in_area)) return false;
@@ -560,7 +550,7 @@ void HWDrawInfo::HandleMissingTextures(area_t in_area)
 				sector_t * sec = MissingUpperTextures[i].seg->backsector;
 				for (unsigned int j = 0; j < HandledSubsectors.Size(); j++)
 				{
-                    gl_subsectorrendernode * node = NewSubsectorRenderNode();
+					gl_subsectorrendernode * node = NewSubsectorRenderNode();
 					node->sub = HandledSubsectors[j];
 
 					AddOtherCeilingPlane(sec->sectornum, node);
@@ -601,7 +591,7 @@ void HWDrawInfo::HandleMissingTextures(area_t in_area)
 			{
 				for (unsigned int j = 0; j < HandledSubsectors.Size(); j++)
 				{
-                    gl_subsectorrendernode * node = NewSubsectorRenderNode();
+					gl_subsectorrendernode * node = NewSubsectorRenderNode();
 					node->sub = HandledSubsectors[j];
 					AddOtherCeilingPlane(fakesector->sectornum, node);
 				}
@@ -627,7 +617,7 @@ void HWDrawInfo::HandleMissingTextures(area_t in_area)
 
 				for (unsigned int j = 0; j < HandledSubsectors.Size(); j++)
 				{
-                    gl_subsectorrendernode * node = NewSubsectorRenderNode();
+					gl_subsectorrendernode * node = NewSubsectorRenderNode();
 					node->sub = HandledSubsectors[j];
 					AddOtherFloorPlane(sec->sectornum, node);
 				}
@@ -667,7 +657,7 @@ void HWDrawInfo::HandleMissingTextures(area_t in_area)
 			{
 				for (unsigned int j = 0; j < HandledSubsectors.Size(); j++)
 				{
-                    gl_subsectorrendernode * node = NewSubsectorRenderNode();
+					gl_subsectorrendernode * node = NewSubsectorRenderNode();
 					node->sub = HandledSubsectors[j];
 					AddOtherFloorPlane(fakesector->sectornum, node);
 				}
@@ -693,7 +683,7 @@ void HWDrawInfo::CreateFloodStencilPoly(wallseg * ws, FFlatVertex *vertices)
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -771,9 +761,9 @@ void HWDrawInfo::PrepareUpperGap(seg_t * seg)
 	CreateFloodPoly(&ws, vertices.first+4, ws.z2, fakebsector, true);
 
 	gl_floodrendernode *node = NewFloodRenderNode();
-    auto pNode = floodCeilingSegs.CheckKey(fakebsector->sectornum);
+	auto pNode = floodCeilingSegs.CheckKey(fakebsector->sectornum);
 
-    node->next = pNode? *pNode : nullptr;
+	node->next = pNode? *pNode : nullptr;
 	node->seg = seg;
 	node->vertexindex = vertices.second;
 	floodCeilingSegs[fakebsector->sectornum] = node;
@@ -828,9 +818,9 @@ void HWDrawInfo::PrepareLowerGap(seg_t * seg)
 	CreateFloodPoly(&ws, vertices.first+4, ws.z1, fakebsector, false);
 
 	gl_floodrendernode *node = NewFloodRenderNode();
-    auto pNode = floodFloorSegs.CheckKey(fakebsector->sectornum);
-    
-    node->next = pNode? *pNode : nullptr;
+	auto pNode = floodFloorSegs.CheckKey(fakebsector->sectornum);
+
+	node->next = pNode? *pNode : nullptr;
 
 	node->seg = seg;
 	node->vertexindex = vertices.second;
@@ -929,7 +919,7 @@ bool HWDrawInfo::CheckAnchorFloor(subsector_t * sub)
 		subsector_t * backsub = seg->PartnerSeg->Subsector;
 
 		// Find a linedef with a different visplane on the other side.
-		if (!(backsub->flags & SSECF_DEGENERATE) && seg->linedef && 
+		if (!(backsub->flags & SSECF_DEGENERATE) && seg->linedef &&
 			(sub->render_sector != backsub->render_sector && sub->sector != backsub->sector))
 		{
 			// I'm ignoring slopes, scaling and rotation here. The likelihood of ZDoom maps
@@ -990,7 +980,7 @@ bool HWDrawInfo::CollectSubsectorsFloor(subsector_t * sub, sector_t * anchor)
 			// could be an anchor itself.
 			if (!CheckAnchorFloor (backsub)) // must not be an anchor itself!
 			{
-				if (backsub->validcount!=validcount) 
+				if (backsub->validcount!=validcount)
 				{
 					if (!CollectSubsectorsFloor (backsub, anchor)) return false;
 				}
@@ -1032,7 +1022,7 @@ bool HWDrawInfo::CheckAnchorCeiling(subsector_t * sub)
 		subsector_t * backsub = seg->PartnerSeg->Subsector;
 
 		// Find a linedef with a different visplane on the other side.
-		if (!(backsub->flags & SSECF_DEGENERATE) && seg->linedef && 
+		if (!(backsub->flags & SSECF_DEGENERATE) && seg->linedef &&
 			(sub->render_sector != backsub->render_sector && sub->sector != backsub->sector))
 		{
 			// I'm ignoring slopes, scaling and rotation here. The likelihood of ZDoom maps
@@ -1066,7 +1056,7 @@ bool HWDrawInfo::CollectSubsectorsCeiling(subsector_t * sub, sector_t * anchor)
 	// We must collect any subsector that either is connected to this one with a miniseg
 	// or has the same visplane.
 	// We must not collect any subsector that  has the anchor's visplane!
-	if (!(sub->flags & SSECF_DEGENERATE)) 
+	if (!(sub->flags & SSECF_DEGENERATE))
 	{
 		// Is not being rendererd so don't bother.
 		if (!(ss_renderflags[sub->Index()]&SSRF_PROCESSED)) return true;
@@ -1091,7 +1081,7 @@ bool HWDrawInfo::CollectSubsectorsCeiling(subsector_t * sub, sector_t * anchor)
 			// could be an anchor itself.
 			if (!CheckAnchorCeiling (backsub)) // must not be an anchor itself!
 			{
-				if (backsub->validcount!=validcount) 
+				if (backsub->validcount!=validcount)
 				{
 					if (!CollectSubsectorsCeiling (backsub, anchor)) return false;
 				}
@@ -1119,14 +1109,14 @@ bool HWDrawInfo::CollectSubsectorsCeiling(subsector_t * sub, sector_t * anchor)
 
 void HWDrawInfo::ProcessLowerMinisegs(TArray<seg_t *> &lowersegs)
 {
-    for(unsigned int j=0;j<lowersegs.Size();j++)
-    {
-        seg_t * seg=lowersegs[j];
-        HWWall wall;
+	for(unsigned int j=0;j<lowersegs.Size();j++)
+	{
+		seg_t * seg=lowersegs[j];
+		HWWall wall;
 		HWWallDispatcher disp(this);
-        wall.ProcessLowerMiniseg(&disp, seg, seg->Subsector->render_sector, seg->PartnerSeg->Subsector->render_sector);
-        rendered_lines++;
-    }
+		wall.ProcessLowerMiniseg(&disp, seg, seg->Subsector->render_sector, seg->PartnerSeg->Subsector->render_sector);
+		rendered_lines++;
+	}
 }
 
 
@@ -1148,12 +1138,12 @@ void HWDrawInfo::HandleHackedSubsectors()
 			if (CollectSubsectorsFloor(sub, sub->render_sector))
 			{
 				for(unsigned int j=0;j<HandledSubsectors.Size();j++)
-				{				
-                    gl_subsectorrendernode * node = NewSubsectorRenderNode();
+				{
+					gl_subsectorrendernode * node = NewSubsectorRenderNode();
 					node->sub = HandledSubsectors[j];
 					AddOtherFloorPlane(sub->render_sector->sectornum, node);
 				}
-                if (inview) ProcessLowerMinisegs(lowersegs);
+				if (inview) ProcessLowerMinisegs(lowersegs);
 			}
 		}
 	}
@@ -1170,8 +1160,8 @@ void HWDrawInfo::HandleHackedSubsectors()
 			if (CollectSubsectorsCeiling(sub, sub->render_sector))
 			{
 				for(unsigned int j=0;j<HandledSubsectors.Size();j++)
-				{				
-                    gl_subsectorrendernode * node = NewSubsectorRenderNode();
+				{
+					gl_subsectorrendernode * node = NewSubsectorRenderNode();
 					node->sub = HandledSubsectors[j];
 					AddOtherCeilingPlane(sub->render_sector->sectornum, node);
 				}

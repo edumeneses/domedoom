@@ -1,33 +1,22 @@
 /*
-** decorations.cpp
+** olddecorations.cpp
+**
 ** Loads custom actors out of DECORATE lumps.
 **
 **---------------------------------------------------------------------------
-** Copyright 2002-2006 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 2002-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -587,7 +576,7 @@ static void ParseInsideDecoration (Baggage &bag, AActor *defaults,
 // A sequence definition looks like this:
 //
 // "<rate>:<frames>,<rate>:<frames>,<rate>:<frames>,..."
-// 
+//
 // Rate is a number describing the number of tics between frames in this
 // sequence. If you don't specify it, then a rate of 4 is used. Frames is
 // a list of consecutive frame characters. Each frame can be postfixed with
@@ -666,7 +655,7 @@ static void ParseSpriteFrames (PClassActor *info, TArray<FState> &states, TArray
 					SourceLines.Push(sc);
 				}
 				firstState = false;
-				state.Frame = *token-'A';	
+				state.Frame = *token-'A';
 			}
 			++token;
 		}
@@ -679,4 +668,3 @@ static void ParseSpriteFrames (PClassActor *info, TArray<FState> &states, TArray
 		token = strtok (nullptr, ",\t\n\r");
 	}
 }
-

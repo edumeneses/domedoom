@@ -1,33 +1,22 @@
 /*
-** a_soundsequence.cpp
+** soundsequence.zs
+**
 ** Actors for independently playing sound sequences in a map.
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2006 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 ** A SoundSequence actor has two modes of operation:
@@ -67,18 +56,18 @@ class AmbientSound : Actor
 		+DONTSPLASH
 		+NOTONAUTOMAP
 	}
-	
+
 	native void MarkAmbientSounds();
 	override native void Tick();
 	override native void Activate(Actor activator);
 	override native void Deactivate(Actor activator);
-	
+
 	override void BeginPlay ()
 	{
 		Super.BeginPlay ();
 		Activate (NULL);
 	}
-	
+
 	override void MarkPrecacheSounds()
 	{
 		Super.MarkPrecacheSounds();
@@ -103,7 +92,7 @@ class SoundSequenceSlot : Actor
 		+DONTSPLASH
 		+NOTONAUTOMAP
 	}
-	
+
 	SeqNode sequence;
 }
 
@@ -116,7 +105,7 @@ class SoundSequence : Actor
 		+DONTSPLASH
 		+NOTONAUTOMAP
 	}
-	
+
 	//==========================================================================
 	//
 	// ASoundSequence :: Destroy
@@ -195,7 +184,7 @@ class SoundSequence : Actor
 		StopSoundSequence ();
 	}
 
-	
+
 }
 
 // Heretic Sound sequences -----------------------------------------------------------
@@ -279,4 +268,3 @@ class HereticSoundSequence10 : SoundSequence
 		Args 9;
 	}
 }
-

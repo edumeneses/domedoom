@@ -1,32 +1,22 @@
 /*
+** actorptrselect.cpp
+**
 **
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2011 FDARI
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -62,14 +52,17 @@
 	Only one selector of each type can be used.
 */
 
-AActor *COPY_AAPTREX(FLevelLocals *Level, AActor *origin, int selector)
+AActor *COPY_AAPTREX(FLevelLocals *Level, AActor *origin, int selector, EPTRClientSideState clientSide)
 {
 	if (selector == AAPTR_DEFAULT) return origin;
 
 	FTranslatedLineTarget t;
 
+	const bool clientSideOnly = (clientSide == CSPTR_CLIENTSIDE);
 	auto AAPTR_RESOLVE_PLAYERNUM = [=](int playernum) -> AActor*
 	{
+		if (clientSideOnly && playernum != consoleplayer)
+			return nullptr;
 		return (Level->PlayerInGame(playernum) ? Level->Players[playernum]->mo : nullptr);
 	};
 
@@ -80,28 +73,54 @@ AActor *COPY_AAPTREX(FLevelLocals *Level, AActor *origin, int selector)
 			switch (selector & AAPTR_PLAYER_SELECTORS)
 			{
 			case AAPTR_PLAYER_GETTARGET:
+				if (clientSideOnly)
+					return nullptr;
 				P_BulletSlope(origin, &t, ALF_PORTALRESTRICT);
 				return t.linetarget;
 
 			case AAPTR_PLAYER_GETCONVERSATION:
-				return origin->player->ConversationNPC;
+				return clientSideOnly ? nullptr : origin->player->ConversationNPC.Get();
 			}
 		}
 
+		bool checkRes = false;
+		AActor *retMobj = nullptr;
 		switch (selector & AAPTR_GENERAL_SELECTORS)
 		{
-		case AAPTR_TARGET: return origin->target;
-		case AAPTR_MASTER: return origin->master;
-		case AAPTR_TRACER: return origin->tracer;
+		case AAPTR_TARGET:
+			checkRes = true;
+			retMobj = origin->target;
+			break;
+		case AAPTR_MASTER:
+			checkRes = true;
+			retMobj = origin->master;
+			break;
+		case AAPTR_TRACER:
+			checkRes = true;
+			retMobj = origin->tracer;
+			break;
 		case AAPTR_FRIENDPLAYER:
 			return origin->FriendPlayer ? AAPTR_RESOLVE_PLAYERNUM(origin->FriendPlayer - 1) : NULL;
 
 		case AAPTR_GET_LINETARGET:
+			if (clientSideOnly)
+				return nullptr;
 			P_BulletSlope(origin, &t, ALF_PORTALRESTRICT);
 			return t.linetarget;
 		}
+
+		// Make sure the server barrier isn't passed here, otherwise ACS handling will be a bit nightmare-ish.
+		if (checkRes)
+		{
+			if (retMobj != nullptr && clientSide != CSPTR_IGNORE &&
+			    retMobj->player != &players[consoleplayer] && (clientSideOnly ^ retMobj->IsClientSide()))
+			{
+				retMobj = nullptr;
+			}
+			return retMobj;
+		}
 	}
-	
+
 	switch (selector & AAPTR_STATIC_SELECTORS)
 	{
 		case AAPTR_PLAYER1: return AAPTR_RESOLVE_PLAYERNUM(0);
@@ -118,10 +137,12 @@ AActor *COPY_AAPTREX(FLevelLocals *Level, AActor *origin, int selector)
 	return origin;
 }
 
+// This is commonly used with the ZScript version, so just ignore the client-side
+// pointer checking. That's only really needed for ACS.
 AActor *COPY_AAPTR(AActor *origin, int selector)
 {
 	if (origin == nullptr) return nullptr;
-	return COPY_AAPTREX(origin->Level, origin, selector);
+	return COPY_AAPTREX(origin->Level, origin, selector, CSPTR_IGNORE);
 }
 
 // [FDARI] Exported logic for guarding against loops in Target (for missiles) and Master (for all) chains.
@@ -206,22 +227,22 @@ void VerifyMasterChain(AActor *self)
 //
 //==========================================================================
 
-void ASSIGN_AAPTR(AActor *toActor, int toSlot, AActor *ptr, int flags) 
+void ASSIGN_AAPTR(AActor *toActor, int toSlot, AActor *ptr, int flags)
 {
 	switch (toSlot)
 	{
-		case AAPTR_TARGET: 
-			toActor->target = ptr; 
-			if (!(PTROP_UNSAFETARGET & (flags))) VerifyTargetChain(toActor); 
+		case AAPTR_TARGET:
+			toActor->target = ptr;
+			if (!(PTROP_UNSAFETARGET & (flags))) VerifyTargetChain(toActor);
 			break;
 
-		case AAPTR_MASTER: 
-			toActor->master = ptr; 
-			if (!(PTROP_UNSAFEMASTER & (flags))) VerifyMasterChain(toActor); 
+		case AAPTR_MASTER:
+			toActor->master = ptr;
+			if (!(PTROP_UNSAFEMASTER & (flags))) VerifyMasterChain(toActor);
 			break;
 
-		case AAPTR_TRACER: 
-			toActor->tracer = ptr; 
+		case AAPTR_TRACER:
+			toActor->tracer = ptr;
 			break;
 	}
 }

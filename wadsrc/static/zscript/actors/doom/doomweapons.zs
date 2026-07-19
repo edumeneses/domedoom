@@ -1,3 +1,22 @@
+/*
+** doomweapons.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // --------------------------------------------------------------------------
 //
 // Doom weap base class
@@ -33,13 +52,13 @@ extend class StateProvider
 		{
 			if (!weap.DepleteAmmo (weap.bAltFire, true))
 				return;
-			
+
 			State flash = weap.FindState('Flash');
 			if (flash != null)
 			{
 				player.SetSafeFlash(weap, flash, random[FireRail](0, 1));
 			}
-			
+
 		}
 
 		int damage = deathmatch ? 100 : 150;
@@ -56,7 +75,7 @@ extend class StateProvider
 		A_FireRailgun(offset_xy: 10);
 	}
 
-	action void A_RailWait() 
+	action void A_RailWait()
 	{
 		// only here to satisfy old Dehacked patches.
 	}

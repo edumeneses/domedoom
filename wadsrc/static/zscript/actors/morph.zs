@@ -1,25 +1,22 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1994-1996 Raven Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2018 Christoph Oelckers
-// Copyright 2005-2008 Martin Howe
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
+/*
+** morph.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2018 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 extend class Actor
 {
@@ -104,7 +101,7 @@ extend class Actor
 	virtual void PostMorph(Actor mo, bool current) {}
 	virtual void PreUnmorph(Actor mo, bool current) {}
 	virtual void PostUnmorph(Actor mo, bool current) {}
-	
+
 	//===========================================================================
 	//
 	// Main entry point
@@ -118,7 +115,7 @@ extend class Actor
 
 		return MorphMonster(monsterClass, duration, style, morphFlash, unmorphFlash);
 	}
-	
+
 	//===========================================================================
 	//
 	// Action function variant whose arguments differ from the generic one.
@@ -148,7 +145,7 @@ extend class Actor
 	{
 		return UnmorphTime && UnmorphTime <= Level.Time && Unmorph(self, MRF_UNDOBYTIMEOUT);
 	}
-	
+
 	//---------------------------------------------------------------------------
 	//
 	// FUNC P_MorphMonster
@@ -170,7 +167,7 @@ extend class Actor
 				morphed.ClearCounters();
 				morphed.Destroy();
 			}
-			
+
 			return false;
 		}
 
@@ -238,14 +235,14 @@ extend class Actor
 
 		PostMorph(morphed, false);
 		morphed.PostMorph(self, true);
-		
+
 		if (enterFlash)
 		{
 			Actor fog = Spawn(enterFlash, morphed.Pos.PlusZ(GameInfo.TELEFOGHEIGHT), ALLOW_REPLACE);
 			if (fog)
 				fog.Target = morphed;
 		}
-		
+
 		return true;
 	}
 
@@ -337,7 +334,7 @@ extend class Actor
 
 		PostUnmorph(alt, false);		// From is false here: Leaving the caller's body.
 		alt.PostUnmorph(self, true);	// True here: Entering this body from here.
-		
+
 		if (MorphExitFlash)
 		{
 			Actor fog = Spawn(MorphExitFlash, alt.Pos.PlusZ(GameInfo.TELEFOGHEIGHT), ALLOW_REPLACE);
@@ -373,7 +370,7 @@ class MorphProjectile : Actor
 		-ACTIVATEIMPACT
 		-ACTIVATEPCROSS
 	}
-	
+
 	override int DoSpecialDamage(Actor victim, int dmg, Name dmgType)
 	{
 		victim.Morph(Target, PlayerClass, MonsterClass, Duration, MorphStyle, MorphFlash, UnmorphFlash);

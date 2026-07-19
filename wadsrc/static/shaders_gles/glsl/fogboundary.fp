@@ -1,3 +1,20 @@
+/*
+** fogboundary.fp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2013-2016 Christoph Oelckers
+** Copyright 2019-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 varying vec4 pixelpos;
 
 //===========================================================================
@@ -6,11 +23,11 @@ varying vec4 pixelpos;
 //
 //===========================================================================
 
-void main() 
+void main()
 {
 	float fogdist;
 	float fogfactor;
-	
+
 	//
 	// calculate fog factor
 	//
@@ -24,7 +41,6 @@ void main()
 	}
 #endif
 	fogfactor = exp2 (uFogDensity * fogdist);
-	
+
 	gl_FragColor = vec4(uFogColor.rgb, 1.0 - fogfactor);
 }
-

@@ -1,33 +1,23 @@
 /*
 ** g_level.cpp
+**
 ** controls movement between levels
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2006 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -473,7 +463,7 @@ void G_NewInit ()
 	// Destroy thinkers that may remain after change level failure
 	// Usually, the list contains just a sentinel when such error occurred
 	primaryLevel->Thinkers.DestroyThinkersInList(STAT_TRAVELLING);
-	primaryLevel->ClientSideThinkers.DestroyThinkersInList(STAT_TRAVELLING); // This isn't currently supported, but maybe in the future
+	primaryLevel->ClientSideThinkers.DestroyThinkersInList(STAT_TRAVELLING);
 
 	G_ClearSnapshots ();
 	netgame = false;
@@ -574,7 +564,7 @@ void G_InitNew (const char *mapname, bool bTitleLevel)
 
 	primaryLevel->lightlists.wall_dlist.Clear();
 	primaryLevel->lightlists.flat_dlist.Clear();
-	
+
 	// did we have any level before?
 	if (primaryLevel->info != nullptr)
 		staticEventManager.WorldUnloaded(FString());	// [MK] don't pass the new map, as it's not a level transition
@@ -672,7 +662,7 @@ void G_InitNew (const char *mapname, bool bTitleLevel)
 	{
 		gamestate = GS_LEVEL;
 	}
-	
+
 	if (!savegamerestore)
 		startpos = laststartpos = 0;
 	G_DoLoadLevel (mapname, startpos, false, !savegamerestore);
@@ -751,7 +741,7 @@ void FLevelLocals::ChangeLevel(const char *levelname, int position, int inflags,
 		{
 			nextlevel = NextMap;	// If there is already an end sequence please leave it alone!
 		}
-		else 
+		else
 		{
 			nextlevel.Format("enDSeQ%04x", gameinfo.DefaultEndSequence.GetIndex());
 		}
@@ -793,8 +783,8 @@ void FLevelLocals::ChangeLevel(const char *levelname, int position, int inflags,
 
 	startpos = position;
 	SetMusicVolume(1.0);
-		
-	if (nextinfo != NULL) 
+
+	if (nextinfo != NULL)
 	{
 		if (thiscluster != nextcluster || (thiscluster && !(thiscluster->flags & CLUSTER_HUB)))
 		{
@@ -1003,7 +993,7 @@ DIntermissionController* FLevelLocals::CreateIntermission()
 	else if (!deathmatch)
 	{
 		FExitText *ext = nullptr;
-		
+
 		if (flags3 & LEVEL3_EXITSECRETUSED) ext = info->ExitMapTexts.CheckKey(NAME_Secret);
 		else if (flags3 & LEVEL3_EXITNORMALUSED) ext = info->ExitMapTexts.CheckKey(NAME_Normal);
 		if (ext == nullptr) ext = info->ExitMapTexts.CheckKey(nextlevel);
@@ -1068,7 +1058,7 @@ void RunIntermission(level_info_t* fromMap, level_info_t* toMap, DIntermissionCo
 	cutscene.runner = CreateRunner(false, ending ? ST_UNSKIPPABLE : ST_MUST_BE_SKIPPABLE);
 	GC::WriteBarrier(cutscene.runner);
 	cutscene.completion = std::move(completionf);
-	
+
 	// retrieve cluster relations for cluster-based cutscenes.
 	cluster_info_t* fromcluster = nullptr, *tocluster = nullptr;
 	if (fromMap) fromcluster = FindClusterInfo(fromMap->cluster);
@@ -1112,21 +1102,21 @@ void RunIntermission(level_info_t* fromMap, level_info_t* toMap, DIntermissionCo
 void G_DoCompleted (void)
 {
 	gameaction = ga_nothing;
-	
+
 	if (   gamestate == GS_DEMOSCREEN
 		|| gamestate == GS_FULLCONSOLE
 		|| gamestate == GS_STARTUP)
 	{
 		return;
 	}
-	
+
 	if (gamestate == GS_TITLELEVEL)
 	{
 		G_DoLoadLevel (nextlevel, startpos, false, false);
 		viewactive = true;
 		return;
 	}
-	
+
 	if (automapactive)
 		AM_Stop ();
 
@@ -1148,7 +1138,7 @@ void G_DoCompleted (void)
 		// [RH] If you ever get a statistics driver operational, adapt this.
 		//	if (statcopy)
 		//		memcpy (statcopy, &wminfo, sizeof(wminfo));
-		
+
 		statusScreen = WI_Start (&staticWmInfo);
 	}
 	bool endgame = strncmp(nextlevel.GetChars(), "enDSeQ", 6) == 0;
@@ -1175,7 +1165,7 @@ bool FLevelLocals::DoCompleted (FString nextlevel, wbstartstruct_t &wminfo)
 	// [RH] Mark this level as having been visited
 	if (!(flags & LEVEL_CHANGEMAPCHEAT))
 		info->flags |= LEVEL_VISITED;
-	
+
 	uint32_t langtable[2] = {};
 	wminfo.finished_ep = cluster - 1;
 	wminfo.LName0 = TexMan.CheckForTexture(info->PName.GetChars(), ETextureType::MiscPatch);
@@ -1294,7 +1284,7 @@ bool FLevelLocals::DoCompleted (FString nextlevel, wbstartstruct_t &wminfo)
 	}
 	StartTravel();
 	soundEngine->BlockNewSounds(false);
-	
+
 	if (mode == FINISH_SameHub)
 	{ // Remember the level's state for re-entry.
 		if (!(flags2 & LEVEL2_FORGETSTATE))
@@ -1350,12 +1340,12 @@ void DAutosaver::Tick ()
 
 //==========================================================================
 //
-// G_DoLoadLevel 
+// G_DoLoadLevel
 //
 //==========================================================================
 
-extern gamestate_t 	wipegamestate; 
- 
+extern gamestate_t 	wipegamestate;
+
 void G_DoLoadLevel(const FString &nextmapname, int position, bool autosave, bool newGame)
 {
 	gamestate_t oldgs = gamestate;
@@ -1377,6 +1367,8 @@ void G_DoLoadLevel(const FString &nextmapname, int position, bool autosave, bool
 	// clear cmd building stuff
 	buttonMap.ResetButtonStates();
 
+	WantsFlechetteItem = false;
+	SendWeaponSlot = WST_NONE;
 	SendItemUse = nullptr;
 	SendItemDrop = nullptr;
 	mousex = mousey = 0;
@@ -1413,6 +1405,7 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 		laststartpos = position;
 
 	Init();
+	bScoreboardToggled = false;
 	StatusBar->DetachAllMessages ();
 
 	// Force 'teamplay' to 'true' if need be.
@@ -1427,7 +1420,7 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 	{
 		FString mapname = nextmapname;
 		mapname.ToUpper();
-		Printf(PRINT_HIGH | PRINT_NONOTIFY, "\n" TEXTCOLOR_NORMAL "%s\n\n" TEXTCOLOR_BOLD "%s - %s\n\n", console_bar, mapname.GetChars(), LevelName.GetChars());
+		Printf(PRINT_NONOTIFY, "\n" TEXTCOLOR_NORMAL "%s\n\n" TEXTCOLOR_BOLD "%s - %s\n\n", console_bar, mapname.GetChars(), LevelName.GetChars());
 	}
 
 	// Set the sky map.
@@ -1441,7 +1434,7 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 	InitSkyMap (this);
 
 	for (i = 0; i < MAXPLAYERS; i++)
-	{ 
+	{
 		if (PlayerInGame(i) && (deathmatch || Players[i]->playerstate == PST_DEAD))
 			Players[i]->playerstate = PST_ENTER;	// [BC]
 		memset (Players[i]->frags,0,sizeof(Players[i]->frags));
@@ -1493,7 +1486,7 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 
 	starttime = gametic;
 
-	UnSnapshotLevel (!savegamerestore);	// [RH] Restore the state of the 
+	UnSnapshotLevel (!savegamerestore);	// [RH] Restore the state of the
 	int pnumerr = FinishTravel ();
 
 	if (!FromSnapshot)
@@ -1543,9 +1536,9 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 	//      regular world load (savegames are handled internally)
 	localEventManager->WorldLoaded();
 	DoDeferedScripts ();	// [RH] Do script actions that were triggered on another map.
-	
 
-	// [RH] Always save the game when entering a new 
+
+	// [RH] Always save the game when entering a new
 	if (autosave && !savegamerestore && disableautosave < 1)
 	{
 		CreateThinker<DAutosaver>();
@@ -1563,13 +1556,13 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 
 //==========================================================================
 //
-// G_WorldDone 
+// G_WorldDone
 //
 //==========================================================================
 
-void FLevelLocals::WorldDone (void) 
+void FLevelLocals::WorldDone (void)
 {
-	gameaction = ga_worlddone; 
+	gameaction = ga_worlddone;
 
 
 	//Added by mc
@@ -1579,7 +1572,7 @@ void FLevelLocals::WorldDone (void)
 	}
 
 }
- 
+
 DEFINE_ACTION_FUNCTION(FLevelLocals, WorldDone)
 {
 	// This is just a dummy to make old status screens happy.
@@ -1605,8 +1598,8 @@ void G_DoMapWarp()
 //
 //==========================================================================
 
-void G_DoWorldDone (void) 
-{		
+void G_DoWorldDone (void)
+{
 	Net_ResetCommands(true);
 	gamestate = GS_LEVEL;
 	if (nextlevel.IsEmpty())
@@ -1618,7 +1611,7 @@ void G_DoWorldDone (void)
 	primaryLevel->MoveTravellers();
 	G_DoLoadLevel (nextlevel, startpos, true, false);
 	gameaction = ga_nothing;
-	viewactive = true; 
+	viewactive = true;
 	Net_SetWaiting();
 }
 
@@ -1873,8 +1866,11 @@ int FLevelLocals::FinishTravel()
 	// Some ZScript will be called here so we have to do this last.
 	for (size_t i = 0u; i < MAXPLAYERS; ++i)
 	{
-		if (PlayerInGame(i) && !(Players[i]->mo->ObjectFlags & OF_EuthanizeMe) && toCallBack.Find(Players[i]->mo) < toCallBack.Size())
+		if (PlayerInGame(i) && Players[i]->mo != nullptr && !(Players[i]->mo->ObjectFlags & OF_EuthanizeMe) && toCallBack.Find(Players[i]->mo) < toCallBack.Size())
+		{
+			Players[i]->LastSafePos.Update(*Players[i]->mo, true);
 			Players[i]->mo->SetState(Players[i]->mo->SpawnState);
+		}
 	}
 
 	for (auto th : toCallBack)
@@ -1901,7 +1897,7 @@ int FLevelLocals::FinishTravel()
 
 	return failNum;
 }
- 
+
 //==========================================================================
 //
 //
@@ -1933,7 +1929,7 @@ void FLevelLocals::Init()
 {
 	P_InitParticles(this);
 	P_ClearParticles(this);
-	
+
 	gravity = sv_gravity * 35/TICRATE;
 	aircontrol = sv_aircontrol;
 	AirControlChanged();
@@ -1949,6 +1945,7 @@ void FLevelLocals::Init()
 	skyspeed1 = info->skyspeed1;
 	skyspeed2 = info->skyspeed2;
 	skymistspeed = info->skymistspeed;
+	skymistyscale = info->skymistyscale;
 	skytexture1 = TexMan.GetTextureID(info->SkyPic1.GetChars(), ETextureType::Wall, FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_ReturnFirst);
 	skytexture2 = TexMan.GetTextureID(info->SkyPic2.GetChars(), ETextureType::Wall, FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_ReturnFirst);
 	skymisttexture = TexMan.GetTextureID(info->SkyMistPic.GetChars(), ETextureType::Wall, FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_ReturnFirst);
@@ -2009,7 +2006,7 @@ void FLevelLocals::Init()
 	AuthorName = info->AuthorName;
 	hazardcolor = info->hazardcolor;
 	hazardflash = info->hazardflash;
-	
+
 	// GL fog stuff modifiable by SetGlobalFogParameter.
 	fogdensity = info->fogdensity;
 	outsidefogdensity = info->outsidefogdensity;
@@ -2254,7 +2251,7 @@ void P_WriteACSDefereds (FSerializer &arc)
 void P_ReadACSDefereds (FSerializer &arc)
 {
 	FString MapName;
-	
+
 	P_RemoveDefereds ();
 
 	if (arc.BeginObject("deferred"))
@@ -2318,7 +2315,7 @@ size_t DSectorMarker::PropagateMark()
 	int marked = 0;
 	bool moretodo = false;
 	int numsectors = Level->sectors.Size();
-	
+
 	for (i = 0; i < SECTORSTEPSIZE && SecNum + i < numsectors; ++i)
 	{
 		sector_t *sec = &Level->sectors[SecNum + i];
@@ -2335,7 +2332,7 @@ size_t DSectorMarker::PropagateMark()
 		SecNum += i;
 		moretodo = true;
 	}
-	
+
 	if (!moretodo && Level->Polyobjects.Size() > 0)
 	{
 		for (i = 0; i < POLYSTEPSIZE && PolyNum + i < (int)Level->Polyobjects.Size(); ++i)
@@ -2522,13 +2519,13 @@ void FLevelLocals::SetCompatLineOnSide(bool state)
 	else for (auto &l : lines) l.flags &= ~ML_COMPATSIDE;
 }
 
-int FLevelLocals::GetCompatibility(int mask)
+ELevelCompatFlags FLevelLocals::GetCompatibility(ELevelCompatFlags mask)
 {
 	if (info == nullptr) return mask;
 	else return (mask & ~info->compatmask) | (info->compatflags & info->compatmask);
 }
 
-int FLevelLocals::GetCompatibility2(int mask)
+ELevelCompatFlags2 FLevelLocals::GetCompatibility2(ELevelCompatFlags2 mask)
 {
 	return (info == nullptr) ? mask
 		: (mask & ~info->compatmask2) | (info->compatflags2 & info->compatmask2);
@@ -2537,7 +2534,7 @@ int FLevelLocals::GetCompatibility2(int mask)
 void FLevelLocals::ApplyCompatibility()
 {
 	int old = i_compatflags;
-	i_compatflags = GetCompatibility(compatflags) | ii_compatflags;
+	i_compatflags = GetCompatibility(ELevelCompatFlags::FromInt(compatflags)) | (ii_compatflags);
 	if ((old ^ i_compatflags) & COMPATF_POLYOBJ)
 	{
 		ClearAllSubsectorLinks();
@@ -2546,17 +2543,17 @@ void FLevelLocals::ApplyCompatibility()
 
 void FLevelLocals::ApplyCompatibility2()
 {
-	i_compatflags2 = GetCompatibility2(compatflags2) | ii_compatflags2;
+	i_compatflags2 = GetCompatibility2(ELevelCompatFlags2::FromInt(compatflags2)) | ii_compatflags2;
 }
 
-AActor* FLevelLocals::SelectActorFromTID(int tid, size_t index, AActor* defactor)
+AActor* FLevelLocals::SelectActorFromTID(int tid, size_t index, bool clientSide, AActor* defactor)
 {
 	if (tid == 0)
 		return defactor;
 
 	AActor* actor = nullptr;
 	size_t cur = 0u;
-	auto it = GetActorIterator(tid);
+	auto it = clientSide ? GetClientSideActorIterator(tid) : GetActorIterator(tid);
 	while ((actor = it.Next()) != nullptr)
 	{
 		if (cur == index)
@@ -2633,4 +2630,3 @@ DEFINE_ACTION_FUNCTION(FLevelLocals, GetEpisodeName)
 	// which should be fine unless cheating.
 	ACTION_RETURN_STRING(GStrings.localize(STAT_EpisodeName().GetChars()));
 }
-

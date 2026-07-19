@@ -1,15 +1,33 @@
+/*
+** player_inventory.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 struct AutoUseHealthInfo play
 {
 	Array<Inventory> collectedItems[2];
 	int collectedHealth[2];
-	
+
 	void AddItemToList(Inventory item, int list)
 	{
 		collectedItems[list].Push(item);
 		collectedHealth[list] += Item.Amount * Item.health;
 	}
-	
+
 	int UseHealthItems(int list, in out int saveHealth)
 	{
 		int saved = 0;
@@ -48,15 +66,15 @@ struct AutoUseHealthInfo play
 		}
 		return saved;
 	}
-	
+
 }
 
 extend class PlayerPawn
 {
-	
+
 	//===========================================================================
 	//
-	// 
+	//
 	//
 	//===========================================================================
 
@@ -120,7 +138,7 @@ extend class PlayerPawn
 			A_StartSound("misc/invchange", CHAN_AUTO, CHANF_DEFAULT, 1., ATTN_NONE);
 		}
 	}
-	
+
 	//===========================================================================
 	//
 	// PlayerPawn :: AddInventory
@@ -229,7 +247,7 @@ extend class PlayerPawn
 		}
 		return true;
 	}
-	
+
 	//---------------------------------------------------------------------------
 	//
 	// PROC P_AutoUseHealth
@@ -239,7 +257,7 @@ extend class PlayerPawn
 	void AutoUseHealth(int saveHealth)
 	{
 		AutoUseHealthInfo collector;
-		
+
 		for(Inventory inv = self.Inv; inv != NULL; inv = inv.Inv)
 		{
 			let hp = HealthPickup(inv);
@@ -253,17 +271,17 @@ extend class PlayerPawn
 		bool skilluse = !!G_SkillPropertyInt(SKILLP_AutoUseHealth);
 
 		if (skilluse && collector.collectedHealth[0] >= saveHealth)
-		{ 
+		{
 			// Use quartz flasks
 			player.health += collector.UseHealthItems(0, saveHealth);
 		}
 		else if (collector.collectedHealth[1] >= saveHealth)
-		{ 
+		{
 			// Use mystic urns
 			player.health += collector.UseHealthItems(1, saveHealth);
 		}
 		else if (skilluse && collector.collectedHealth[0] + collector.collectedHealth[1] >= saveHealth)
-		{ 
+		{
 			// Use mystic urns and quartz flasks
 			player.health += collector.UseHealthItems(0, saveHealth);
 			if (saveHealth > 0) player.health += collector.UseHealthItems(1, saveHealth);
@@ -289,7 +307,7 @@ extend class PlayerPawn
 				if (hp.autousemode == 3) Items.Push(inv);
 			}
 		}
-		
+
 		if (!sv_disableautohealth)
 		{
 			while (Items.Size() > 0)
@@ -326,10 +344,10 @@ extend class PlayerPawn
 	//
 	//============================================================================
 
-	protected virtual Inventory GetFlechetteItem() 
+	protected virtual Inventory GetFlechetteItem()
 	{
 		// Select from one of arti_poisonbag1-3, whichever the player has
-		static const Class<Inventory> bagtypes[] = { 
+		static const Class<Inventory> bagtypes[] = {
 			"ArtiPoisonBag3",	// use type 3 first because that's the default when the player has none specified.
 			"ArtiPoisonBag1",
 			"ArtiPoisonBag2"
@@ -355,5 +373,5 @@ extend class PlayerPawn
 		}
 		return null;
 	}
-	
+
 }

@@ -1,33 +1,22 @@
 /*
 ** zstring.cpp
+**
 ** A dynamically-allocated string class.
 **
 **---------------------------------------------------------------------------
-** Copyright 2005-2008 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 2005-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -40,9 +29,43 @@
 #include "zstring.h"
 #include "utf8.h"
 #include "stb_sprintf.h"
+#include "vm.h"
 
 extern uint16_t lowerforupper[65536];
 extern uint16_t upperforlower[65536];
+
+/* I'm 90% sure we use '/' everywhere */
+// #ifdef _WIN32
+// constexpr char PATH_SEPARATOR = '\\';
+// #else
+constexpr char PATH_SEPARATOR = '/';
+// #endif
+
+void ThrowStringBoundsException(int64_t index, size_t len)
+{
+	if constexpr(sizeof(long int) == 8)
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "string index %ld out of bounds (string length is %lu)", index, len);
+	}
+	else //if constexpr(sizeof(long long int) == 8)
+	{
+		static_assert(sizeof(long long int) == 8);
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "string index %lld out of bounds (string length is %llu)", index, len);
+	}
+}
+
+void ThrowStringBoundsException(uint64_t index, size_t len)
+{
+	if constexpr(sizeof(long int) == 8)
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "string index %lu out of bounds (string length is %lu)", index, len);
+	}
+	else //if constexpr(sizeof(long long int) == 8)
+	{
+		static_assert(sizeof(long long int) == 8);
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "string index %llu out of bounds (string length is %llu)", index, len);
+	}
+}
 
 FNullStringData FString::NullString =
 {
@@ -392,6 +415,54 @@ FString &FString::CopyCStrPart(const char *tail, size_t tailLen)
 	return *this;
 }
 
+FString &FString::operator /= (const FString &tail)
+{
+	if (tail.IsEmpty()) return *this;
+	if (this->IsEmpty())
+	{
+		*this = tail;
+		return *this;
+	}
+	size_t offset = Len();
+	bool back = this->Back() == PATH_SEPARATOR;
+	bool front = tail.Front() == PATH_SEPARATOR;
+	bool insert = back == front;
+	if (insert)
+	{
+		insert = !back;
+		offset += insert? 1: -1;
+	}
+	size_t len = tail.Len() + offset;
+	ReallocBuffer(len);
+	if (insert) Chars[offset-1] = PATH_SEPARATOR;
+	StrCopy (Chars + offset, tail);
+	return *this;
+}
+
+FString &FString::operator /= (const char *tail)
+{
+	return *this /= FString{tail};
+}
+
+FString FString::operator / (const FString &tail) const
+{
+	if (tail.IsEmpty()) return *this;
+	if (this->IsEmpty()) return tail;
+	FString str = *this;
+	str /= tail;
+	return str;
+}
+
+FString FString::operator / (const char *tail) const
+{
+	return *this / FString{tail};
+}
+
+FString operator / (const char *head, const FString &tail)
+{
+	return FString{head} / tail;
+}
+
 size_t FString::CharacterCount() const
 {
 	// Counts string length in Unicode code points.
@@ -400,7 +471,6 @@ size_t FString::CharacterCount() const
 	while (GetCharFromString(cp)) len++;
 	return len;
 }
-
 
 int FString::GetNextCharacter(int &position) const
 {
@@ -1292,6 +1362,69 @@ void FString::Split(TArray<FString>& tokens, const char *delimiter, EmptyTokenTy
 		if (pos != lastPos || TOK_KEEPEMPTY == keepEmpty)
 		{
 			tokens.Push(FString(GetChars() + lastPos, pos - lastPos));
+		}
+
+		lastPos = pos + delimLen;
+	}
+}
+
+TArray<FString> FString::SplitNewLines(int minWrapLen, int maxLineLen, EmptyTokenType keepEmpty) const
+{
+	TArray<FString> tokens;
+	SplitNewLines(tokens, minWrapLen, maxLineLen, keepEmpty);
+	return tokens;
+}
+
+void FString::SplitNewLines(TArray<FString>& tokens, int minWrapLen, int maxLineLen, EmptyTokenType keepEmpty) const
+{
+	const auto selfLen = static_cast<ptrdiff_t>(Len());
+	ptrdiff_t lastPos = 0;
+
+	if (selfLen == 0) return;	// Empty strings do not contain tokens, even with TOK_KEEPEMPTY.
+
+	while (lastPos <= selfLen)
+	{
+		int delimLen = 1;
+		int pos = lastPos;
+		bool isMidwordWrap = false;
+
+
+		for(; pos < selfLen; pos++)
+		{
+			if(Chars[pos] == '\n' || Chars[pos] == '\r') break; // find LF or CR
+		}
+
+		if(Chars[pos] == '\r' && (pos + 1) < selfLen && Chars[pos + 1] == '\n') delimLen = 2; // CRLF
+
+		if(minWrapLen > 0 && maxLineLen > 0 && pos > (lastPos + maxLineLen))
+		{
+			pos = lastPos + minWrapLen;
+
+			if(minWrapLen < maxLineLen)
+			{
+				for(;pos < (lastPos + maxLineLen); pos++)
+				{
+					if(Chars[pos] == ' ' || Chars[pos] == '\t') break; // wrap on space ideally, otherwise wrap on maxLineLen
+				}
+
+				if(Chars[pos] != ' ' && Chars[pos] != '\t')
+				{
+					isMidwordWrap = true;
+					pos--;
+				}
+			}
+
+			delimLen = 0;
+		}
+
+		if (pos != lastPos || TOK_KEEPEMPTY == keepEmpty)
+		{
+			tokens.Push(FString(GetChars() + lastPos, pos - lastPos));
+
+			if(isMidwordWrap)
+			{
+				tokens.back() += "-";
+			}
 		}
 
 		lastPos = pos + delimLen;

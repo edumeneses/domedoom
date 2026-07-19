@@ -1,3 +1,22 @@
+/*
+** serpent.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Serpent ------------------------------------------------------------------
 
@@ -90,7 +109,7 @@ class Serpent : Actor
 		SSPT N 5 A_SerpentMeleeAttack;
 		Goto Dive;
 	}
-	
+
 	//============================================================================
 	//
 	// A_SerpentUnHide
@@ -118,7 +137,7 @@ class Serpent : Actor
 	//============================================================================
 	//
 	// A_SerpentRaiseHump
-	// 
+	//
 	// Raises the hump above the surface by raising the floorclip level
 	//============================================================================
 
@@ -130,7 +149,7 @@ class Serpent : Actor
 	//============================================================================
 	//
 	// A_SerpentLowerHump
-	// 
+	//
 	//============================================================================
 
 	void A_SerpentLowerHump()
@@ -142,7 +161,7 @@ class Serpent : Actor
 	//
 	// A_SerpentHumpDecide
 	//
-	//		Decided whether to hump up, or if the mobj is a serpent leader, 
+	//		Decided whether to hump up, or if the mobj is a serpent leader,
 	//			to missile attack
 	//============================================================================
 
@@ -171,7 +190,7 @@ class Serpent : Actor
 				SetState (MeleeState);
 			}
 			else
-			{	
+			{
 				SetStateLabel("Hump");
 				A_StartSound ("SerpentActive", CHAN_BODY);
 			}
@@ -220,7 +239,7 @@ class Serpent : Actor
 	// A_SerpentChooseAttack
 	//
 	//============================================================================
-	
+
 	void A_SerpentChooseAttack()
 	{
 		if (!target || CheckMeleeRange())
@@ -232,7 +251,7 @@ class Serpent : Actor
 			SetState (MissileState);
 		}
 	}
-		
+
 	//============================================================================
 	//
 	// A_SerpentMeleeAttack
@@ -402,7 +421,7 @@ class SerpentHead : Actor
 		SSXD S -1;
 		Loop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_SerpentHeadCheck
@@ -449,7 +468,7 @@ class SerpentGib1 : Actor
 		SSXD QQQ 8 A_SinkGib;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_FloatGib
@@ -483,7 +502,7 @@ class SerpentGib1 : Actor
 		tics -= random[DelayGib]() >> 2;
 	}
 
-	
+
 }
 
 // Serpent Gib 2 ------------------------------------------------------------

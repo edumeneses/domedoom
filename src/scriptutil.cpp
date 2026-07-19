@@ -1,28 +1,19 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 2018 Christoph Oelckers
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-//
-// DESCRIPTION: generalized interface for implementing ACS/FS functions
-// in ZScript.
-//
-//-----------------------------------------------------------------------------
-
+/*
+** scriptutil.cpp
+**
+** generalized interface for implementing ACS/FS functions in ZScript.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2018 Christoph Oelckers
+** Copyright 2018-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include "tarray.h"
 #include "dobject.h"
@@ -50,13 +41,13 @@ void ScriptUtil::BuildParameters(va_list ap)
 			case Int:
 				parameters.Push(VMValue(va_arg(ap, int)));
 				break;
-				
+
 			case Pointer:
 			case Class:		// this is just a pointer.
 			case String:	// must be passed by reference to a persistent location!
 				parameters.Push(VMValue(va_arg(ap, void*)));
 				break;
-				
+
 			case Float:
 				parameters.Push(VMValue(va_arg(ap, double)));
 				break;
@@ -71,7 +62,7 @@ void ScriptUtil::RunFunction(FName functionname, unsigned paramstart, VMReturn &
 	if (!check)
 	{
 		func = PClass::FindFunction(NAME_ScriptUtil, functionname);
-		if (func == nullptr) 
+		if (func == nullptr)
 		{
 			I_Error("Call to undefined function ScriptUtil.%s", functionname.GetChars());
 		}

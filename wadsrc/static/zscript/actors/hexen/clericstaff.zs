@@ -1,3 +1,22 @@
+/*
+** clericstaff.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // The Cleric's Serpent Staff -----------------------------------------------
 
@@ -50,7 +69,7 @@ class CWeapStaff : ClericWeapon
 		CSSF K 10 Offset (0, 36);
 		Goto Ready + 2;
 	}
-	
+
 	//============================================================================
 	//
 	// A_CStaffCheck
@@ -165,7 +184,7 @@ class CWeapStaff : ClericWeapon
 				player.SetPsprite(PSP_WEAPON, player.ReadyWeapon.FindState ("Blink"));
 				weaponspecial = (random[CStaffBlink]() + 50) >> 2;
 			}
-			else 
+			else
 			{
 				A_WeaponReady();
 			}
@@ -198,7 +217,7 @@ class CStaffMissile : Actor
 		CSSF HI 3 Bright;
 		Stop;
 	}
-	
+
 	override int DoSpecialDamage (Actor target, int damage, Name damagetype)
 	{
 		// Cleric Serpent Staff does poison damage
@@ -209,7 +228,7 @@ class CStaffMissile : Actor
 		}
 		return damage;
 	}
-	
+
 }
 
 extend class Actor

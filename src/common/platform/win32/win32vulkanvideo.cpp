@@ -1,3 +1,25 @@
+/*
+** win32vulkanvideo.cpp
+**
+** Code to let ZDoom draw to the screen
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2019 Magnus Norddahl
+** Copyright 2019-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include <assert.h>
 #include <algorithm>
@@ -29,7 +51,7 @@ void I_GetVulkanDrawableSize(int *width, int *height)
 
 bool I_GetVulkanPlatformExtensions(unsigned int *count, const char **names)
 {
-	static const char* extensions[] = 
+	static const char* extensions[] =
 	{
 		VK_KHR_SURFACE_EXTENSION_NAME,
 		VK_KHR_WIN32_SURFACE_EXTENSION_NAME

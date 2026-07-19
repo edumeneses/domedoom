@@ -1,3 +1,22 @@
+/*
+** beast.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Beast --------------------------------------------------------------------
 
@@ -57,7 +76,7 @@ class Beast : Actor
 		BEAS Q -1;
 		Stop;
 	}
-}			
+}
 
 // Beast ball ---------------------------------------------------------------
 
@@ -83,7 +102,7 @@ class BeastBall : Actor
 	States
 	{
 	Spawn:
-		FRB1 AABBCC 2 A_SpawnItemEx("Puffy", random2[BeastPuff]()*0.015625, random2[BeastPuff]()*0.015625, random2[BeastPuff]()*0.015625, 
+		FRB1 AABBCC 2 A_SpawnItemEx("Puffy", random2[BeastPuff]()*0.015625, random2[BeastPuff]()*0.015625, random2[BeastPuff]()*0.015625,
 									0,0,0,0,SXF_ABSOLUTEPOSITION, 64);
 		Loop;
 	Death:
@@ -116,6 +135,3 @@ class Puffy : Actor
 		Stop;
 	}
 }
-
-
-

@@ -1,9 +1,25 @@
-//
-// DESCRIPTION:
-//		Endianess handling, swapping 16bit and 32bit.
-//
-//-----------------------------------------------------------------------------
-
+/*
+** m_swap.h
+**
+** Endianess handling, swapping 16bit and 32bit.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #ifndef __M_SWAP_H__
 #define __M_SWAP_H__
@@ -69,7 +85,7 @@ inline unsigned int BigLong(unsigned int x)
 #elif defined __BIG_ENDIAN__
 
 // Swap 16bit, that is, MSB and LSB byte.
-// No masking with 0xFF should be necessary. 
+// No masking with 0xFF should be necessary.
 inline short LittleShort (short x)
 {
 	return (short)((((unsigned short)x)>>8) | (((unsigned short)x)<<8));

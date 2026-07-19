@@ -1,3 +1,19 @@
+/*
+** material_normal.fp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2013-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 vec3 lightContribution(int i, vec3 normal)
 {
@@ -7,7 +23,7 @@ vec3 lightContribution(int i, vec3 normal)
 	vec4 lightspot2 = lights[i+3];
 
 	float lightdistance = distance(lightpos.xyz, pixelpos.xyz);
-	
+
 	//if (lightpos.w < lightdistance)
 	//	return vec3(0.0); // Early out lights touching surface but not this fragment
 
@@ -15,7 +31,7 @@ vec3 lightContribution(int i, vec3 normal)
 	float dotprod = dot(normal, lightdir);
 
 	if (dotprod < -0.0001) return vec3(0.0);	// light hits from the backside. This can happen with full sector light lists and must be rejected for all cases. Note that this can cause precision issues.
-	
+
 	float attenuation = clamp((lightpos.w - lightdistance) / lightpos.w, 0.0, 1.0);
 
 
@@ -41,7 +57,7 @@ vec3 ProcessMaterialLight(Material material, vec3 color)
 
 #if (DEF_DYNAMIC_LIGHTS_MOD == 1)
 	// modulated lights
-	
+
 	// Some very old GLES2 hardware does not allow non-constants in a for-loop expression because it can not unroll it.
 	// However they do allow 'break', so use stupid hack
 	#if (USE_GLSL_V100 == 1)
@@ -78,19 +94,19 @@ vec3 ProcessMaterialLight(Material material, vec3 color)
 
 	#else
 
-		for(int i=uLightRange.y; i<uLightRange.z; i+=4) 
+		for(int i=uLightRange.y; i<uLightRange.z; i+=4)
 		{
 			dynlight.rgb -= lightContribution(i, normal);
 		}
 
 	#endif
 #endif
-	
+
 	vec3 frag = material.Base.rgb * clamp(color + desaturate(dynlight).rgb, 0.0, 1.4);
-	
+
 #if (DEF_DYNAMIC_LIGHTS_ADD == 1)
 	vec4 addlight = vec4(0.0,0.0,0.0,0.0);
-				
+
 	// additive lights
 	#if (USE_GLSL_V100 == 1)
 
@@ -113,6 +129,6 @@ vec3 ProcessMaterialLight(Material material, vec3 color)
 
 	frag = clamp(frag + desaturate(addlight).rgb, 0.0, 1.0);
 #endif
- 
+
 	return frag;
 }

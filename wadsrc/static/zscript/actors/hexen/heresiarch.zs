@@ -1,3 +1,22 @@
+/*
+** heresiarch.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // The Heresiarch him/itself ------------------------------------------------
 
@@ -20,7 +39,7 @@
 
 class Heresiarch : Actor
 {
-	
+
 	const SORCBALL_INITIAL_SPEED 		= 7;
 	const SORCBALL_TERMINAL_SPEED		= 25;
 	const SORCBALL_SPEED_ROTATIONS 		= 5;
@@ -32,12 +51,12 @@ class Heresiarch : Actor
 
 	enum ESorc
 	{
-		SORC_DECELERATE,	
-		SORC_ACCELERATE, 
-		SORC_STOPPING,	
-		SORC_FIRESPELL,	
-		SORC_STOPPED,	
-		SORC_NORMAL,		
+		SORC_DECELERATE,
+		SORC_ACCELERATE,
+		SORC_STOPPING,
+		SORC_FIRESPELL,
+		SORC_STOPPED,
+		SORC_NORMAL,
 		SORC_FIRING_SPELL
 	}
 
@@ -47,7 +66,7 @@ class Heresiarch : Actor
 
 	double BallAngle;
 	class<SorcBall> StopBall;
-	
+
 	Default
 	{
 		Health 5000;
@@ -72,7 +91,7 @@ class Heresiarch : Actor
 		Obituary "$OB_HERESIARCH";
 		Tag "$FN_HERESIARCH";
 	}
-	
+
 	States
 	{
 	Spawn:
@@ -126,7 +145,7 @@ class Heresiarch : Actor
 			ACS_Execute(script, 0);
 		}
 	}
-	
+
 	//============================================================================
 	//
 	// A_StopBalls
@@ -172,7 +191,7 @@ class Heresiarch : Actor
 		BallAngle = 1.;
 
 		Vector3 ballpos = (pos.xy, -Floorclip + Height);
-		
+
 		Actor mo = Spawn("SorcBall1", pos, NO_REPLACE);
 		if (mo)
 		{
@@ -253,7 +272,7 @@ class Heresiarch : Actor
 		}
 	}
 
-	
+
 }
 
 // Base class for the balls flying around the Heresiarch's head -------------
@@ -290,16 +309,16 @@ class SorcBall : Actor
 		target.args[3] = Heresiarch.SORC_STOPPED;
 	}
 
-	
+
 	virtual void SorcUpdateBallAngle ()
 	{
 	}
-	
+
 	override bool SpecialBlastHandling (Actor source, double strength)
 	{ // don't blast sorcerer balls
 		return false;
 	}
-	
+
 	//============================================================================
 	//
 	// ASorcBall::CastSorcererSpell
@@ -392,7 +411,7 @@ class SorcBall : Actor
 			{
 				if (special2-- <= 0)
 				{
-					// Done rapid firing 
+					// Done rapid firing
 					parent.args[3] = Heresiarch.SORC_STOPPED;
 					// Back to orbit balls
 					if (parent.health > 0)
@@ -514,7 +533,7 @@ class SorcBall : Actor
 		bNoBounceSound = true;
 		A_Explode(255, 255);
 	}
-	
+
 	//============================================================================
 	//
 	// A_SorcBallPop
@@ -535,7 +554,7 @@ class SorcBall : Actor
 		args[4] = Heresiarch.BOUNCE_TIME_UNIT;	// Bounce time unit
 		args[3] = 5;					// Bounce time in seconds
 	}
-	
+
 	//============================================================================
 	//
 	// A_BounceCheck
@@ -557,7 +576,7 @@ class SorcBall : Actor
 			}
 		}
 	}
-	
+
 }
 
 // First ball (purple) - fires projectiles ----------------------------------
@@ -621,7 +640,7 @@ class SorcBall1 : SorcBall
 		}
 	}
 
-	
+
 	//============================================================================
 	//
 	// ASorcBall1::SorcUpdateBallAngle
@@ -655,7 +674,7 @@ class SorcBall1 : SorcBall
 		}
 	}
 
-	
+
 }
 
 
@@ -678,7 +697,7 @@ class SorcBall2 : SorcBall
 		SBS3 FGH 6;
 		Stop;
 	}
-	
+
 	override void BeginPlay ()
 	{
 		Super.BeginPlay ();
@@ -705,7 +724,7 @@ class SorcBall2 : SorcBall
 		if (mo) mo.target = parent;
 	}
 
-	
+
 }
 
 // Third ball (green) - summons Bishops -------------------------------------
@@ -727,7 +746,7 @@ class SorcBall3 : SorcBall
 		SBS3 FGH 6;
 		Stop;
 	}
-	
+
 	override void BeginPlay ()
 	{
 		Super.BeginPlay ();
@@ -757,7 +776,7 @@ class SorcBall3 : SorcBall
 			if (mo) mo.target = parent;
 			mo = parent.SpawnMissileAngle(cls, ang2, 4.);
 			if (mo) mo.target = parent;
-		}			
+		}
 		else
 		{
 			if (random[Heresiarch]() < 128)	ang1 = ang2;
@@ -766,7 +785,7 @@ class SorcBall3 : SorcBall
 		}
 	}
 
-	
+
 }
 
 
@@ -803,7 +822,7 @@ class SorcFX1 : Actor
 		FHFX SS 6 Bright;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_SorcFX1Seek
@@ -828,7 +847,7 @@ class SorcFX1 : Actor
 		}
 		A_SeekerMissile(2, 6);
 	}
-	
+
 }
 
 
@@ -859,7 +878,7 @@ class SorcFX2 : Actor
 		SBS2 A 10;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_SorcFX2Split
@@ -872,7 +891,7 @@ class SorcFX2 : Actor
 	//		specialf1		current angle
 	//		special2
 	//		args[0]		0 = CW,  1 = CCW
-	//		args[1]		
+	//		args[1]
 	//============================================================================
 
 	// Split ball in two
@@ -1006,7 +1025,7 @@ class SorcFX3 : Actor
 		BISH G 3 A_SpawnBishop;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_SorcererBishopEntry
@@ -1095,7 +1114,7 @@ class SorcFX4 : Actor
 		SBS4 FGH 2 Bright;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_SorcFX4Check

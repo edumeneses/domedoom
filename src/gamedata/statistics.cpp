@@ -1,34 +1,22 @@
 /*
-**
 ** statistics.cpp
+**
 ** Save game statistics to a file
 **
 **---------------------------------------------------------------------------
-** Copyright 2010 Christoph Oelckers
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 2010-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -259,7 +247,7 @@ static void SaveStatistics(const char *fn, TArray<FStatistics> &statlist)
 			FSessionStatistics *sst = &ep_stats.stats[j];
 			if (sst->info[0]>0)
 			{
-				fw->Printf("\t%2i. %10s \"%-33s\" %02d:%02d:%02d %i\n", j+1, sst->name, sst->info, 
+				fw->Printf("\t%2i. %10s \"%-33s\" %02d:%02d:%02d %i\n", j+1, sst->name, sst->info,
 					hours(sst->timeneeded),	minutes(sst->timeneeded), seconds(sst->timeneeded),	sst->skill);
 
 				TArray<FLevelStatistics> &ls = sst->levelstats;
@@ -269,7 +257,7 @@ static void SaveStatistics(const char *fn, TArray<FStatistics> &statlist)
 
 					for(unsigned k=0;k<ls.Size ();k++)
 					{
-						fw->Printf("\t\t%-8s \"%-33s\" %02d:%02d:%02d\n", ls[k].name, ls[k].info, 
+						fw->Printf("\t\t%-8s \"%-33s\" %02d:%02d:%02d\n", ls[k].name, ls[k].info,
 							hours(ls[k].timeneeded), minutes(ls[k].timeneeded), seconds(ls[k].timeneeded));
 					}
 					fw->Printf("\t}\n");
@@ -419,7 +407,7 @@ static void StoreLevelStats(FLevelLocals *Level)
 		LevelData[i].leveltime = Level->maptime;
 
 		// Check for living monsters. On some maps it can happen
-		// that the counter misses some. 
+		// that the counter misses some.
 		auto it = Level->GetThinkerIterator<AActor>();
 		AActor *ac;
 		int mc = 0;
@@ -448,7 +436,7 @@ void STAT_ChangeLevel(const char *newl, FLevelLocals *Level)
 
 	level_info_t *thisinfo = Level->info;
 	level_info_t *nextinfo = NULL;
-	
+
 	if (strncmp(newl, "enDSeQ", 6))
 	{
 		level_info_t *l = FindLevelInfo (newl);
@@ -583,7 +571,7 @@ FString GetStatString()
 	for(unsigned i = 0; i < LevelData.Size(); i++)
 	{
 		OneLevel *l = &LevelData[i];
-		compose.AppendFormat("Level %s - Kills: %d/%d - Items: %d/%d - Secrets: %d/%d - Time: %d:%02d\n", 
+		compose.AppendFormat("Level %s - Kills: %d/%d - Items: %d/%d - Secrets: %d/%d - Time: %d:%02d\n",
 			l->Levelname.GetChars(), l->killcount, l->totalkills, l->itemcount, l->totalitems, l->secretcount, l->totalsecrets,
 			l->leveltime/(60*TICRATE), (l->leveltime/TICRATE)%60);
 	}
@@ -618,9 +606,14 @@ ADD_STAT(statistics)
 ADD_STAT(velocity)
 {
 	FString compose;
-	if (players[consoleplayer].mo != NULL && gamestate == GS_LEVEL) {
-		compose.AppendFormat("Current velocity: %.2f\n", players[consoleplayer].mo->Vel.Length());
-		compose.AppendFormat("Level %s - Velocity Max: %.2f, Velocity Average: %.2f\n", primaryLevel->MapName.GetChars(), primaryLevel->max_velocity, primaryLevel->avg_velocity);
+	auto cam = players[consoleplayer].camera;
+	if (cam == nullptr || cam->player == nullptr)
+		cam = players[consoleplayer].mo;
+	if (cam != nullptr && gamestate == GS_LEVEL) {
+		auto level = cam->Level;
+		const auto& vel = level->velocities[cam->player - players];
+		compose.AppendFormat("Current velocity: %.2f\n", vel.cur_velocity);
+		compose.AppendFormat("Level %s - Velocity Max: %.2f, Velocity Average: %.2f\n", level->MapName.GetChars(), vel.max_velocity, vel.avg_velocity);
 	}
 	return compose;
 }

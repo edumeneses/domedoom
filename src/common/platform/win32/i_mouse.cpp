@@ -1,32 +1,23 @@
 /*
+** i_mouse.cpp
+**
 **
 **
 **---------------------------------------------------------------------------
-** Copyright 2005-2016 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 2005-2016 Marisa Heit
+** Copyright 2010-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -141,7 +132,7 @@ static void CenterMouse(int x, int y, LONG *centx, LONG *centy);
 
 extern LPDIRECTINPUT8 g_pdi;
 extern bool GUICapture;
-extern int BlockMouseMove; 
+extern int BlockMouseMove;
 
 // PRIVATE DATA DEFINITIONS ------------------------------------------------
 
@@ -262,7 +253,7 @@ void I_CheckNativeMouse(bool preferNative, bool eventhandlerresult)
 
 	if (!windowed)
 	{
-		// ungrab mouse when in the menu with mouse control on.		
+		// ungrab mouse when in the menu with mouse control on.
 		want_native = m_use_mouse && (menuactive == MENU_On || menuactive == MENU_OnNoPause);
 	}
 	else
@@ -533,17 +524,25 @@ void FRawMouse::Grab()
 
 		rid.usUsagePage = HID_GENERIC_DESKTOP_PAGE;
 		rid.usUsage = HID_GDP_MOUSE;
-		rid.dwFlags = RIDEV_CAPTUREMOUSE | RIDEV_NOLEGACY;
+		rid.dwFlags = RIDEV_NOLEGACY;
 		rid.hwndTarget = mainwindow.GetHandle();
 		if (RegisterRawInputDevices(&rid, 1, sizeof(rid)))
 		{
 			GetCursorPos(&UngrabbedPointerPos);
-			Grabbed = true;
-			SetCursorState(false);
+			ClipCursor(NULL);
+
+			// Manually create the window rect for the cursor to grab
+			RECT rect;
+			GetClientRect(rid.hwndTarget, &rect);
+
 			// By setting the cursor position, we force the pointer image
 			// to change right away instead of having it delayed until
 			// some time in the future.
 			CenterMouse(-1, -1, NULL, NULL);
+			
+			ClipCursor(&rect);
+			Grabbed = true;
+			SetCursorState(false);
 		}
 	}
 }
@@ -569,6 +568,7 @@ void FRawMouse::Ungrab()
 			Grabbed = false;
 			ClearButtonState();
 		}
+		ClipCursor(NULL); // this releases the cursor again
 		SetCursorState(true);
 		SetCursorPos(UngrabbedPointerPos.x, UngrabbedPointerPos.y);
 	}

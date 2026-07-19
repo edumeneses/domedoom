@@ -1,33 +1,22 @@
 /*
 ** p_effect.cpp
+**
 ** Particle effects
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2006 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 ** If particles used real sprites instead of blocks, they could be much
@@ -51,6 +40,7 @@
 #include "g_game.h"
 #include "serializer_doom.h"
 #include "p_visualthinker.h"
+#include "m_round.h"
 
 #include "hwrenderer/scene/hw_drawstructs.h"
 
@@ -58,12 +48,16 @@
 #pragma warning(disable: 6011) // dereference null pointer in thinker iterator
 #endif
 
-CVAR (Int, cl_rockettrails, 1, CVAR_ARCHIVE);
+CVAR (Int, cl_rockettrails, 0, CVAR_ARCHIVE);
 CVAR (Bool, r_rail_smartspiral, false, CVAR_ARCHIVE);
 CVAR (Int, r_rail_spiralsparsity, 1, CVAR_ARCHIVE);
 CVAR (Int, r_rail_trailsparsity, 1, CVAR_ARCHIVE);
 CVAR (Bool, r_particles, true, 0);
 EXTERN_CVAR(Int, r_maxparticles);
+
+FARG(numparticles, "Performance", "Max number of particles", "",
+	"Sets r_maxparticles on a per-run basis, controlling the maximum number of particles that are"
+	" allowed to spawn at one time");
 
 FCRandom pr_railtrail("RailTrail");
 
@@ -83,11 +77,11 @@ static const struct ColorList {
 	{&grey3,	50,  50,  50 },
 	{&grey4,	210, 210, 210},
 	{&grey5,	128, 128, 128},
-	{&red,		255, 0,   0  },  
-	{&green,	0,   200, 0  },  
+	{&red,		255, 0,   0  },
+	{&green,	0,   200, 0  },
 	{&blue,		0,   0,   255},
-	{&yellow,	255, 255, 0  },  
-	{&black,	0,   0,   0  },  
+	{&yellow,	255, 255, 0  },
+	{&black,	0,   0,   0  },
 	{&red1,		255, 127, 127},
 	{&green1,	127, 255, 127},
 	{&blue1,	127, 127, 255},
@@ -142,7 +136,7 @@ static particle_t *NewParticle (FLevelLocals *Level, bool replace = false)
 		if (!replace) return nullptr;
 		FreeParticle(Level, &Level->Particles[Level->OldestParticle]);
 	}
-	
+
 	// Array isn't full.
 	uint32_t current = Level->ActiveParticles;
 	auto result = &Level->Particles[Level->InactiveParticles];
@@ -173,7 +167,7 @@ void P_InitParticles (FLevelLocals *Level)
 	const char *i;
 	int num;
 
-	if ((i = Args->CheckValue ("-numparticles")))
+	if ((i = Args->CheckValue (FArg_numparticles)))
 		num = atoi (i);
 	// [BC] Use r_maxparticles now.
 	else
@@ -222,7 +216,7 @@ void P_FindParticleSubsectors (FLevelLocals *Level)
 		sp->PT.subsector->sprites.Push(sp);
 		sp = sp->GetNext();
 	}
-	// End VisualThinker hitching. Now onto the particles. 
+	// End VisualThinker hitching. Now onto the particles.
 	if (Level->ParticlesInSubsec.Size() < Level->subsectors.Size())
 	{
 		Level->ParticlesInSubsec.Reserve (Level->subsectors.Size() - Level->ParticlesInSubsec.Size());
@@ -299,7 +293,7 @@ void P_ThinkParticles (FLevelLocals *Level)
 			prev = particle;
 			continue;
 		}
-		
+
 		particle->alpha -= particle->fadestep;
 		if (	(!!(particle->flags & SPF_FADE_IN_OUT) && particle->alpha >= 1.0)
 			 || (!!(particle->flags & SPF_FADE_IN_HOLD_OUT) && (particle->ttl * fabs(particle->fadeoutstep)) <= std::min(1.0f, fabs(particle->alpha)))
@@ -332,7 +326,7 @@ void P_ThinkParticles (FLevelLocals *Level)
 			particle->Roll += particle->RollVel;
 			particle->RollVel += particle->RollAcc;
 		}
-		
+
 		particle->subsector = Level->PointInRenderSubsector(particle->Pos);
 		sector_t *s = particle->subsector->sector;
 		// Handle crossing a sector portal.
@@ -394,7 +388,7 @@ void P_SpawnParticle(FLevelLocals *Level, const DVector3 &pos, const DVector3 &v
 		particle->flags = flags;
 		if(flags & SPF_LOCAL_ANIM)
 		{
-			TexAnim.InitStandaloneAnimation(particle->animData, texture, Level->maptime);
+			TexAnim.InitStandaloneAnimation(particle->animData, texture, Level->LocalWorldTimer);
 		}
 	}
 }
@@ -529,7 +523,7 @@ void P_RunEffect (AActor *actor, int effects)
 	{
 		// Particle fountain
 
-		static const int *fountainColors[16] = 
+		static const int *fountainColors[16] =
 			{ &black,	&black,
 			  &red,		&red1,
 			  &green,	&green1,
@@ -650,7 +644,7 @@ void P_DrawSplash2 (FLevelLocals *Level, int count, const DVector3 &pos, DAngle 
 		p->color = M_Random() & 0x80 ? color1 : color2;
 		p->Vel.Z = M_Random() * zvel;
 		p->Acc.Z = -1 / 22.f;
-		if (kind) 
+		if (kind)
 		{
 			an = angle + DAngle::fromDeg((M_Random() - 128) * (180 / 256.));
 			p->Vel.X = M_Random() * an.Cos() / 2048.;
@@ -733,7 +727,7 @@ void P_DrawRailTrail(AActor *source, TArray<SPortalHit> &portalhits, int color1,
 		trail.Push(seg);
 	}
 
-	steps = xs_FloorToInt(length / 3);
+	steps = RoundDown(length / 3);
 	fullbright = !!(flags & RAF_FULLBRIGHT);
 
 	if (steps)
@@ -744,17 +738,17 @@ void P_DrawRailTrail(AActor *source, TArray<SPortalHit> &portalhits, int color1,
 			if (player)
 			{
 				FSoundID sound;
-				
+
 				// Allow other sounds than 'weapons/railgf'!
 				if (!source->player) sound = source->AttackSound;
 				else if (source->player->ReadyWeapon) sound = source->player->ReadyWeapon->AttackSound;
 				else sound = NO_SOUND;
 				if (!sound.isvalid()) sound = S_FindSound("weapons/railgf");
-				
+
 				// The railgun's sound is special. It gets played from the
 				// point on the slug's trail that is closest to the hearing player.
 				AActor *mo = player->camera;
-				
+
 				if (fabs(mo->X() - trail[0].start.X) < 20 && fabs(mo->Y() - trail[0].start.Y) < 20)
 				{ // This player (probably) fired the railgun
 					S_Sound (mo, CHAN_WEAPON, 0, sound, 1, ATTN_NORM);
@@ -784,7 +778,7 @@ void P_DrawRailTrail(AActor *source, TArray<SPortalHit> &portalhits, int color1,
 		int spiral_steps = (int)(steps * r_rail_spiralsparsity / sparsity);
 		segment = 0;
 		lencount = trail[0].length;
-		
+
 		color1 = color1 == 0 ? -1 : ParticleColor(color1);
 		pos = trail[0].start;
 		deg = DAngle::fromDeg(SpiralOffset);
@@ -826,7 +820,7 @@ void P_DrawRailTrail(AActor *source, TArray<SPortalHit> &portalhits, int color1,
 				else
 					p->color = rblue4;
 			}
-			else 
+			else
 			{
 				p->color = color1;
 			}
@@ -852,7 +846,7 @@ void P_DrawRailTrail(AActor *source, TArray<SPortalHit> &portalhits, int color1,
 	if (color2 != -1 && r_rail_trailsparsity > 0 && spawnclass == NULL)
 	{
 		double stepsize = 3 * r_rail_trailsparsity * sparsity;
-		int trail_steps = xs_FloorToInt(steps * r_rail_trailsparsity / sparsity);
+		int trail_steps = RoundDown(steps * r_rail_trailsparsity / sparsity);
 
 		color2 = color2 == 0 ? -1 : ParticleColor(color2);
 		DVector3 diff(0, 0, 0);
@@ -904,7 +898,7 @@ void P_DrawRailTrail(AActor *source, TArray<SPortalHit> &portalhits, int color1,
 				else
 					p->color = grey1;
 			}
-			else 
+			else
 			{
 				p->color = color2;
 			}
@@ -950,7 +944,7 @@ void P_DrawRailTrail(AActor *source, TArray<SPortalHit> &portalhits, int color1,
 					diff.Y = clamp<double>(diff.Y + ((rnd & 16) ? 1 : -1), -maxdiff, maxdiff);
 				if (rnd & 4)
 					diff.Z = clamp<double>(diff.Z + ((rnd & 32) ? 1 : -1), -maxdiff, maxdiff);
-			}			
+			}
 			AActor *thing = Spawn (source->Level, spawnclass, pos + diff, ALLOW_REPLACE);
 			if (thing)
 			{
@@ -1005,11 +999,11 @@ void P_DisconnectEffect (AActor *actor)
 }
 
 //===========================================================================
-// 
+//
 // ZScript Sprite (DVisualThinker)
 // Concept by Major Cooke
 // Most code borrowed by Actor and particles above
-// 
+//
 //===========================================================================
 
 void DVisualThinker::Construct()
@@ -1090,9 +1084,14 @@ DVisualThinker* DVisualThinker::NewVisualThinker(FLevelLocals* Level, PClass* ty
 	return zs;
 }
 
-static DVisualThinker* SpawnVisualThinker(FLevelLocals* Level, PClass* type, bool clientSide)
+static DVisualThinker* SpawnVisualThinker(FLevelLocals* Level, PClass* type)
 {
-	return DVisualThinker::NewVisualThinker(Level, type, clientSide);
+	return DVisualThinker::NewVisualThinker(Level, type, false);
+}
+
+static DVisualThinker* SpawnClientSideVisualThinker(FLevelLocals* Level, PClass* type)
+{
+	return DVisualThinker::NewVisualThinker(Level, type, true);
 }
 
 void DVisualThinker::UpdateSector(subsector_t * newSubsector)
@@ -1126,8 +1125,15 @@ DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, SpawnVisualThinker, SpawnVisualThink
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
 	PARAM_CLASS_NOT_NULL(type, DVisualThinker);
-	PARAM_BOOL(clientSide);
-	DVisualThinker* zs = SpawnVisualThinker(self, type, clientSide);
+	DVisualThinker* zs = SpawnVisualThinker(self, type);
+	ACTION_RETURN_OBJECT(zs);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, SpawnClientSideVisualThinker, SpawnClientSideVisualThinker)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_CLASS_NOT_NULL(type, DVisualThinker);
+	DVisualThinker* zs = SpawnClientSideVisualThinker(self, type);
 	ACTION_RETURN_OBJECT(zs);
 }
 
@@ -1138,7 +1144,7 @@ void DVisualThinker::UpdateSpriteInfo()
 	if ((PT.flags & SPF_LOCAL_ANIM) && PT.texture != AnimatedTexture)
 	{
 		AnimatedTexture = PT.texture;
-		TexAnim.InitStandaloneAnimation(PT.animData, PT.texture, Level->maptime);
+		TexAnim.InitStandaloneAnimation(PT.animData, PT.texture, Level->LocalWorldTimer);
 	}
 }
 
@@ -1175,7 +1181,7 @@ void DVisualThinker::Tick()
 	{	// needed here because it won't retroactively update like actors do.
 		PT.subsector = Level->PointInRenderSubsector(PT.Pos);
 		cursector = PT.subsector->sector;
-		UpdateSpriteInfo(); 
+		UpdateSpriteInfo();
 		return;
 	}
 	Prev = PT.Pos;
@@ -1204,7 +1210,7 @@ void DVisualThinker::Tick()
 			ss = Level->PointInRenderSubsector(PT.Pos);
 		}
 	}
-    
+
 	UpdateSector(ss);
 	UpdateSpriteInfo();
 }
@@ -1391,10 +1397,10 @@ void DVisualThinker::Serialize(FSerializer& arc)
 		("animData", PT.animData)
 		("flags", PT.flags)
 		("visualThinkerFlags", flags);
-    
-    if(arc.isReading())
-    {
-        UpdateSector();
+
+	if(arc.isReading())
+	{
+		UpdateSector();
 		_prev = _next = nullptr;
 		if (Level->VisualThinkerHead != nullptr)
 		{
@@ -1402,7 +1408,7 @@ void DVisualThinker::Serialize(FSerializer& arc)
 			_next = Level->VisualThinkerHead;
 		}
 		Level->VisualThinkerHead = this;
-    }
+	}
 }
 
 IMPLEMENT_CLASS(DVisualThinker, false, false);

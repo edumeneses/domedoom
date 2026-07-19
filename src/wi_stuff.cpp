@@ -1,33 +1,24 @@
 /*
 ** wi_stuff.cpp
+**
 ** Support code for intermission status screens
 **
 **---------------------------------------------------------------------------
-** Copyright 2003-2017 Christoph Oelckers
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2017 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -104,7 +95,7 @@ static const char *WI_Cmd[] = {
 class DInterBackground : public DObject
 {
 	DECLARE_ABSTRACT_CLASS(DInterBackground, DObject)
-	
+
 	// These animation variables, structures, etc. are used for the
 	// DOOM/Ultimate DOOM intermission screen animations.  This is
 	// totally different from any sprite or texture/flat animations
@@ -232,7 +223,7 @@ private:
 		// Level names can be upper- and lower case so use tolower to check.
 		return (tolower(name[0]) == 'e' && name[1] >= '1' && name[1] <= '3' && tolower(name[2]) == 'm');
 	}
-	
+
 	//====================================================================
 	//
 	// Draws the splats and the 'You are here' arrows
@@ -276,7 +267,7 @@ private:
 			right += left;
 			bottom += top;
 
-			if (left >= 0 && right < 320 && top >= 0 && bottom < 200)
+			if (left >= 0 && right < backwidth && top >= 0 && bottom < backheight)
 			{
 				DrawTexture(twod, tex, lnodes[n].x, lnodes[n].y, DTA_FullscreenScale, FSMode_ScaleToFit43, DTA_VirtualWidthF, backwidth, DTA_VirtualHeightF, backheight, TAG_DONE);
 				break;
@@ -364,11 +355,11 @@ DEFINE_ACTION_FUNCTION(DInterBackground, Create)
 }
 
 //====================================================================
-// 
+//
 //	Loads the background - either from a single texture
 //	or an intermission lump.
 //	Unfortunately the texture manager is incapable of recognizing text
-//	files so if you use a script you have to prefix its name by '$' in 
+//	files so if you use a script you have to prefix its name by '$' in
 //  MAPINFO.
 //
 //====================================================================
@@ -547,7 +538,7 @@ bool DInterBackground::LoadBackground(bool isenterpic)
 					{
 						I_Error("Music lump %s not found!", muslump.GetChars());
 					}
-				
+
 					// Check for background lump.
 					FString backgroundimage = jsonReader.GetString("backgroundimage");
 					texture = TexMan.CheckForTexture(backgroundimage.GetChars(), ETextureType::MiscPatch, FTextureManager::TEXMAN_TryAny);
@@ -618,7 +609,7 @@ bool DInterBackground::LoadBackground(bool isenterpic)
 											anim.type = ANIM_FRAME;
 											anim.ctr = 0;
 											anim.data = 0;
-										
+
 											::Serialize(jsonReader, "x", anim.loc.x, nullptr);
 											::Serialize(jsonReader, "y", anim.loc.y, nullptr);
 
@@ -922,7 +913,7 @@ bool DInterBackground::LoadBackground(bool isenterpic)
 		}
 		else
 		{
-			
+
 			Printf("Intermission script %s not found!\n", lumpname + 1);
 			texture = TexMan.GetTextureID("INTERPIC", ETextureType::MiscPatch);
 		}
@@ -943,7 +934,7 @@ DEFINE_ACTION_FUNCTION(DInterBackground, LoadBackground)
 }
 
 //====================================================================
-// 
+//
 //	made this more generic and configurable through a script
 //	Removed all the ugly special case handling for different game modes
 //
@@ -1019,7 +1010,7 @@ DEFINE_ACTION_FUNCTION(DInterBackground, updateAnimatedBack)
 }
 
 //====================================================================
-// 
+//
 //	Draws the background including all animations
 //
 //====================================================================
@@ -1160,7 +1151,7 @@ DEFINE_ACTION_FUNCTION(DInterBackground, IsUsingMusic)
 IMPLEMENT_CLASS(DInterBackground, true, false)
 
 //====================================================================
-// 
+//
 // Setup for an intermission screen.
 //
 //====================================================================
@@ -1168,6 +1159,12 @@ IMPLEMENT_CLASS(DInterBackground, true, false)
 DObject* WI_Start(wbstartstruct_t *wbstartstruct)
 {
 	FName screenclass = deathmatch ? gameinfo.statusscreen_dm : multiplayer ? gameinfo.statusscreen_coop : gameinfo.statusscreen_single;
+	if (screenclass == NAME_None)
+	{
+		// Keyword to explicitly disable the intermission
+		return nullptr;
+	}
+
 	auto cls = PClass::FindClass(screenclass);
 
 	if (cls == nullptr || !cls->IsDescendantOf("StatusScreen"))
@@ -1181,7 +1178,7 @@ DObject* WI_Start(wbstartstruct_t *wbstartstruct)
 			I_FatalError("Cannot create status screen");
 		}
 	}
-	
+
 	auto WI_Screen = cls->CreateNew();
 
 
@@ -1216,7 +1213,7 @@ DObject* WI_Start(wbstartstruct_t *wbstartstruct)
 }
 
 //====================================================================
-// 
+//
 //
 //
 //====================================================================
@@ -1248,4 +1245,3 @@ DEFINE_FIELD_X(WBStartStruct, wbstartstruct_t, sucktime);
 DEFINE_FIELD_X(WBStartStruct, wbstartstruct_t, totaltime);
 DEFINE_FIELD_X(WBStartStruct, wbstartstruct_t, pnum);
 DEFINE_FIELD_X(WBStartStruct, wbstartstruct_t, plyr);
-

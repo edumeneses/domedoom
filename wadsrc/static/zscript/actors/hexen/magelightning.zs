@@ -1,3 +1,22 @@
+/*
+** magelightning.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // The Mage's Lightning Arc of Death ----------------------------------------
 
@@ -47,7 +66,7 @@ class MWeapLightning : MageWeapon
 		MLNG B 2 Bright Offset (0, 40);
 		Goto Ready;
 	}
-	
+
 	//============================================================================
 	//
 	// A_LightningReady
@@ -97,7 +116,7 @@ class MWeapLightning : MageWeapon
 		}
 	}
 
-	
+
 }
 
 // Ceiling Lightning --------------------------------------------------------
@@ -111,7 +130,7 @@ class Lightning : Actor
 		ActiveSound "MageLightningContinuous";
 		Obituary "$OB_MPMWEAPLIGHTNING";
 	}
-	
+
 	override int SpecialMissileHit (Actor thing)
 	{
 		if (thing.bShootable && thing != target)
@@ -149,7 +168,7 @@ class Lightning : Actor
 		}
 		return MHIT_PASS; // lightning zaps through all sprites
 	}
-	
+
 }
 
 class LightningCeiling : Lightning
@@ -190,7 +209,7 @@ class LightningCeiling : Lightning
 		ACLO E 1050;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_LightningClip
@@ -309,7 +328,7 @@ class LightningCeiling : Lightning
 			mo.ExplodeMissile ();
 		}
 	}
-	
+
 }
 
 // Floor Lightning ----------------------------------------------------------
@@ -342,7 +361,7 @@ class LightningFloor : LightningCeiling
 		MLF2 P 1 Bright A_HideThing;
 		Goto Super::Death + 19;
 	}
-	
+
 	//============================================================================
 	//
 	// A_LastZap
@@ -353,7 +372,7 @@ class LightningFloor : LightningCeiling
 	{
 		Class<Actor> lightning = MissileName;
 		if (lightning == NULL) lightning = "LightningZap";
-		
+
 		Actor mo = Spawn(lightning, self.Pos, ALLOW_REPLACE);
 		if (mo)
 		{
@@ -390,13 +409,13 @@ class LightningZap : Actor
 		MLFX NOPQRSTU 2 Bright;
 		Stop;
 	}
-	
+
 	override int SpecialMissileHit (Actor thing)
 	{
 		Actor lmo;
 
 		if (thing.bShootable && thing != target)
-		{			
+		{
 			lmo = lastenemy;
 			if (lmo)
 			{
@@ -419,7 +438,7 @@ class LightningZap : Actor
 		}
 		return MHIT_DEFAULT;
 	}
-	
+
 	//============================================================================
 	//
 	// A_ZapMimic
@@ -443,5 +462,5 @@ class LightningZap : Actor
 		}
 	}
 
-	
+
 }

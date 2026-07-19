@@ -1,30 +1,21 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2016 Christoph Oelckers
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-// DESCRIPTION:
-//		Initializes and implements BOOM linedef triggers for
-//			Wind/Current
-//
-//-----------------------------------------------------------------------------
-
+/*
+** a_pusher.cpp
+**
+** Initializes and implements BOOM linedef triggers for Wind/Current
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1998-1998 Chi Hoang, Lee Killough, Jim Flynn, Rand Phares, Ty Halderman
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include <stdlib.h>
 #include "actor.h"
@@ -212,7 +203,7 @@ void DPusher::Tick ()
 			AActor *thing = cres.thing;
 			// Normal ZDoom is based only on the WINDTHRUST flag, with the noclip cheat as an exemption.
 			bool pusharound = ((thing->flags2 & MF2_WINDTHRUST) && !(thing->flags & MF_NOCLIP));
-					
+
 			// MBF allows any sentient or shootable thing to be affected, but players with a fly cheat aren't.
 			if (Level->i_compatflags & COMPATF_MBFMONSTERMOVE)
 			{
@@ -322,7 +313,7 @@ void FLevelLocals::AdjustPusher(int tag, int magnitude, int angle, bool wind)
 	};
 
 	DPusher::EPusher type = wind? DPusher::p_wind : DPusher::p_current;
-	
+
 	// Find pushers already attached to the sector, and change their parameters.
 	TArray<FThinkerCollection> Collection;
 	{

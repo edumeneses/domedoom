@@ -1,3 +1,20 @@
+/*
+** model.h
+**
+** General model handling code
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2013-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 #include <stdint.h>
@@ -123,6 +140,9 @@ public:
 	virtual ModelAnimFrame PrecalculateFrame(const ModelAnimFrame &from, const ModelAnimFrameInterp &to, float inter, const TArray<TRS>* animationData) { return nullptr; };
 
 	virtual const TArray<VSMatrix>* CalculateBones(const ModelAnimFrame &from, const ModelAnimFrameInterp &to, float inter, const TArray<TRS>* animationData, TArray<BoneOverride> *in, BoneInfo *out, double time) { return nullptr; };
+	virtual const TArray<VSMatrix>* CalculateBonesOnlyOffsets(TArray<BoneOverride> *in, BoneInfo *out, double time) { return nullptr; };
+
+	virtual const TArray<VSMatrix>* GetBasePose() {return nullptr;}
 
 	void SetVertexBuffer(int type, IModelVertexBuffer *buffer) { mVBuf[type] = buffer; }
 	IModelVertexBuffer *GetVertexBuffer(int type) const { return mVBuf[type]; }
@@ -132,7 +152,7 @@ public:
 
 	FString mFileName;
 	std::pair<FString, FString> mFilePath;
-	
+
 	FSpriteModelFrame *baseFrame;
 private:
 	IModelVertexBuffer *mVBuf[NumModelRendererTypes];
@@ -140,4 +160,3 @@ private:
 
 int ModelFrameHash(FSpriteModelFrame* smf);
 unsigned FindModel(const char* path, const char* modelfile, bool silent = false);
-

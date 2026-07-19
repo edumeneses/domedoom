@@ -1,41 +1,31 @@
 /*
-** messagebox.cpp
+** messagebox.zs
+**
 ** Confirmation, notification screens
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2010-2017 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
 
 class MessageBoxMenu : Menu
 {
+	private readonly voidptr InternalHandler;
+
 	BrokenLines mMessage;
-	readonly voidptr Handler;
 	int mMessageMode;
 	int messageSelection;
 	int mMouseLeft, mMouseRight, mMouseY;
@@ -45,7 +35,9 @@ class MessageBoxMenu : Menu
 	int destWidth, destHeight;
 	String selector;
 
-	native void CallHandler();
+	voidptr Handler; // This is only here for backwards compat.
+
+	native void CallHandler(voidptr hnd = null);
 
 
 	//=============================================================================
@@ -95,6 +87,7 @@ class MessageBoxMenu : Menu
 		{
 			MenuSound ("menu/prompt");
 		}
+		Handler = native_handler; // Try and avoid breaking null checks from existing overrides.
 	}
 
 	//=============================================================================
@@ -116,7 +109,7 @@ class MessageBoxMenu : Menu
 
 		for (i = 0; i < c; i++)
 		{
-			screen.DrawText (textFont, Font.CR_UNTRANSLATED, destWidth/2 - mMessage.StringWidth(i)*NotifyFontScale/2, y, mMessage.StringAt(i), DTA_VirtualWidth, destWidth, DTA_VirtualHeight, destHeight, DTA_KeepRatio, true, 
+			screen.DrawText (textFont, Font.CR_UNTRANSLATED, destWidth/2 - mMessage.StringWidth(i)*NotifyFontScale/2, y, mMessage.StringAt(i), DTA_VirtualWidth, destWidth, DTA_VirtualHeight, destHeight, DTA_KeepRatio, true,
 				DTA_ScaleX, NotifyFontScale, DTA_ScaleY, NotifyFontScale);
 			y += fontheight;
 		}
@@ -161,7 +154,7 @@ class MessageBoxMenu : Menu
 	{
 		if (Handler != null)
 		{
-			if (res) 
+			if (res)
 			{
 				CallHandler();
 			}
@@ -175,12 +168,12 @@ class MessageBoxMenu : Menu
 		{
 			if (mMessageMode == 0)
 			{
-				if (mAction == 'None') 
+				if (mAction == 'None')
 				{
 					mParentMenu.MenuEvent(res? MKEY_MBYes : MKEY_MBNo, false);
 					Close();
 				}
-				else 
+				else
 				{
 					Close();
 					if (res) SetMenu(mAction, -1);
@@ -206,12 +199,12 @@ class MessageBoxMenu : Menu
 				int ch = ev.KeyChar;
 				ch = ch >= 65 && ch <91? ch + 32 : ch;
 
-				if (ch == 110 /*'n'*/ || ch == 32) 
+				if (ch == 110 /*'n'*/ || ch == 32)
 				{
-					HandleResult(false);		
+					HandleResult(false);
 					return true;
 				}
-				else if (ch == 121 /*'y'*/) 
+				else if (ch == 121 /*'y'*/)
 				{
 					HandleResult(true);
 					return true;
@@ -314,6 +307,3 @@ class MessageBoxMenu : Menu
 
 
 }
-
-
-

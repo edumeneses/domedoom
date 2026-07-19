@@ -1,33 +1,23 @@
 /*
+** xlat_parser.y
+**
 ** XLAT grammar
 **
 **---------------------------------------------------------------------------
-** Copyright 1999-2016 Randy Heit
+**
+** Copyright 1999-2016 Marisa Heit
 ** Copyright 2005-2016 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -130,7 +120,7 @@ linetype_exp(Z) ::= expr(A).
 
 linetype_declaration ::= linetype_exp(linetype) EQUALS expr(flags) COMMA expr(special) LPAREN special_args(arg) RPAREN.
 {
-	static_cast<XlatParseContext *>(context)->Translator->SimpleLineTranslations.SetVal(linetype, 
+	static_cast<XlatParseContext *>(context)->Translator->SimpleLineTranslations.SetVal(linetype,
 		FLineTrans(special&0xffff, flags+arg.addflags, arg.args[0], arg.args[1], arg.args[2], arg.args[3], arg.args[4]));
 	static_cast<XlatParseContext *>(context)->DefiningLineType = -1;
 }
@@ -174,7 +164,7 @@ special_arg(Z) ::= exp_with_tag(A).
 		int val;
 		const int *endpt;
 		int *xnode;
-		
+
 		state.linetype = static_cast<XlatParseContext *>(context)->DefiningLineType;
 		state.tag = 0;
 		state.bIsConstant = true;
@@ -274,7 +264,7 @@ boom_declaration ::= LBRACKET expr(special) RBRACKET LPAREN expr(firsttype) COMM
 		static_cast<XlatParseContext *>(context)->Translator->Boomish[static_cast<XlatParseContext *>(context)->Translator->NumBoomish].FirstLinetype = firsttype;
 		static_cast<XlatParseContext *>(context)->Translator->Boomish[static_cast<XlatParseContext *>(context)->Translator->NumBoomish].LastLinetype = lasttype;
 		static_cast<XlatParseContext *>(context)->Translator->Boomish[static_cast<XlatParseContext *>(context)->Translator->NumBoomish].NewSpecial = special;
-		
+
 		for (i = 0, probe = stores; probe != NULL; i++)
 		{
 			MoreLines *next = probe->next;

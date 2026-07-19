@@ -24,7 +24,7 @@ if( DEM_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 endif()
 
 if( APPLE )
-    option( OSX_COCOA_BACKEND "Use native Cocoa backend instead of SDL" ON )
+		option( OSX_COCOA_BACKEND "Use native Cocoa backend instead of SDL" ON )
 endif()
 
 option( ZDOOM_ENABLE_SWR "Enable software renderer" ON )
@@ -56,21 +56,28 @@ if( WIN32 )
 	add_definitions( -D_WIN32 )
 
 	set( PROJECT_LIBRARIES
-		psapi
-		wsock32
-		winmm
-		dinput8
 		Xinput
-		ole32
-		user32
-		gdi32
+		advapi32
 		comctl32
 		comdlg32
-		ws2_32
-		setupapi
-		oleaut32
 		dbghelp
-		legacy_stdio_definitions )
+		dinput8
+		dwmapi
+		dxguid
+		gdi32
+		ole32
+		oleaut32
+		psapi
+		setupapi
+		user32
+		winmm
+		ws2_32
+		wsock32
+	)
+
+	if(MSVC)
+		list(APPEND PROJECT_LIBRARIES legacy_stdio_definitions)
+	endif()
 
 	if( DEM_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 		if( DX_dxguid_LIBRARY )
@@ -79,18 +86,12 @@ if( WIN32 )
 	endif()
 else()
 	if( APPLE )
-		set( NO_GTK ON )
-		set( DYN_GTK OFF )
-
 		# Prevent inclusion of fp.h and FixMath.h from Carbon framework
 		# Declarations from these files are not used but cause the following conflicts:
 		#  - redefinition of 'FixedToFloat' and 'FloatToFixed' macros
 		#  - redefinition of 'pi' as different kind of symbol
 		add_definitions( -D__FP__ -D__FIXMATH__ )
 	else()
-		option( NO_GTK "Disable GTK+ dialogs (Not applicable to Windows)" )
-		option( DYN_GTK "Load GTK+ at runtime instead of compile time" ON )
-
 		# PipeWire video output for fulldome pipeline.
 		pkg_check_modules( PIPEWIRE libpipewire-0.3 )
 		if( PIPEWIRE_FOUND )
@@ -127,29 +128,6 @@ else()
 		else()
 			message( WARNING "NDI SDK headers not found — fulldome NDI output disabled" )
 		endif()
-
-		# Use GTK+ for the IWAD picker, if available.
-		if( NOT NO_GTK )
-			pkg_check_modules( GTK3 gtk+-3.0 )
-			if( GTK3_FOUND )
-				if( NOT DYN_GTK )
-					set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} ${GTK3_LIBRARIES} )
-				endif()
-				include_directories( SYSTEM ${GTK3_INCLUDE_DIRS} )
-				link_directories( ${GTK3_LIBRARY_DIRS} )
-			else()
-				pkg_check_modules( GTK2 gtk+-2.0 )
-				if( GTK2_FOUND )
-					if( NOT DYN_GTK )
-						set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} ${GTK2_LIBRARIES} )
-					endif()
-					include_directories( SYSTEM ${GTK2_INCLUDE_DIRS} )
-					link_directories( ${GTK2_LIBRARY_DIRS} )
-				else()
-					set( NO_GTK ON )
-				endif()
-			endif()
-		endif()
 	endif()
 
 	if ( NOT WIN32 )
@@ -157,14 +135,6 @@ else()
 		if ( NO_SDL_JOYSTICK )
 			add_definitions( -DNO_SDL_JOYSTICK=1 )
 		endif()
-	endif()
-
-	if( NO_GTK )
-		add_definitions( -DNO_GTK )
-	elseif( DYN_GTK )
-		add_definitions( -DDYN_GTK=1 )
-	else()
-		add_definitions( -DDYN_GTK=0 )
 	endif()
 
 	# Non-Windows version also needs SDL except native OS X backend
@@ -226,7 +196,9 @@ endif()
 
 # Set up flags for MSVC
 if (MSVC)
-	set( CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}" )
+	if (NOT CMAKE_GENERATOR MATCHES "Ninja")
+		set( CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}" )
+	endif()
 endif (MSVC)
 
 # Set up flags for GCC
@@ -308,7 +280,7 @@ if( DEM_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 		set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC" )
 		set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC" )
 	endif()
-	
+
 	if(${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
 		set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -ljemalloc")
 	endif()
@@ -353,14 +325,15 @@ option(BUILD_FLATPAK "Enable Flatpak-specific build options" OFF)
 
 # Update gitinfo.h
 
-add_custom_target( revision_check ALL
-	COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_SOURCE_DIR}/tools/updaterevision/UpdateRevision.cmake" src/gitinfo.h
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+add_custom_target( revision_check
+	COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_SOURCE_DIR}/cmake/UpdateRevision.cmake" "${CMAKE_BINARY_DIR}/gitinfo.h"
+	BYPRODUCTS "${CMAKE_BINARY_DIR}/gitinfo.h"
+	WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
 # required libraries
 
-set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} miniz "${BZIP2_LIBRARIES}" "${CMAKE_DL_LIBS}" "${DRPC_LIBRARIES}")
+set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} miniz "${BZIP2_LIBRARIES}" "${CMAKE_DL_LIBS}")
 if (HAVE_VULKAN)
 	list( APPEND PROJECT_LIBRARIES "zvulkan" )
 endif()
@@ -369,6 +342,16 @@ list( APPEND PROJECT_LIBRARIES "zwidget" )
 list( APPEND PROJECT_LIBRARIES "webp" )
 
 message("Building for target architecture: ${TARGET_ARCHITECTURE}")
+
+# CURL
+
+if( CURL_FOUND )
+	include_directories( SYSTEM "${CURL_INCLUDE_DIRS}" )
+
+	if( NOT DEFINED LOAD_CURL_AT_RUNTIME OR NOT LOAD_CURL_AT_RUNTIME)
+		set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} ${CURL_LIBRARIES} )
+	endif()
+endif()
 
 # VPX
 
@@ -400,7 +383,7 @@ else()
 	message( SEND_ERROR "Could not find libvpx" )
 endif()
 
-include_directories( SYSTEM "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${ZMUSIC_INCLUDE_DIR}" "${DRPC_INCLUDE_DIR}")
+include_directories( SYSTEM "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${ZMUSIC_INCLUDE_DIR}")
 
 if( ${HAVE_VM_JIT} )
 	add_definitions( -DHAVE_VM_JIT )
@@ -449,7 +432,7 @@ if (MSVC AND ${TARGET_ARCHITECTURE} MATCHES "arm")
 	set (PLAT_WIN32_SOURCES ${PLAT_WIN32_SOURCES} common/platform/win32/i_crash_arm.cpp )
 	add_definitions( -DNO_SSE -D__ARM__ -DRAPIDJSON_ENDIAN=RAPIDJSON_LITTLEENDIAN)
 endif()
-	
+
 set( PLAT_POSIX_SOURCES
 	posix/i_steam.cpp
 	common/platform/posix/i_system_posix.cpp )
@@ -464,8 +447,7 @@ set( PLAT_SDL_SOURCES
 	common/platform/posix/sdl/sdlglvideo.cpp
 	common/platform/posix/sdl/st_start.cpp )
 set( PLAT_UNIX_SOURCES
-	common/platform/posix/unix/i_specialpaths.cpp
-	common/platform/posix/unix/gtk_dialogs.cpp )
+	common/platform/posix/unix/i_specialpaths.cpp )
 set( PLAT_OSX_SOURCES
 	common/platform/posix/osx/iwadpicker_cocoa.mm
 	common/platform/posix/osx/i_specialpaths.mm
@@ -609,12 +591,12 @@ file( GLOB HEADER_FILES
 	common/models/*.h
 	common/textures/*.h
 	common/startscreen/*.h
-	common/widgets/*.h
 	common/textures/hires/hqnx/*.h
 	common/textures/hires/hqnx_asm/*.h
 	common/textures/hires/xbr/*.h
 	common/thirdparty/*.h
 	common/thirdparty/rapidjson/*.h
+	common/thirdparty/rapidxml/*.hpp
 	common/thirdparty/math/*h
 	common/thirdparty/libsmackerdec/include/*.h
 	common/thirdparty/utf8proc/*.h
@@ -638,7 +620,7 @@ file( GLOB HEADER_FILES
 	common/scripting/frontend/*.h
 
 	utility/*.h
-	launcher/*.h
+	widgets/*.h
 	scripting/*.h
 	scripting/backend/*.h
 	scripting/decorate/*.h
@@ -658,6 +640,8 @@ file( GLOB HEADER_FILES
 	rendering/hwrenderer/*.h
 	rendering/hwrenderer/scene/*.h
 	*.h
+
+	${CMAKE_BINARY_DIR}/gitinfo.h
 )
 
 set ( SWRENDER_SOURCES
@@ -768,7 +752,7 @@ set( FASTMATH_SOURCES
 	rendering/hwrenderer/scene/hw_weapon.cpp
 	common/utility/matrix.cpp
 )
-	
+
 #Vulkan stuff must go into a separate list because it needs to be disabled for some platforms
 set (VULKAN_SOURCES
 	common/rendering/vulkan/system/vk_renderdevice.cpp
@@ -819,8 +803,27 @@ endif()
 
 set (FASTMATH_SOURCES ${FASTMATH_SOURCES})
 
+if (DEFINED USE_UPDATER AND USE_UPDATER)
+	set (UPDATER_SOURCES
+		widgets/updatebuttonbar.cpp
+	)
+
+	add_compile_definitions("HAS_UPDATER")
+else()
+	set (UPDATER_SOURCES "")
+endif()
+
+if (DEFINED CURL_REQUIRED AND CURL_REQUIRED AND DEFINED LOAD_CURL_AT_RUNTIME AND LOAD_CURL_AT_RUNTIME)
+	set (CURL_SOURCES
+		curl_loader.cpp
+	)
+
+	add_compile_definitions("RUNTIME_CURL")
+else()
+	set (CURL_SOURCES "")
+endif()
+
 set (PCH_SOURCES
-	common/thirdparty/richpresence.cpp
 	am_map.cpp
 	playsim/bots/b_bot.cpp
 	playsim/bots/b_func.cpp
@@ -839,6 +842,7 @@ set (PCH_SOURCES
 	d_net.cpp
 	d_netinfo.cpp
 	d_protocol.cpp
+	d_steam.cpp
 	doomstat.cpp
 	g_cvars.cpp
 	g_dumpinfo.cpp
@@ -851,6 +855,7 @@ set (PCH_SOURCES
 	m_cheat.cpp
 	m_misc.cpp
 	m_haptics.cpp
+	version.cpp
 	playsim/p_acs.cpp
 	playsim/p_actionfunctions.cpp
 	p_conversation.cpp
@@ -890,6 +895,7 @@ set (PCH_SOURCES
 	gamedata/umapinfo.cpp
 	gamedata/d_dehacked.cpp
 	gamedata/g_doomedmap.cpp
+	gamedata/doomfont.cpp
 	gamedata/info.cpp
 	gamedata/keysections.cpp
 	gamedata/p_terrain.cpp
@@ -1006,12 +1012,20 @@ set (PCH_SOURCES
 	rendering/swrenderer/textures/warptexture.cpp
 	rendering/swrenderer/textures/swcanvastexture.cpp
 	events.cpp
-	launcher/launcherwindow.cpp
-	launcher/launcherbanner.cpp
-	launcher/launcherbuttonbar.cpp
-	launcher/playgamepage.cpp
-	launcher/settingspage.cpp
-	launcher/networkpage.cpp
+	widgets/aboutpage.cpp
+	widgets/errorwindow.cpp
+	widgets/launcherbanner.cpp
+	widgets/launcherbuttonbar.cpp
+	widgets/launcherwindow.cpp
+	widgets/netstartwindow.cpp
+	widgets/networkpage.cpp
+	widgets/playgamepage.cpp
+	widgets/releasepage.cpp
+	widgets/settingspage.cpp
+	widgets/themedata.cpp
+	widgets/widgetresourcedata.cpp
+	${UPDATER_SOURCES}
+	${CURL_SOURCES}
 
 	common/audio/sound/i_sound.cpp
 	common/audio/sound/oalsound.cpp
@@ -1029,23 +1043,19 @@ set (PCH_SOURCES
 	common/2d/wipe.cpp
 	common/thirdparty/animlib.cpp
 	common/thirdparty/gain_analysis.cpp
-	common/thirdparty/sfmt/SFMT.cpp
 	common/startscreen/startscreen.cpp
 	common/startscreen/startscreen_heretic.cpp
 	common/startscreen/startscreen_hexen.cpp
 	common/startscreen/startscreen_strife.cpp
 	common/startscreen/startscreen_generic.cpp
 	common/startscreen/endoom.cpp
-	common/widgets/errorwindow.cpp
-	common/widgets/netstartwindow.cpp
-	common/widgets/widgetresourcedata.cpp
 	common/fonts/singlelumpfont.cpp
 	common/fonts/singlepicfont.cpp
 	common/fonts/specialfont.cpp
 	common/fonts/font.cpp
 	common/fonts/hexfont.cpp
 	common/fonts/v_font.cpp
-	common/fonts/v_text.cpp	
+	common/fonts/v_text.cpp
 	common/textures/hw_ihwtexture.cpp
 	common/textures/hw_material.cpp
 	common/textures/bitmap.cpp
@@ -1107,8 +1117,7 @@ set (PCH_SOURCES
 	common/cutscenes/movieplayer.cpp
 	common/cutscenes/screenjob.cpp
 	common/utility/engineerrors.cpp
-	
-	common/utility/gitinfo.cpp
+
 	common/utility/m_alloc.cpp
 	common/utility/utf8.cpp
 	common/utility/palette.cpp
@@ -1118,13 +1127,12 @@ set (PCH_SOURCES
 	common/utility/i_time.cpp
 	common/utility/m_argv.cpp
 	common/utility/s_playlist.cpp
-	common/utility/name.cpp
 	common/utility/r_memory.cpp
 	common/utility/writezip.cpp
 	common/utility/vga2ansi.cpp
 	common/thirdparty/base64.cpp
 	common/thirdparty/md5.cpp
- 	common/thirdparty/superfasthash.cpp
+	common/thirdparty/superfasthash.cpp
 	common/thirdparty/libsmackerdec/src/BitReader.cpp
 	common/thirdparty/libsmackerdec/src/FileStream.cpp
 	common/thirdparty/libsmackerdec/src/HuffmanVLC.cpp
@@ -1157,7 +1165,7 @@ set (PCH_SOURCES
 	common/menu/menudef.cpp
 	common/menu/savegamemanager.cpp
 	common/statusbar/base_sbar.cpp
-	
+
 	common/rendering/v_framebuffer.cpp
 	common/rendering/v_video.cpp
 	common/rendering/r_thread.cpp
@@ -1235,12 +1243,16 @@ set (PCH_SOURCES
 	common/scripting/dap/Nodes/RegistersScopeStateNode.cpp
 	common/scripting/dap/Nodes/StatePointerNode.cpp
 	common/scripting/dap/Nodes/DummyNode.cpp
+
+	utility/colorspace.cpp
+	utility/name.cpp
 	utility/nodebuilder/nodebuild.cpp
 	utility/nodebuilder/nodebuild_classify_nosse2.cpp
 	utility/nodebuilder/nodebuild_events.cpp
 	utility/nodebuilder/nodebuild_extract.cpp
 	utility/nodebuilder/nodebuild_gl.cpp
 	utility/nodebuilder/nodebuild_utility.cpp
+	utility/system_theme.cpp
 )
 
 if( ZMUSIC_SYSTEM_INSTALL OR NOT DEFINED BUILD_SHARED_LIBS OR BUILD_SHARED_LIBS)
@@ -1311,15 +1323,38 @@ set( GAME_SOURCES
 set( GAME_NONPCH_SOURCES ${GAME_SOURCES} )
 list( REMOVE_ITEM GAME_NONPCH_SOURCES ${PCH_SOURCES} )
 
-add_executable( zdoom WIN32 MACOSX_BUNDLE ${GAME_SOURCES} )
+add_executable( zdoom MACOSX_BUNDLE ${GAME_SOURCES} )
 
-target_precompile_headers( zdoom PRIVATE g_pch.h )
+target_include_directories( zdoom PRIVATE ${CMAKE_BINARY_DIR} )
+
+option(USE_PCH "Enable Pre-compiled headers" ON)
+if (USE_PCH)
+	target_precompile_headers( zdoom PRIVATE g_pch.h )
+endif()
 
 set_source_files_properties( ${FASTMATH_SOURCES} PROPERTIES COMPILE_FLAGS ${ZD_FASTMATH_FLAG} )
 set_source_files_properties( xlat/parse_xlat.cpp PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.c" )
 set_source_files_properties( common/engine/sc_man.cpp PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h" )
 set_source_files_properties( ${NOT_COMPILED_SOURCE_FILES} PROPERTIES HEADER_FILE_ONLY TRUE )
 set_source_files_properties( ${GAME_NONPCH_SOURCES} common/textures/hires/hqresize.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS TRUE )
+
+option(ENABLE_IWYU "Enable Include-What-You-Use analysis" ON)
+if (ENABLE_IWYU)
+	find_program(IWYU NAMES include-what-you-use iwyu)
+	if(IWYU)
+		message(STATUS "Using IWYU, found at ${IWYU}")
+		if (USE_PCH)
+			message(WARNING "PCH is known to make IWYU diagnostics fail. Consider disabling PCH with USE_PCH=OFF")
+		endif()
+		set_target_properties(zdoom PROPERTIES
+			CXX_INCLUDE_WHAT_YOU_USE "${IWYU}"
+			"-Xiwyu" "--mapping_file=${CMAKE_SOURCE_DIR}/tools/iwyu.imp"
+		)
+		set_source_files_properties(utility/name.cpp PROPERTIES SKIP_LINTING ON)
+	else()
+		message(STATUS "IWYU not found. Diagnostics disabled")
+	endif()
+endif()
 
 if(BUILD_FLATPAK)
 	target_compile_definitions(zdoom PRIVATE IS_FLATPAK=1)
@@ -1337,7 +1372,7 @@ if( UNIX )
 	endif()
 endif()
 
-target_link_libraries( zdoom ${PROJECT_LIBRARIES} lzma ${ZMUSIC_LIBRARIES} )
+target_link_libraries( zdoom ${PROJECT_LIBRARIES} lzma ${ZMUSIC_LIBRARIES} absl::base absl::flat_hash_map absl::strings absl::hash )
 include_directories(
 	BEFORE
 	.
@@ -1363,7 +1398,6 @@ include_directories(
 	common/fonts
 	common/objects
 	common/startscreen
-	common/widgets
 	common/rendering
 	common/rendering/hwrenderer/data
 	common/rendering/gl_load
@@ -1406,25 +1440,11 @@ include_directories(
 	${SYSTEM_SOURCES_DIR}
 )
 
-add_dependencies( zdoom revision_check )
+set_target_properties( zdoom PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ZDOOM_OUTPUT_DIR} )
+set_target_properties( zdoom PROPERTIES OUTPUT_NAME ${ZDOOM_EXE_NAME} )
 
-# Due to some quirks, we need to do this in this order
-if( NOT ZDOOM_OUTPUT_OLDSTYLE )
-	# RUNTIME_OUTPUT_DIRECTORY does not exist in CMake 2.4.
-	# Linux distributions are slow to adopt 2.6. :(
-	set_target_properties( zdoom PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ZDOOM_OUTPUT_DIR} )
-	set_target_properties( zdoom PROPERTIES OUTPUT_NAME ${ZDOOM_EXE_NAME} )
-else()
-	set_target_properties( zdoom PROPERTIES
-		RUNTIME_OUTPUT_NAME ${ZDOOM_EXE_NAME}
-		RUNTIME_OUTPUT_DIRECTORY_RELEASE ${ZDOOM_OUTPUT_DIR}
-		RUNTIME_OUTPUT_NAME_DEBUG ${ZDOOM_EXE_NAME}d
-		RUNTIME_OUTPUT_DIRECTORY_DEBUG ${ZDOOM_OUTPUT_DIR}
-		RUNTIME_OUTPUT_NAME_MINSIZEREL ${ZDOOM_EXE_NAME}msr
-		RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${ZDOOM_OUTPUT_DIR}
-		RUNTIME_OUTPUT_NAME_RELWITHDEBINFO ${ZDOOM_EXE_NAME}rd
-		RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${ZDOOM_OUTPUT_DIR}
-	)
+if(NOT MINGW AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+	set_target_properties(zdoom PROPERTIES LINK_FLAGS "-z nostart-stop-gc")
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -1434,9 +1454,11 @@ endif()
 if( MSVC )
 	option ( CONSOLE_MODE "Compile as a console application" OFF )
 	if ( CONSOLE_MODE )
-		set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /ENTRY:wmainCRTStartup" )
+		set_target_properties( zdoom PROPERTIES WIN32_EXECUTABLE FALSE )
+		target_link_options( zdoom PRIVATE "/ENTRY:wmainCRTStartup" )
 	else()
-		set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS /ENTRY:wWinMainCRTStartup" )
+		set_target_properties( zdoom PROPERTIES WIN32_EXECUTABLE TRUE )
+		target_link_options( zdoom PRIVATE "/ENTRY:wWinMainCRTStartup" )
 	endif()
 
 	option( ZDOOM_GENERATE_MAPFILE "Generate .map file for debugging." OFF )
@@ -1454,7 +1476,13 @@ if( MSVC )
 
 endif()
 
-if( NOT WIN32 AND NOT APPLE )
+if (WIN32)
+	# nothing
+elseif (APPLE)
+	IF ("${INSTALL_RPATH}" STREQUAL "")
+		set_target_properties(zdoom PROPERTIES MACOSX_RPATH TRUE)
+	endif()
+else()
 	FILE( WRITE ${CMAKE_CURRENT_BINARY_DIR}/link-make "if [ ! -e ${ZDOOM_OUTPUT_DIR}/${ZDOOM_EXE_NAME} ]; then ln -sf ${CMAKE_CURRENT_BINARY_DIR}/${ZDOOM_EXE_NAME} ${ZDOOM_OUTPUT_DIR}/${ZDOOM_EXE_NAME}; fi" )
 	add_custom_command( TARGET zdoom POST_BUILD
 		COMMAND chmod +x ${CMAKE_CURRENT_BINARY_DIR}/link-make
@@ -1469,28 +1497,39 @@ if( NOT WIN32 AND NOT APPLE )
 endif()
 
 add_custom_command(TARGET zdoom POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E make_directory "${ZDOOM_RESOURCE_DIR}/soundfonts"
+	COMMAND ${CMAKE_COMMAND} -E make_directory "${ZDOOM_RESOURCE_DIR}/fm_banks"
+
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-	${CMAKE_SOURCE_DIR}/soundfont/gzdoom.sf2 $<TARGET_FILE_DIR:zdoom>/soundfonts/gzdoom.sf2
+		"${CMAKE_SOURCE_DIR}/soundfont/uzdoom.sf2"
+		"${ZDOOM_RESOURCE_DIR}/soundfonts/uzdoom.sf2"
+
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-	${CMAKE_SOURCE_DIR}/fm_banks/GENMIDI.GS.wopl $<TARGET_FILE_DIR:zdoom>/fm_banks/GENMIDI.GS.wopl
+		"${CMAKE_SOURCE_DIR}/fm_banks/GENMIDI.GS.wopl"
+		"${ZDOOM_RESOURCE_DIR}/fm_banks/GENMIDI.GS.wopl"
+
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-	${CMAKE_SOURCE_DIR}/fm_banks/gs-by-papiezak-and-sneakernets.wopn $<TARGET_FILE_DIR:zdoom>/fm_banks/gs-by-papiezak-and-sneakernets.wopn
+		"${CMAKE_SOURCE_DIR}/fm_banks/gs-by-papiezak-and-sneakernets.wopn"
+		"${ZDOOM_RESOURCE_DIR}/fm_banks/gs-by-papiezak-and-sneakernets.wopn"
+
+	VERBATIM
 )
 
 if ( NOT ZMUSIC_SYSTEM_INSTALL AND (NOT DEFINED BUILD_SHARED_LIBS OR BUILD_SHARED_LIBS))
 	# bring zmusic in
 	add_custom_command(TARGET zdoom POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:zmusic> $<TARGET_FILE_DIR:zdoom>
-		DEPENDS zmusic )
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			$<TARGET_FILE:zmusic> $<TARGET_FILE_DIR:zdoom>)
 	if ( NOT WIN32 )
 		add_custom_command(TARGET zdoom POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -E create_symlink $<TARGET_FILE_NAME:zmusic> $<TARGET_SONAME_FILE_NAME:zmusic>
-			COMMAND ${CMAKE_COMMAND} -E create_symlink $<TARGET_SONAME_FILE_NAME:zmusic> $<TARGET_LINKER_FILE_NAME:zmusic>
-			WORKING_DIRECTORY $<TARGET_FILE_DIR:zdoom>
-			DEPENDS zmusic )
+			COMMAND ${CMAKE_COMMAND} -E create_symlink
+				$<TARGET_FILE_NAME:zmusic> $<TARGET_SONAME_FILE_NAME:zmusic>
+			COMMAND ${CMAKE_COMMAND} -E create_symlink
+				$<TARGET_SONAME_FILE_NAME:zmusic> $<TARGET_LINKER_FILE_NAME:zmusic>
+			WORKING_DIRECTORY $<TARGET_FILE_DIR:zdoom>)
 	endif()
+	add_dependencies(zdoom zmusic)
 endif()
-
 
 if (VCPKG_TOOLCHAIN)
 	x_vcpkg_install_local_dependencies(TARGETS zdoom DESTINATION ".")
@@ -1499,7 +1538,7 @@ endif()
 if( WIN32 )
 	set( INSTALL_SOUNDFONT_PATH . CACHE STRING "Directory where soundfonts and WOPL/WOPN banks will be placed during install." )
 else()
-	set( INSTALL_SOUNDFONT_PATH share/games/doom CACHE STRING "Directory where soundfonts and WOPL/WOPN banks will be placed during install." )
+	set( INSTALL_SOUNDFONT_PATH share/games/${ZDOOM_EXE_NAME} CACHE STRING "Directory where soundfonts and WOPL/WOPN banks will be placed during install." )
 endif()
 install(DIRECTORY "${PROJECT_BINARY_DIR}/soundfonts" "${PROJECT_BINARY_DIR}/fm_banks"
 		DESTINATION ${INSTALL_SOUNDFONT_PATH}
@@ -1507,16 +1546,16 @@ install(DIRECTORY "${PROJECT_BINARY_DIR}/soundfonts" "${PROJECT_BINARY_DIR}/fm_b
 
 # Install Linux desktop launcher, icon and metadata
 if( UNIX AND NOT APPLE )
-	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/posix/freedesktop/org.zdoom.GZDoom.desktop
+	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/posix/freedesktop/org.zdoom.UZDoom.desktop
 			DESTINATION share/applications
 			PERMISSIONS WORLD_EXECUTE WORLD_READ GROUP_READ GROUP_EXECUTE OWNER_READ OWNER_WRITE OWNER_EXECUTE)
-	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/posix/freedesktop/org.zdoom.GZDoom.metainfo.xml
+	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/posix/freedesktop/org.zdoom.UZDoom.metainfo.xml
 			DESTINATION share/metainfo
 			PERMISSIONS WORLD_READ GROUP_READ GROUP_EXECUTE OWNER_READ OWNER_WRITE)
-	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/posix/freedesktop/org.zdoom.GZDoom.svg
+	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/posix/freedesktop/org.zdoom.UZDoom.svg
 			DESTINATION share/icons/hicolor/scalable/apps
 			PERMISSIONS WORLD_READ GROUP_READ GROUP_EXECUTE OWNER_READ OWNER_WRITE)
-	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/posix/freedesktop/org.zdoom.GZDoom-mime.xml
+	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/posix/freedesktop/org.zdoom.UZDoom-mime.xml
 			DESTINATION share/mime/packages
 			PERMISSIONS WORLD_READ GROUP_READ GROUP_EXECUTE OWNER_READ OWNER_WRITE)
 	# note:
@@ -1544,8 +1583,17 @@ if( APPLE )
 	set_target_properties(zdoom PROPERTIES
 		LINK_FLAGS "${LINK_FRAMEWORKS}"
 		MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/posix/osx/zdoom-info.plist"
-		XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "org.drdteam.gzdoom"
+		XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "org.zdoom.UZDoom"
 		XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "" )
+
+	# Update plist bundle version from gitinfo.h at build time
+	add_custom_command(TARGET zdoom POST_BUILD
+		COMMAND "${CMAKE_COMMAND}"
+			-DGITINFO_H="${CMAKE_BINARY_DIR}/gitinfo.h"
+			-DPLIST_FILE="$<TARGET_BUNDLE_DIR:zdoom>/Contents/Info.plist"
+			-P "${CMAKE_CURRENT_SOURCE_DIR}/posix/osx/UpdatePlistVersion.cmake"
+		COMMENT "Updating bundle version in Info.plist"
+	)
 
 	# Dymanic libraries like libvulkan.dylib or libMoltenVK.dylib will be loaded by dlopen()
 	# if placed in the directory with the main executable
@@ -1558,6 +1606,7 @@ if ( NOT ZMUSIC_SYSTEM_INSTALL )
 	else()
 		install(TARGETS zmusic
 			LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+			PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 			COMPONENT "Game executable"
 		)
 	endif()
@@ -1571,6 +1620,8 @@ endif()
 install(TARGETS zdoom
 		DESTINATION ${INSTALL_PATH}
 		COMPONENT "Game executable")
+
+add_dependencies( zdoom revision_check )
 
 source_group("Audio Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/.+")
 source_group("Game Data" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/.+")
@@ -1620,7 +1671,6 @@ source_group("Common\\File System" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_D
 source_group("Common\\File System\\Include" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/filesystem/include/.+")
 source_group("Common\\File System\\Source" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/filesystem/source/.+")
 source_group("Common\\Startscreen" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/startscreen/.+")
-source_group("Common\\Widgets" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/widgets/.+")
 source_group("Common\\Scripting" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/scripting/.+")
 source_group("Common\\Scripting\\Interface" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/scripting/interface/.+")
 source_group("Common\\Scripting\\Frontend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/scripting/frontend/.+" FILES ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.c ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.h)
@@ -1654,7 +1704,7 @@ source_group("Common\\Textures\\Formats" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SO
 source_group("Common\\Third Party" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/.+")
 source_group("Common\\Third Party\\Math" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/math/.+")
 source_group("Common\\Third Party\\RapidJSON" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/rapidjson/.+")
-source_group("Common\\Third Party\\SFMT" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/sfmt/.+")
+source_group("Common\\Third Party\\RapidXML" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/rapidxml/.+")
 source_group("Common\\Third Party\\stb" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/stb/.+")
 source_group("Common\\Third Party\\utf8proc" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/utf8proc/.+")
 source_group("Utility" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/utility/.+")
@@ -1663,7 +1713,7 @@ source_group("Utility\\Smackerdec" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_D
 source_group("Utility\\Smackerdec\\Headers" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/libsmackerdec/include/.+")
 source_group("Utility\\Smackerdec\\Sources" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/libsmackerdec/src/.+")
 source_group("Statusbar" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/g_statusbar/.+")
-source_group("Launcher" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/launcher/.+")
+source_group("Widgets" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/widgets/.+")
 source_group("Versioning" FILES version.h win32/zdoom.rc)
 source_group("Xlat" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/xlat/.+" FILES ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.c ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.h)
 source_group("Source Files" FILES ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h common/engine/sc_man_scanner.re)

@@ -1,5 +1,23 @@
-
-// CTC flag spots. They are not functional and only here so that something gets spawned for them.
+/*
+** svestuff.zs
+**
+** CTC flag spots. They are not functional and only here so that
+** something gets spawned for them.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Rogue Entertainment
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 class SVEFlagSpotRed : Inventory
 {
@@ -70,14 +88,14 @@ class SVETalismanRed : Inventory
 		FLGR A -1 BRIGHT;
 		Stop;
 	}
-	
+
 	override bool TryPickup (in out Actor toucher)
 	{
 		let useok = Super.TryPickup (toucher);
 		if (useok)
 		{
-			if (toucher.FindInventory("SVETalismanRed") && 
-				toucher.FindInventory("SVETalismanGreen") && 
+			if (toucher.FindInventory("SVETalismanRed") &&
+				toucher.FindInventory("SVETalismanGreen") &&
 				toucher.FindInventory("SVETalismanBlue"))
 			{
 				toucher.A_Print("$MSG_TALISMANPOWER");
@@ -86,7 +104,7 @@ class SVETalismanRed : Inventory
 		}
 		return useok;
 	}
-	
+
 }
 
 class SVETalismanBlue : SVETalismanRed
@@ -135,7 +153,7 @@ class SVEOreSpawner : Actor
 		TNT1 A 175 A_OreSpawner;
 		loop;
 	}
-	
+
 	//
 	// A_OreSpawner
 	//
@@ -162,7 +180,7 @@ class SVEOreSpawner : Actor
 
 		let it = ThinkerIterator.Create("DegninOre");
 		Thinker ac;
-		
+
 		int numores = 0;
 		while (ac = it.Next())
 		{
@@ -172,7 +190,7 @@ class SVEOreSpawner : Actor
 	}
 }
 
-class SVEOpenDoor225 : DummyStrifeItem 
+class SVEOpenDoor225 : DummyStrifeItem
 {
 	override bool TryPickup (in out Actor toucher)
 	{
@@ -180,12 +198,12 @@ class SVEOpenDoor225 : DummyStrifeItem
 		GoAwayAndDie ();
 		return true;
 	}
-	
+
 	override bool SpecialDropAction (Actor dropper)
 	{
 		Door_Open(225, 16);
 		Destroy ();
 		return true;
 	}
-	
+
 }

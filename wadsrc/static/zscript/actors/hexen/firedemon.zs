@@ -1,3 +1,22 @@
+/*
+** firedemon.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // FireDemon ----------------------------------------------------------------
 
@@ -70,8 +89,8 @@ class FireDemon : Actor
 		FDMN R 1 A_FreezeDeathChunks;
 		Wait;
 	}
-	
-	
+
+
 
 
 	//============================================================================
@@ -271,7 +290,7 @@ class FireDemon : Actor
 			mo.Vel.Z = (random[FireDemonSplotch]() / 64.) + 3;
 		}
 	}
-	
+
 }
 
 // FireDemonSplotch1 -------------------------------------------------------
@@ -336,7 +355,7 @@ class FireDemonRock1 : Actor
 		FDMN S 200;
 		Stop;
 	}
-	
+
 	//============================================================================
 	//
 	// A_SmBounce

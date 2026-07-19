@@ -1,35 +1,23 @@
-
 /*
 ** endoom.cpp
+**
 ** Handles the startup screen.
 **
 **---------------------------------------------------------------------------
-** Copyright 2006-2007 Randy Heit
+**
+** Copyright 2006-2016 Marisa Heit
 ** Copyright 2006-2022 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -67,7 +55,7 @@
 
 // PUBLIC DATA DEFINITIONS -------------------------------------------------
 
-CUSTOM_CVAR(Int, showendoom, 1, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
+CUSTOM_CVAR(Int, showendoom, 0, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 {
 	if (self < 0) self = 0;
 	else if (self > 2) self=2;
@@ -119,7 +107,7 @@ FEndoomScreen::FEndoomScreen(int loading_lump)
 	ClearBlock(StartupBitmap, {0, 0, 0, 255}, 0, 25*16, 640, 16);
 	DrawString(StartupBitmap, 0, 25, GStrings.GetString("TXT_QUITENDOOM"), { 128, 128, 128 ,255}, { 0, 0, 0, 255});
 	lastUpdateTime = I_msTime();
-	
+
 	// Does this screen need blinking?
 	for (int i = 0; i < 80*25; ++i)
 	{
@@ -160,7 +148,7 @@ int RunEndoom()
 	}
 
 	int endoom_lump = fileSystem.CheckNumForFullName (endoomName.GetChars(), true);
-	
+
 	if (endoom_lump < 0 || fileSystem.FileLength (endoom_lump) != 4000)
 	{
 		return 0;
@@ -171,7 +159,7 @@ int RunEndoom()
 		// showendoom==2 means to show only lumps from PWADs.
 		return 0;
 	}
-	
+
 	S_StopMusic(true);
 	auto endoom = new FEndoomScreen(endoom_lump);
 	endoom->Render(true);
@@ -214,7 +202,7 @@ void ConsoleEndoom()
 	uint8_t buffer[4000];
 
 	int endoom_lump = fileSystem.CheckNumForFullName (endoomName.GetChars(), true);
-	
+
 	if (endoom_lump < 0 || fileSystem.FileLength (endoom_lump) != 4000)
 	{
 		return;

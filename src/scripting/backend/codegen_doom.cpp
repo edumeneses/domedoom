@@ -1,34 +1,22 @@
 /*
-** codegen.cpp
+** codegen_doom.cpp
 **
 ** Compiler backend / code generation for ZScript and DECORATE
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2008-2016 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -399,7 +387,7 @@ static bool UnravelVarArgAJump(FxVMFunctionCall *func, FCompileContext &ctx)
 	x = x->Resolve(ctx);
 	// This cannot be done with a cast because that interprets the value as an index.
 	// All we want here is to take the literal value and change its type.
-	if (x) x->ValueType = TypeStateLabel;	
+	if (x) x->ValueType = TypeStateLabel;
 	ArgList[1] = x;
 	ArgList.Clamp(2);
 	return x != nullptr;
@@ -408,7 +396,7 @@ static bool UnravelVarArgAJump(FxVMFunctionCall *func, FCompileContext &ctx)
 static bool AJumpProcessing(FxVMFunctionCall *func, FCompileContext &ctx)
 {
 	// Unfortunately the PrintableName is the only safe thing to catch this special case here.
-    // [RL0] It's not valid to access Variant::Implementation on function pointer calls, so skip this
+	// [RL0] It's not valid to access Variant::Implementation on function pointer calls, so skip this
 	if (!func->FnPtrCall && stricmp(func->Function->Variants[0].Implementation->QualifiedName, "Actor.A_Jump") == 0)
 	{
 		// Unravel the varargs part of this function here so that the VM->native interface does not have to deal with it anymore.
@@ -445,7 +433,7 @@ static FxExpression *ResolveGlobalCustomFunction(FxFunctionCall *func, FCompileC
 			return newfunc->Resolve(ctx);
 		}
 	}
-	
+
 	int min, max, special;
 	if (func->MethodName == NAME_ACS_NamedExecuteWithResult || func->MethodName == NAME_CallACS)
 	{
@@ -470,14 +458,14 @@ static FxExpression *ResolveGlobalCustomFunction(FxFunctionCall *func, FCompileC
 		}
 		else if (paramcount < min)
 		{
-			ScriptPosition.Message(MSG_ERROR, "Not enough parameters for '%s' (expected %d, got %d)", 
+			ScriptPosition.Message(MSG_ERROR, "Not enough parameters for '%s' (expected %d, got %d)",
 				func->MethodName.GetChars(), min, paramcount);
 			delete func;
 			return nullptr;
 		}
 		else if (paramcount > max)
 		{
-			ScriptPosition.Message(MSG_ERROR, "too many parameters for '%s' (expected %d, got %d)", 
+			ScriptPosition.Message(MSG_ERROR, "too many parameters for '%s' (expected %d, got %d)",
 				func->MethodName.GetChars(), max, paramcount);
 			delete func;
 			return nullptr;
@@ -593,7 +581,7 @@ FxExpression *FxActionSpecialCall::Resolve(FCompileContext& ctx)
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -786,7 +774,7 @@ ExpEmit FxGetDefaultByType::Emit(VMFunctionBuilder *build)
 
 //==========================================================================
 //
-// Symbolic state labels. 
+// Symbolic state labels.
 // Conversion will not happen inside the compiler anymore because it causes
 // just too many problems.
 //
@@ -805,7 +793,7 @@ FxExpression *FxStateByIndex::Resolve(FCompileContext &ctx)
 
 	if (aclass->GetStateCount() <= index)
 	{
-		ScriptPosition.Message(MSG_ERROR, "%s: Attempt to jump to non existing state index %d", 
+		ScriptPosition.Message(MSG_ERROR, "%s: Attempt to jump to non existing state index %d",
 			ctx.Class->TypeName.GetChars(), index);
 		delete this;
 		return nullptr;
@@ -1191,7 +1179,7 @@ class FxBlockIteratorForEachLoop : public FxThreeArgForEachLoop
 {
 public:
 	using FxThreeArgForEachLoop::FxThreeArgForEachLoop;
-	
+
 	FxExpression *Resolve(FCompileContext&);
 	//ExpEmit Emit(VMFunctionBuilder *build); This node is transformed, so it won't ever be emitted itself
 };
@@ -1304,7 +1292,7 @@ bool IsGameSpecificForEachLoop(FxForEachLoop * loop)
 {
 	auto * vt = loop->Array->ValueType;
 	return (vt->isObjectPointer() && (
-			    ((PObjectPointer*)vt)->PointedClass()->TypeName == NAME_BlockLinesIterator
+				((PObjectPointer*)vt)->PointedClass()->TypeName == NAME_BlockLinesIterator
 			 || ((PObjectPointer*)vt)->PointedClass()->TypeName == NAME_BlockThingsIterator
 			 || ((PObjectPointer*)vt)->PointedClass()->TypeName == NAME_ActorIterator
 			 || ((PObjectPointer*)vt)->PointedClass()->TypeName == NAME_ThinkerIterator

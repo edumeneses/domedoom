@@ -1,3 +1,26 @@
+/*
+** win32vulkanvideo.h
+**
+** Code to let ZDoom draw to the screen
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2019 Magnus Norddahl
+** Copyright 2019-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 #include "win32basevideo.h"
@@ -16,7 +39,7 @@ EXTERN_CVAR(Int, vk_device)
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -24,7 +47,7 @@ class Win32VulkanVideo : public Win32BaseVideo
 {
 	std::shared_ptr<VulkanSurface> surface;
 public:
-	Win32VulkanVideo() 
+	Win32VulkanVideo()
 	{
 		unsigned int count = 64;
 		const char* names[64];

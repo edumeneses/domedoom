@@ -1,34 +1,23 @@
 /*
 ** keysections.cpp
+**
 ** Custom key bindings
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2009 Randy Heit
-** Copyright 2010 Christoph Oelckers
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2010-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -65,7 +54,7 @@ static void LoadKeys (const char *modname, bool dbl)
 	}
 }
 
-static void DoSaveKeys (FConfigFile *config, const char *section, FKeySection *keysection, bool dbl)
+static void DoSaveKeys (FConfigFile *config, FString section, FKeySection *keysection, bool dbl)
 {
 	config->SetSection (section, true);
 	config->ClearCurrentSection ();
@@ -76,14 +65,12 @@ static void DoSaveKeys (FConfigFile *config, const char *section, FKeySection *k
 	}
 }
 
-void M_SaveCustomKeys (FConfigFile *config, char *section, char *subsection, size_t sublen)
+void M_SaveCustomKeys (FConfigFile *config, FString section)
 {
 	for (unsigned i=0; i<KeySections.Size(); i++)
 	{
-		mysnprintf (subsection, sublen, "%s.Bindings", KeySections[i].mSection.GetChars());
-		DoSaveKeys (config, section, &KeySections[i], false);
-		mysnprintf (subsection, sublen, "%s.DoubleBindings", KeySections[i].mSection.GetChars());
-		DoSaveKeys (config, section, &KeySections[i], true);
+		DoSaveKeys (config, section + "." + KeySections[i].mSection + ".Bindings", &KeySections[i], false);
+		DoSaveKeys (config, section + "." + KeySections[i].mSection + ".DoubleBindings", &KeySections[i], true);
 	}
 }
 
@@ -252,7 +239,7 @@ void ClearIWADPlayerClasses (PClassActor *ti)
 CCMD(clearplayerclasses)
 {
 	if (ParsingKeyConf)
-	{	
+	{
 		// Only clear the playerclasses first if setslotstrict is true
 		// If not, we'll only remove the IWAD playerclasses
 		if(setslotstrict)
@@ -286,8 +273,8 @@ CCMD(addplayerclass)
 
 			newclass.Type = ti;
 			newclass.Flags = 0;
-			
-			// If this class was already added, don't add it again			
+
+			// If this class was already added, don't add it again
 			for(unsigned i = 0; i < PlayerClasses.Size(); i++)
 			{
 				if(PlayerClasses[i].Type == ti)
@@ -295,7 +282,7 @@ CCMD(addplayerclass)
 					return;
 				}
 			}
-			
+
 
 			int arg = 2;
 			while (arg < argv.argc())
@@ -315,4 +302,3 @@ CCMD(addplayerclass)
 		}
 	}
 }
-

@@ -1,30 +1,20 @@
-// 
-//---------------------------------------------------------------------------
-//
-// Copyright(C) 2010-2016 Christoph Oelckers
-// All rights reserved.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
 /*
-** gl_voxels.cpp
+** models_voxel.cpp
 **
 ** Voxel management
 **
-**/
+**---------------------------------------------------------------------------
+**
+** Copyright 2010-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 
 #include "filesystem.h"
 #include "colormatcher.h"
@@ -66,7 +56,7 @@ protected:
 
 //===========================================================================
 //
-// 
+//
 //
 //===========================================================================
 
@@ -80,7 +70,7 @@ FVoxelTexture::FVoxelTexture(FVoxel *vox)
 
 //===========================================================================
 //
-// 
+//
 //
 //===========================================================================
 
@@ -103,13 +93,13 @@ PalettedPixels FVoxelTexture::CreatePalettedPixels(int conversion, int frame)
 
 		}
 	}
-	else 
+	else
 	{
 		for(int i=0;i<256;i++, pp+=3)
 		{
 			Pixels[i] = (uint8_t)i;
 		}
-	}  
+	}
 	ImageHelpers::FlipSquareBlock(Pixels.Data(), Width);
 	return Pixels;
 }
@@ -140,7 +130,7 @@ int FVoxelTexture::CopyPixels(FBitmap *bmp, int conversion, int frame)
 			pe[i].a = 255;
 		}
 	}
-	else 
+	else
 	{
 		for(int i=0;i<256;i++, pp+=3)
 		{
@@ -148,14 +138,14 @@ int FVoxelTexture::CopyPixels(FBitmap *bmp, int conversion, int frame)
 			pe[i] = GPalette.BaseColors[i];
 			pe[i].a = 255;
 		}
-	}    
+	}
 	bmp->CopyPixelData(0, 0, bitmap, Width, Height, 1, 16, 0, pe);
 	return 0;
-}	
+}
 
 //===========================================================================
 //
-// 
+//
 //
 //===========================================================================
 
@@ -168,7 +158,7 @@ FVoxelModel::FVoxelModel(FVoxel *voxel, bool owned)
 
 //===========================================================================
 //
-// 
+//
 //
 //===========================================================================
 
@@ -180,7 +170,7 @@ FVoxelModel::~FVoxelModel()
 
 //===========================================================================
 //
-// 
+//
 //
 //===========================================================================
 
@@ -196,7 +186,7 @@ unsigned int FVoxelModel::AddVertex(FModelVertex &vert, FVoxelMap &check)
 
 //===========================================================================
 //
-// 
+//
 //
 //===========================================================================
 
@@ -243,7 +233,7 @@ void FVoxelModel::AddFace(int x1, int y1, int z1, int x2, int y2, int z2, int x3
 
 //===========================================================================
 //
-// 
+//
 //
 //===========================================================================
 
@@ -279,7 +269,7 @@ void FVoxelModel::MakeSlabPolys(int x, int y, kvxslab_t *voxptr, FVoxelMap &chec
 		if (cull & 8)
 		{
 			AddFace(x, y+1, z, x+1, y+1, z, x, y+1, z+c, x+1, y+1, z+c, *col, check);
-		}	
+		}
 		z+=c;
 		col+=c;
 	}
@@ -292,7 +282,7 @@ void FVoxelModel::MakeSlabPolys(int x, int y, kvxslab_t *voxptr, FVoxelMap &chec
 
 //===========================================================================
 //
-// 
+//
 //
 //===========================================================================
 
@@ -318,7 +308,7 @@ void FVoxelModel::Initialize()
 
 //===========================================================================
 //
-// 
+//
 //
 //===========================================================================
 
@@ -363,7 +353,7 @@ void FVoxelModel::AddSkins(uint8_t *hitlist, const FTextureID*)
 
 //===========================================================================
 //
-// 
+//
 //
 //===========================================================================
 

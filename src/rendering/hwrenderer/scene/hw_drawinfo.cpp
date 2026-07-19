@@ -1,27 +1,17 @@
-// 
-//---------------------------------------------------------------------------
-//
-// Copyright(C) 2000-2018 Christoph Oelckers
-// All rights reserved.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
 /*
-** gl_drawinfo.cpp
+** hw_drawinfo.cpp
+**
 ** Basic scene draw info management class
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2000-2018 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
 **
 */
 
@@ -154,6 +144,7 @@ void HWDrawInfo::StartScene(FRenderViewpoint &parentvp, HWViewpointUniforms *uni
 		// The clip planes will never be inherited from the parent drawinfo.
 		VPUniforms.mClipLine.X = -1000001.f;
 		VPUniforms.mClipHeight = 0;
+		VPUniforms.mClipHeightDirection = 0.f;
 	}
 	else
 	{
@@ -162,15 +153,16 @@ void HWDrawInfo::StartScene(FRenderViewpoint &parentvp, HWViewpointUniforms *uni
 		VPUniforms.mNormalViewMatrix.loadIdentity();
 		ProjectionMatrix2.loadIdentity();
 		VPUniforms.mViewHeight = viewheight;
+		int fogmode = Viewpoint.bDoOrtho && (lightmode == ELightMode::ZDoomSoftware) ? 2 : gl_fogmode; // Force radial if Ortho and ZDoomSoftware
 		if (lightmode == ELightMode::Build)
 		{
 			VPUniforms.mGlobVis = 1 / 64.f;
-			VPUniforms.mPalLightLevels = 32 | (static_cast<int>(gl_fogmode) << 8) | ((int)lightmode << 16);
+			VPUniforms.mPalLightLevels = 32 | (static_cast<int>(fogmode) << 8) | ((int)lightmode << 16);
 		}
 		else
 		{
 			VPUniforms.mGlobVis = (float)R_GetGlobVis(r_viewwindow, r_visibility) / 32.f;
-			VPUniforms.mPalLightLevels = static_cast<int>(gl_bandedswlight) | (static_cast<int>(gl_fogmode) << 8) | ((int)lightmode << 16);
+			VPUniforms.mPalLightLevels = static_cast<int>(gl_bandedswlight) | (static_cast<int>(fogmode) << 8) | ((int)lightmode << 16);
 		}
 		VPUniforms.mClipLine.X = -10000000.0f;
 		VPUniforms.mShadowmapFilter = gl_shadowmap_filter;
@@ -224,10 +216,10 @@ HWDrawInfo *HWDrawInfo::EndDrawInfo()
 
 void HWDrawInfo::ClearBuffers()
 {
-    otherFloorPlanes.Clear();
-    otherCeilingPlanes.Clear();
-    floodFloorSegs.Clear();
-    floodCeilingSegs.Clear();
+	otherFloorPlanes.Clear();
+	otherCeilingPlanes.Clear();
+	floodFloorSegs.Clear();
+	floodCeilingSegs.Clear();
 
 	// clear all the lists that might not have been cleared already
 	MissingUpperTextures.Clear();
@@ -305,7 +297,7 @@ void HWDrawInfo::SetViewArea()
 
 //-----------------------------------------------------------------------------
 //
-// 
+//
 //
 //-----------------------------------------------------------------------------
 
@@ -320,7 +312,7 @@ int HWDrawInfo::SetFullbrightFlags(player_t *player)
 		int cm = CM_DEFAULT;
 		if (cplayer->extralight == INT_MIN)
 		{
-			cm = CM_FIRSTSPECIALCOLORMAP + REALINVERSECOLORMAP;
+			cm = static_cast<int>(CM_FIRSTSPECIALCOLORMAP) + static_cast<int>(REALINVERSECOLORMAP);
 			Viewpoint.extralight = 0;
 			FullbrightFlags = Fullbright;
 			// This does never set stealth vision.
@@ -331,23 +323,20 @@ int HWDrawInfo::SetFullbrightFlags(player_t *player)
 			FullbrightFlags = Fullbright;
 			if (gl_enhanced_nv_stealth > 2) FullbrightFlags |= StealthVision;
 		}
-		else if (cplayer->fixedlightlevel != -1)
+		else if (cplayer->fixedlightlevel != -1 || cplayer->bForceFullbright)
 		{
-			auto torchtype = PClass::FindActor(NAME_PowerTorch);
-			auto litetype = PClass::FindActor(NAME_PowerLightAmp);
-			for (AActor *in = cplayer->mo->Inventory; in; in = in->Inventory)
+			EFullbrightMode fbmode = cplayer->GetFullbrightMode();
+			if (fbmode != FBMODE_NONE)
 			{
-				// Need special handling for light amplifiers 
-				if (in->IsKindOf(torchtype))
+				FullbrightFlags = Fullbright;
+				if (fbmode == FBMODE_TORCH)
 				{
-					FullbrightFlags = Fullbright;
-					if (gl_enhanced_nv_stealth > 1) FullbrightFlags |= StealthVision;
+					FullbrightFlags |= StealthVision * (gl_enhanced_nv_stealth > 1);
 				}
-				else if (in->IsKindOf(litetype))
+				else
 				{
-					FullbrightFlags = Fullbright;
-					if (gl_enhanced_nightvision) FullbrightFlags |= Nightvision;
-					if (gl_enhanced_nv_stealth > 0) FullbrightFlags |= StealthVision;
+					FullbrightFlags |= Nightvision * (fbmode == FBMODE_NIGHTVISION);
+					FullbrightFlags |= StealthVision * (gl_enhanced_nv_stealth > 0);
 				}
 			}
 		}
@@ -925,7 +914,7 @@ void HWDrawInfo::EndDrawScene(sector_t * viewsector, FRenderState &state)
 		DrawCoronas(state);
 	}*/
 
-	// [BB] HUD models need to be rendered here. 
+	// [BB] HUD models need to be rendered here.
 	const bool renderHUDModel = IsHUDModelForPlayerAvailable(players[consoleplayer].camera->player);
 	if (renderHUDModel)
 	{
@@ -994,7 +983,7 @@ void HWDrawInfo::Set3DViewport(FRenderState &state)
 //
 // gl_drawscene - this function renders the scene from the current
 // viewpoint, including mirrors and skyboxes and other portals
-// It is assumed that the HWPortal::EndFrame returns with the 
+// It is assumed that the HWPortal::EndFrame returns with the
 // stencil, z-buffer and the projection matrix intact!
 //
 //-----------------------------------------------------------------------------
@@ -1086,10 +1075,9 @@ void HWDrawInfo::AddSubsectorToPortal(FSectorPortalGroup *ptg, subsector_t *sub)
 	auto portal = FindPortal(ptg);
 	if (!portal)
 	{
-        portal = new HWSectorStackPortal(&portalState, ptg);
+		portal = new HWSectorStackPortal(&portalState, ptg);
 		Portals.Push(portal);
 	}
-    auto ptl = static_cast<HWSectorStackPortal*>(portal);
+	auto ptl = static_cast<HWSectorStackPortal*>(portal);
 	ptl->AddSubsector(sub);
 }
-

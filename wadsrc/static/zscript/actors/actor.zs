@@ -1,34 +1,23 @@
 /*
 ** actor.zs
 **
+**
+**
 **---------------------------------------------------------------------------
 **
-** Copyright 2010-2017 Christoph Oelckers
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2017 Christoph Oelckers
 ** Copyright 2017-2025 GZDoom Maintainers and Contributors
-** All rights reserved.
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
 **
 **---------------------------------------------------------------------------
 **
@@ -188,7 +177,7 @@ class Actor : Thinker native
 	const STEEPSLOPE = (46342./65536.);	// [RH] Minimum floorplane.c value for walking
 	const FLOATRANDZ = ONCEILINGZ-1;
 	const TELEFRAG_DAMAGE = 1000000;
-	const MinVel = 1./65536;
+	const MinVel = double.equal_epsilon;
 	const LARGE_MASS = 10000000;	// not INT_MAX on purpose
 	const ORIG_FRICTION = (0xE800/65536.);	// original value
 	const ORIG_FRICTION_FACTOR = (2048/65536.);	// original value
@@ -236,7 +225,7 @@ class Actor : Thinker native
 	native TextureID ceilingpic;
 	native double Height;
 	native readonly double Radius;
-    native readonly double RenderRadius;
+		native readonly double RenderRadius;
 	native double projectilepassheight;
 	native int tics;
 	native readonly State CurState;
@@ -324,6 +313,9 @@ class Actor : Thinker native
 	native int PoisonDurationReceived;
 	native int PoisonPeriodReceived;
 	native Actor Poisoner;
+	native int MinRespawnTics;
+	native int RespawnDice;
+
 	native Inventory Inv;
 	native uint8 smokecounter;
 	native uint8 FriendPlayer;
@@ -481,6 +473,8 @@ class Actor : Thinker native
 	property ShadowPenaltyFactor: ShadowPenaltyFactor;
 	property AutomapOffsets : AutomapOffsets;
 	property LandingSpeed: LandingSpeed;
+	property MinRespawnTics: MinRespawnTics;
+	property RespawnDice: RespawnDice;
 
 	// need some definition work first
 	//FRenderStyle RenderStyle;
@@ -572,6 +566,8 @@ class Actor : Thinker native
 		RenderRequired 0;
 		FriendlySeeBlocks 10; // 10 (blocks) * 128 (one map unit block)
 		LandingSpeed -8; // landing speed from a jump with normal gravity (squats the player's view)
+		MinRespawnTics 0; //0 is default value defined in SKILLP_Respawn, negative is seconds
+		RespawnDice 4;
 	}
 
 	// Functions
@@ -620,8 +616,8 @@ class Actor : Thinker native
 	virtual native void BeginPlay();
 	virtual native void Activate(Actor activator);
 	virtual native void Deactivate(Actor activator);
-	virtual native int DoSpecialDamage (Actor target, int damage, Name damagetype);
-	virtual native int TakeSpecialDamage (Actor inflictor, Actor source, int damage, Name damagetype);
+	virtual native int DoSpecialDamage (Actor target, int damage, Name damagetype, int flags = 0, double angle = 0);
+	virtual native int TakeSpecialDamage (Actor inflictor, Actor source, int damage, Name damagetype, int flags = 0, double angle = 0);
 	virtual native void Die(Actor source, Actor inflictor, int dmgflags = 0, Name MeansOfDeath = 'none');
 	virtual native bool Slam(Actor victim);
 	virtual void Touch(Actor toucher) {}
@@ -660,7 +656,7 @@ class Actor : Thinker native
 	// 'item' is null due to being destroyed with GoAwayAndDie() on pickup.
 	virtual void HasReceived(Inventory item, class<Inventory> itemcls = null) {}
 
-  // Called in TryMove if the mover ran into another Actor. This isn't called on players
+	// Called in TryMove if the mover ran into another Actor. This isn't called on players
 	// if they're currently predicting. Guarantees collisions unlike CanCollideWith.
 	virtual void CollidedWith(Actor other, bool passive) {}
 
@@ -684,7 +680,7 @@ class Actor : Thinker native
 	}
 
 	// Called after an Actor has been resurrected.
-	virtual void OnRevive() {}
+	version("4.15.1") virtual void OnRevive() {}
 
 	// Called when an actor is to be reflected by a disc of repulsion.
 	// Returns true to continue normal blast processing.
@@ -888,7 +884,7 @@ class Actor : Thinker native
 	native void SpawnTeleportFog(Vector3 pos, bool beforeTele, bool setTarget);
 	native Actor RoughMonsterSearch(int distance, bool onlyseekable = false, bool frontonly = false, double fov = 0);
 	native clearscope int ApplyDamageFactor(Name damagetype, int damage);
-	native int GetModifiedDamage(Name damagetype, int damage, bool passive, Actor inflictor = null, Actor source = null, int flags = 0);
+	native int GetModifiedDamage(Name damagetype, int damage, bool passive, Actor inflictor = null, Actor source = null, int flags = 0, double angle = 0.);
 	native bool CheckBossDeath();
 	native bool CheckFov(Actor target, double fov);
 
@@ -1604,14 +1600,14 @@ class Actor : Thinker native
 
 
 	//================================================
-	// 
+	//
 	// Animation Sequence
-	// 
+	//
 	//================================================
-	
+
 	native version("4.15.1") AnimationLayer SetAnimationLayerAnimation(AnimationLayer layer, Name animName, double framerate = -1, int startFrame = -1, int loopFrame = -1, int endFrame = -1, int interpolateTics = -1, int flags = 0);
 	native version("4.15.1") ui AnimationLayer SetAnimationLayerAnimationUI(AnimationLayer layer, Name animName, double framerate = -1, int startFrame = -1, int loopFrame = -1, int endFrame = -1, int interpolateTics = -1, int flags = 0);
-	
+
 	native version("4.15.1") AnimationLayer SetAnimationLayerFrameRate(AnimationLayer layer, double framerate);
 	native version("4.15.1") ui AnimationLayer SetAnimationLayerFrameRateUI(AnimationLayer layer, double framerate);
 
@@ -1620,7 +1616,7 @@ class Actor : Thinker native
 
 	native version("4.15.1") static clearscope PrecalculatedAnimationFrame BlendAnimationFrames(PrecalculatedAnimationFrame a, PrecalculatedAnimationFrame b, double t);
 	native version("4.15.1") static clearscope PrecalculatedAnimationFrame OffsetAnimationFrame(PrecalculatedAnimationFrame frame, PrecalculatedAnimationFrame offset);
-	
+
 	native version("4.15.1") clearscope PrecalculatedAnimationFrame CalculateAnimationFrame(readonly<InterpolatedFrame> frame);
 
 	// tic should be Level.totaltime + fractic
@@ -1630,22 +1626,22 @@ class Actor : Thinker native
 	// frame2 is the frame to interpolate to, always an InterpolatedFrame
 	// inter is the ratio between frame1 and frame2, if the animation isn't interpolating, it will be 1 and frame 1 will be null
 	// frame1/2 will both be null if an invalid tic or layer are passed
-	// 
+	//
 	// NOTE: while interpolating, an animation may need to perform up to 4-way blending if both frame1 and frame2 are InterpolatedFrame
 	//
 	native version("4.15.1") static clearscope AnimationFrame, InterpolatedFrame, double FindAnimationFrameAt(readonly<AnimationLayer> layer, double tic);
-	
+
 	native version("4.15.1") clearscope AnimationFrame, InterpolatedFrame, double FindAnimationFrame(readonly<AnimationLayer> layer);
 	native version("4.15.1") clearscope AnimationFrame, InterpolatedFrame, double FindAnimationFrameUI(readonly<AnimationLayer> layer);
 
 	native version("4.15.1") void SetBones(PrecalculatedAnimationFrame bones, int mode = SB_ADD, double interpolation_duration = 1.0);
 	native version("4.15.1") ui void SetBonesUI(PrecalculatedAnimationFrame bones, int mode = SB_ADD, double interpolation_duration = 1.0);
 	native version("4.15.1") ui void OverwriteBones(PrecalculatedAnimationFrame bones, int mode = SB_ADD); // no interpolation, faster
-	
+
 	native version("4.15.1") void SetBonesRange(PrecalculatedAnimationFrame bones, int start, int length, int mode = SB_ADD, double interpolation_duration = 1.0);
 	native version("4.15.1") ui void SetBonesRangeUI(PrecalculatedAnimationFrame bones, int start, int length, int mode = SB_ADD, double interpolation_duration = 1.0);
 	native version("4.15.1") ui void OverwriteBonesRange(PrecalculatedAnimationFrame bones, int start, int length, int mode = SB_ADD); // no interpolation, faster
-	
+
 	native version("4.15.1") void SetBonesMask(PrecalculatedAnimationFrame bones, Array<bool> mask, int mode = SB_ADD, double interpolation_duration = 1.0);
 	native version("4.15.1") ui void SetBonesMaskUI(PrecalculatedAnimationFrame bones, Array<bool> mask, int mode = SB_ADD, double interpolation_duration = 1.0);
 	native version("4.15.1") ui void OverwriteBonesMask(PrecalculatedAnimationFrame bones, Array<bool> mask, int mode = SB_ADD); // no interpolation, faster
@@ -1768,7 +1764,7 @@ class Actor : Thinker native
 				A_StartSound("*grunt", CHAN_VOICE, CHANF_NORUMBLE);
 				grunted = true;
 			}
-			bool isliquid = (pos.Z <= floorz) && HitFloor ();
+			bool isliquid = (pos.Z <= floorz) && GetFloorTerrain().IsLiquid;
 			if (onmobj != NULL || !isliquid)
 			{
 				if (!grunted)
@@ -1823,7 +1819,7 @@ class Actor : Thinker native
 	{
 		if (!CVar.GetCVar("haptics_do_world").GetBool()) return;
 
-		bool isliquid = (pos.Z <= floorz) && HitFloor ();
+		bool isliquid = (pos.Z <= floorz) && GetFloorTerrain().IsLiquid;
 		if (onmobj != NULL || !isliquid)
 		{
 			Haptics.Rumble("*land");

@@ -1,3 +1,22 @@
+/*
+** fighteraxe.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // The Fighter's Axe --------------------------------------------------------
 
@@ -75,7 +94,7 @@ class FWeapAxe : FighterWeapon
 		FAXE A 1;
 		Goto ReadyGlow;
 	}
-	
+
 	override State GetUpState ()
 	{
 		return Ammo1.Amount ? FindState ("SelectGlow") : Super.GetUpState();
@@ -96,8 +115,8 @@ class FWeapAxe : FighterWeapon
 		return Ammo1.Amount ? FindState ("FireGlow") :  Super.GetAtkState(hold);
 	}
 
-	
-	
+
+
 	//============================================================================
 	//
 	// A_FAxeCheckReady
@@ -256,7 +275,7 @@ class FWeapAxe : FighterWeapon
 							t.linetarget.Thrust(power, t.attackAngleFromSource);
 						}
 						AdjustPlayerAngle(t);
-						
+
 						weapon.DepleteAmmo (weapon.bAltFire, false);
 
 						if ((weapon.Ammo1 == null || weapon.Ammo1.Amount == 0) &&

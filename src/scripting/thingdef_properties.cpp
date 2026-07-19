@@ -1,39 +1,23 @@
 /*
-** thingdef-properties.cpp
+** thingdef_properties.cpp
 **
 ** Actor denitions - properties and flags handling
 **
 **---------------------------------------------------------------------------
-** Copyright 2002-2007 Christoph Oelckers
-** Copyright 2004-2007 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2004-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
-** 4. When not used as part of ZDoom or a ZDoom derivative, this code will be
-**    covered by the terms of the GNU General Public License as published by
-**    the Free Software Foundation; either version 2 of the License, or (at
-**    your option) any later version.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: LicenseRef-ZDoom-Conditional
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -273,7 +257,7 @@ INTBOOL CheckActorFlag(AActor *owner, const char *flagname, bool printerror)
 // properties is not recommended and may not do what is expected
 //
 //===========================================================================
-void HandleDeprecatedFlags(AActor *actor, int set, int index)
+int HandleDeprecatedFlags(AActor *actor, int set, int index)
 {
 	switch (index)
 	{
@@ -359,6 +343,7 @@ void HandleDeprecatedFlags(AActor *actor, int set, int index)
 	default:
 		break;	// silence GCC
 	}
+	return set;
 }
 
 // the interface here works on object, but currently all deprecated flags affect subclasses of Actor only
@@ -367,8 +352,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DObject, HandleDeprecatedFlags, HandleDeprecatedFl
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_INT(set);
 	PARAM_INT(index);
-	HandleDeprecatedFlags(self, set, index);
-	return 0;
+	ACTION_RETURN_BOOL(HandleDeprecatedFlags(self, set, index));
 }
 //===========================================================================
 //
@@ -415,7 +399,7 @@ int CheckDeprecatedFlags(AActor *actor, int index)
 
 	case DEPF_HEXENBOUNCE:
 		return (actor->BounceFlags & (BOUNCE_TypeMask|BOUNCE_UseSeeSound)) == BOUNCE_HexenCompat;
-	
+
 	case DEPF_DOOMBOUNCE:
 		return (actor->BounceFlags & (BOUNCE_TypeMask|BOUNCE_UseSeeSound)) == BOUNCE_DoomCompat;
 
@@ -447,7 +431,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DObject, CheckDeprecatedFlags, CheckDeprecatedFlag
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 int MatchString (const char *in, const char **strings)
@@ -765,8 +749,8 @@ DEFINE_PROPERTY(renderstyle, S, Actor)
 {
 	PROP_STRING_PARM(str, 0);
 	static const char * renderstyles[]={
-		"NONE", "NORMAL", "FUZZY", "SOULTRANS", "OPTFUZZY", "STENCIL", 
-		"TRANSLUCENT", "ADD", "SHADED", "SHADOW", "SUBTRACT", "ADDSTENCIL", 
+		"NONE", "NORMAL", "FUZZY", "SOULTRANS", "OPTFUZZY", "STENCIL",
+		"TRANSLUCENT", "ADD", "SHADED", "SHADOW", "SUBTRACT", "ADDSTENCIL",
 		"ADDSHADED", "COLORBLEND", "COLORADD", "MULTIPLY", NULL };
 
 	static const int renderstyle_values[]={
@@ -808,7 +792,7 @@ DEFINE_PROPERTY(translation, L, Actor)
 		}
 		defaults->Translation = TRANSLATION(TRANSLATION_Standard, trans);
 	}
-	else 
+	else
 	{
 		FRemapTable CurrentTranslation;
 
@@ -1075,7 +1059,7 @@ DEFINE_PROPERTY(clearflags, 0, Actor)
 DEFINE_PROPERTY(monster, 0, Actor)
 {
 	// sets the standard flags for a monster
-	defaults->flags|=MF_SHOOTABLE|MF_COUNTKILL|MF_SOLID; 
+	defaults->flags|=MF_SHOOTABLE|MF_COUNTKILL|MF_SOLID;
 	defaults->flags2|=MF2_PUSHWALL|MF2_MCROSS|MF2_PASSMOBJ;
 	defaults->flags3|=MF3_ISMONSTER;
 	defaults->flags4|=MF4_CANUSEWALLS;
@@ -1087,7 +1071,7 @@ DEFINE_PROPERTY(monster, 0, Actor)
 DEFINE_PROPERTY(projectile, 0, Actor)
 {
 	// sets the standard flags for a projectile
-	defaults->flags|=MF_NOBLOCKMAP|MF_NOGRAVITY|MF_DROPOFF|MF_MISSILE; 
+	defaults->flags|=MF_NOBLOCKMAP|MF_NOGRAVITY|MF_DROPOFF|MF_MISSILE;
 	defaults->flags2|=MF2_IMPACT|MF2_PCROSS|MF2_NOTELEPORT;
 	if (gameinfo.gametype&GAME_Raven) defaults->flags5|=MF5_BLOODSPLATTER;
 }
@@ -1250,7 +1234,7 @@ static void SetIcon(FTextureID &icon, Baggage &bag, const char *i)
 		icon = TexMan.CheckForTexture(i, ETextureType::MiscPatch);
 		if (!icon.isValid())
 		{
-			// Don't print warnings if the item is for another game or if this is a shareware IWAD. 
+			// Don't print warnings if the item is for another game or if this is a shareware IWAD.
 			// Strife's teaser doesn't contain all the icon graphics of the full game.
 			if ((bag.Info->ActorInfo()->GameFilter == GAME_Any || bag.Info->ActorInfo()->GameFilter & gameinfo.gametype) &&
 				!(gameinfo.flags&GI_SHAREWARE) && fileSystem.GetFileContainer(bag.Lumpnum) != 0)
@@ -1445,7 +1429,7 @@ DEFINE_CLASS_PROPERTY_PREFIX(powerup, type, S, PowerupGiver)
 {
 	PROP_STRING_PARM(str, 0);
 
-	// Yuck! What was I thinking when I decided to prepend "Power" to the name? 
+	// Yuck! What was I thinking when I decided to prepend "Power" to the name?
 	// Now it's too late to change it...
 	PClassActor *cls = PClass::FindActor(str);
 	auto pow = PClass::FindActor(NAME_Powerup);
@@ -1648,7 +1632,7 @@ DEFINE_CLASS_PROPERTY_PREFIX(player, spawnclass, L, PlayerPawn)
 		PROP_INT_PARM(val, 1);
 		if (val > 0) SpawnMask |= 1<<(val-1);
 	}
-	else 
+	else
 	{
 		for(int i=1; i<PROP_PARM_COUNT; i++)
 		{
@@ -1936,13 +1920,11 @@ DEFINE_CLASS_PROPERTY(type, S, DynamicLight)
 	PROP_STRING_PARM(str, 0);
 	static const char * ltype_names[]={
 		"Point","Pulse","Flicker","Sector","RandomFlicker", "ColorPulse", "ColorFlicker", "RandomColorFlicker", nullptr};
-	
+
 	static const int ltype_values[]={
 		PointLight, PulseLight, FlickerLight, SectorLight, RandomFlickerLight, ColorPulseLight, ColorFlickerLight, RandomColorFlickerLight };
-	
+
 	int style = MatchString(str, ltype_names);
 	if (style < 0) I_Error("Unknown light type '%s'", str);
 	defaults->IntVar(NAME_lighttype) = ltype_values[style];
 }
-
-

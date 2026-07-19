@@ -1,66 +1,56 @@
 /*
 ** version.h
 **
+** ZDoom version constants
+**
 **---------------------------------------------------------------------------
-** Copyright 1998-2007 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
 
-#ifndef __VERSION_H__
-#define __VERSION_H__
-
-const char *GetGitDescription();
-const char *GetGitHash();
-const char *GetGitTime();
-const char *GetVersionString();
+#pragma once
 
 /** Lots of different version numbers **/
 
-#define VERSIONSTR "4.15pre"
+#define VERSIONSTR "5.0.0-pre"
 
 // The version as seen in the Windows resource
-#define RC_FILEVERSION 4,14,9999,0
-#define RC_PRODUCTVERSION 4,14,9999,0
+#define RC_FILEVERSION 4,9999,9999,0
+#define RC_PRODUCTVERSION 4,9999,9999,0
 #define RC_PRODUCTVERSION2 VERSIONSTR
 // These are for content versioning.
-#define VER_MAJOR 4
-#define VER_MINOR 15
-#define VER_REVISION 1
+#define VER_MAJOR 5
+#define VER_MINOR 0
+#define VER_REVISION 0
 
-// This should always refer to the GZDoom version a derived port is based on and not reflect the derived port's version number!
-#define ENG_MAJOR 4
-#define ENG_MINOR 15
-#define ENG_REVISION 1
+// This should always refer to the UZDoom version a derived port is based on and not reflect the derived port's version number!
+#define ENG_MAJOR 5
+#define ENG_MINOR 0
+#define ENG_REVISION 0
+
+#define RC_REVISION 999999
+
+#define CURRENT_UPDATE_CHANNEL UpdateChannel::PREVIEW
 
 // Version stored in the ini's [LastRun] section.
 // Bump it if you made some configuration change that you want to
 // be able to migrate in FGameConfigFile::DoGlobalSetup().
-#define LASTRUNVERSION "226"
+#define ENGINELASTRUNVERSION "232"
+#define GAMELASTRUNVERSION "1"
 
 // Protocol version used in demos.
 // Bump it if you change existing DEM_ commands or add new ones.
@@ -87,6 +77,15 @@ const char *GetVersionString();
 
 // This is so that derivates can use the same savegame versions without worrying about engine compatibility
 #define GAMESIG "GZDOOM"
+
+// list of compatible ports, ex.:
+// #define ALLOWLOADIN "PORT1", "PORT2", "PORT3"
+#define ALLOWLOADIN "LZDOOM", "UZDOOM"
+
+#ifndef LOAD_GZDOOM_4142_SAVES
+	#define LOAD_GZDOOM_4142_SAVES 1
+#endif
+
 #define BASEWAD "domedoom.pk3"
 // Set OPTIONALWAD to "" (null) to disable searching for it
 #define OPTIONALWAD "game_support.pk3"
@@ -99,8 +98,20 @@ const char *GetVersionString();
 #define GAMENAMELOWERCASE "domedoom"
 #define APPID "qc.sat.DomeDoom"
 #define QUERYIWADDEFAULT true
-#define FORUM_URL "http://forum.zdoom.org/"
-#define BUGS_FORUM_URL	"http://forum.zdoom.org/viewforum.php?f=2"
+#define BUGS_URL "https://github.com/edumeneses/domedoom/issues"
+
+#define UPDATER_URL_STABLE "https://zdoom.org/uzdoom-latest.php"
+#define UPDATER_URL_STABLE_BACKUP "https://api.github.com/repos/UZDoom/UZDoom/releases/latest"
+
+#define UPDATER_URL_PREVIEW "https://zdoom.org/uzdoom-preview.php"
+#define UPDATER_URL_PREVIEW_BACKUP "https://api.github.com/repos/UZDoom/UZDoom/releases/tags/x-preview"
+
+#define UPDATER_URL_TESTING "https://zdoom.org/uzdoom-testing.php"
+#define UPDATER_URL_TESTING_BACKUP "https://api.github.com/repos/UZDoom/UZDoom/releases/tags/x-testing"
+
+#define UPDATER_URL_ALL "https://zdoom.org/uzdoom-all.php"
+#define UPDATER_URL_ALL_BACKUP "https://api.github.com/repos/UZDoom/UZDoom/releases"
+
 // For QUERYIWADDEFAULT: Set to 'true' to always show dialog box on startup by default, 'false' to disable.
 // Should set to 'false' for standalone games, and set to 'true' for regular source port forks that are meant to run any game.
 
@@ -108,16 +119,26 @@ const char *GetVersionString();
 #define GAME_DIR GAMENAME
 #elif defined(__HAIKU__)
 #define GAME_DIR "config/settings/" GAMENAME
-#else
-#define GAME_DIR ".config/" GAMENAMELOWERCASE
 #endif
 
-#define DEFAULT_DISCORD_APP_ID "951303644597325885"
+#define DEFAULT_DISCORD_APP_ID "1428620310302691349"
 
 const int SAVEPICWIDTH = 216;
 const int SAVEPICHEIGHT = 162;
 const int VID_MIN_WIDTH = 320;
 const int VID_MIN_HEIGHT = 200;
 
+const char *GetVersionString();
+const char *GetGitHash();
+const char *GetGitTime();
+const char *GetGitTag();
+int GetGitDistance();
 
-#endif //__VERSION_H__
+#define RC_REVISION_NOTRC 999999
+
+#ifdef __cplusplus
+
+#include <compare>
+#include <cstdint>
+
+#endif // __cplusplus

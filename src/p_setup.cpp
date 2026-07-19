@@ -1,29 +1,22 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1994-1996 Raven Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2018 Christoph Oelckers
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-// DESCRIPTION:
-//
-//-----------------------------------------------------------------------------
-
+/*
+** p_setup.cpp
+**
+** Setup a game, startup stuff.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include <math.h>
 #ifdef _MSC_VER
@@ -296,7 +289,7 @@ void FLevelLocals::ClearLevelData(bool fullgc)
 		for (DObject* probe = GC::Root; probe != nullptr; probe = probe->ObjNext)
 			probe->ClearNativePointerFields({ fieldTypes, std::size(fieldTypes) });
 	}
-	
+
 	TravellingThinkers.Clear();
 	interpolator.ClearInterpolations();	// [RH] Nothing to interpolate on a fresh level.
 	Thinkers.DestroyAllThinkers(fullgc);
@@ -305,23 +298,27 @@ void FLevelLocals::ClearLevelData(bool fullgc)
 
 	total_monsters = total_items = total_secrets =
 	killed_monsters = found_items = found_secrets = 0;
+	LocalTimer = LocalWorldTimer = 0;
+	sky1pos = sky2pos = 0.0;
+	hw_sky1pos = hw_sky2pos = hw_skymistpos = 0.0;
+	TexAnim.ResetTimers();
 
-	max_velocity = avg_velocity = 0;
+	ClearVelocities();
 
 	for (int i = 0; i < 4; i++)
 	{
 		UDMFKeys[i].Clear();
 	}
-	
+
 	SN_StopAllSequences(this);
 
 	FStrifeDialogueNode *node;
-	
+
 	while (StrifeDialogues.Pop (node))
 	{
 		delete node;
 	}
-	
+
 	DialogueRoots.Clear();
 	ClassRoots.Clear();
 
@@ -680,7 +677,7 @@ CCMD(dumpgeometry)
 			for (int j = 0; j<sector.subsectorcount; j++)
 			{
 				subsector_t * sub = sector.subsectors[j];
-				
+
 				Printf(PRINT_LOG, "    Subsector %d - real sector = %d - %s\n", int(sub->Index()), sub->sector->sectornum, sub->hacked & 1 ? "hacked" : "");
 				for (uint32_t k = 0; k<sub->numlines; k++)
 				{
@@ -705,7 +702,7 @@ CCMD(dumpgeometry)
 					{
 						Printf(PRINT_LOG, ", back sector = %d (no partnerseg)", seg->backsector->sectornum);
 					}
-					
+
 					Printf(PRINT_LOG, "\n");
 				}
 			}
@@ -765,4 +762,3 @@ CUSTOM_CVAR(Bool, forcewater, false, CVAR_ARCHIVE | CVAR_SERVERINFO)
 		}
 	}
 }
-

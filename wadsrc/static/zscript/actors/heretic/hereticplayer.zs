@@ -1,3 +1,23 @@
+/*
+** hereticplayer.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 class HereticPlayer : PlayerPawn
 {
 	Default
@@ -88,7 +108,7 @@ class HereticPlayer : PlayerPawn
 		FDTH R 4 BRIGHT;
 		ACLO E 35 A_CheckPlayerDone;
 		Wait;
-	AltSkinDeath:	
+	AltSkinDeath:
 		PLAY H 10;
 		PLAY I 10 A_PlayerScream;
 		PLAY J 10 A_NoBlocking;
@@ -103,7 +123,7 @@ class HereticPlayer : PlayerPawn
 		PLAY W -1;
 		Stop;
 	}
-}				
+}
 
 // The player's skull -------------------------------------------------------
 
@@ -132,4 +152,3 @@ class BloodySkull : PlayerChunk
 		Wait;
 	}
 }
-

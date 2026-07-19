@@ -1,3 +1,26 @@
+/*
+** intermission.h
+**
+** Framework for intermissions (text screens, slideshows, etc)
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2010-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #ifndef __INTERMISSION_H
 #define __INTERMISSION_H
 
@@ -247,7 +270,7 @@ class DIntermissionScreenText : public DIntermissionScreen
 	int mTextLen;
 	EColorRange mTextColor;
 	bool usesDefault;
-	
+
 	void MeasureText(bool posisfixed);
 	FString RemoveLineFeeds(const char *text);
 
@@ -339,8 +362,8 @@ DIntermissionController* F_StartIntermission(FIntermissionDescriptor *desc, int 
 DIntermissionController* F_StartIntermission(FName desc, int state);
 
 // Create an intermission from old cluster data
-DIntermissionController* F_StartFinale (const char *music, int musicorder, int cdtrack, unsigned int cdid, const char *flat, 
-					const char *text, INTBOOL textInLump, INTBOOL finalePic, INTBOOL lookupText, 
+DIntermissionController* F_StartFinale (const char *music, int musicorder, int cdtrack, unsigned int cdid, const char *flat,
+					const char *text, INTBOOL textInLump, INTBOOL finalePic, INTBOOL lookupText,
 					bool ending, FName endsequence = NAME_None);
 
 

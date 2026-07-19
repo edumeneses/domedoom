@@ -1,3 +1,22 @@
+/*
+** fighterfist.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Fist (first weapon) ------------------------------------------------------
 
@@ -42,7 +61,7 @@ class FWeapFist : FighterWeapon
 		FPCH E 10 Offset (0, 150);
 		Goto Ready;
 	}
-	
+
 	//============================================================================
 	//
 	// TryPunch
@@ -73,7 +92,7 @@ class FWeapFist : FighterWeapon
 			if (t.linetarget != null)
 			{
 				// The mass threshold has been changed to CommanderKeen's value which has been used most often for 'unmovable' stuff.
-				if (t.linetarget.player != null || 
+				if (t.linetarget.player != null ||
 					(t.linetarget.Mass < 10000000 && (t.linetarget.bIsMonster)))
 				{
 					if (!t.linetarget.bDontThrust)
@@ -120,7 +139,7 @@ class FWeapFist : FighterWeapon
 		double slope = AimLineAttack (angle, DEFMELEERANGE, null, 0., ALF_CHECK3D);
 		LineAttack (angle, DEFMELEERANGE, slope, damage, 'Melee', "PunchPuff", true);
 	}
-	
+
 }
 
 // Punch puff ---------------------------------------------------------------

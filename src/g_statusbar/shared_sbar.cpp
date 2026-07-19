@@ -1,71 +1,54 @@
 /*
 ** shared_sbar.cpp
+**
 ** Base status bar implementation
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2006 Randy Heit
+**
+** Copyright 1998-2016 Marisa Heit
 ** Copyright 2017 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
 
 #include <assert.h>
 
-
-#include "sbar.h"
 #include "c_cvars.h"
 #include "c_dispatch.h"
-#include "c_console.h"
-#include "v_video.h"
-#include "filesystem.h"
-#include "s_sound.h"
-#include "gi.h"
-#include "doomstat.h"
-#include "g_level.h"
+#include "cmdlib.h"
 #include "d_net.h"
 #include "d_player.h"
-#include "serializer.h"
-#include "serialize_obj.h"
-#include "r_utility.h"
-#include "cmdlib.h"
-#include "g_levellocals.h"
-#include "vm.h"
-#include "p_acs.h"
-#include "sbarinfo.h"
-#include "gstrings.h"
+#include "doomstat.h"
 #include "events.h"
+#include "filesystem.h"
 #include "g_game.h"
-#include "utf8.h"
+#include "g_levellocals.h"
+#include "gi.h"
+#include "gstrings.h"
+#include "p_acs.h"
+#include "r_utility.h"
+#include "s_sound.h"
+#include "sbar.h"
+#include "sbarinfo.h"
+#include "serialize_obj.h" // IWYU pragma: keep
+#include "serializer.h"
 #include "texturemanager.h"
-#include "v_palette.h"
 #include "v_draw.h"
-#include "m_fixed.h"
-
-#include "../version.h"
+#include "v_palette.h"
+#include "v_video.h"
+#include "version.h"
+#include "vm.h"
 
 #define XHAIRSHRINKSIZE		(1./18)
 #define XHAIRPICKUPSIZE		(2+XHAIRSHRINKSIZE)
@@ -89,9 +72,11 @@ EXTERN_CVAR (Bool, am_showlevelname)
 EXTERN_CVAR(Bool, inter_subtitles)
 EXTERN_CVAR(Bool, ui_screenborder_classic_scaling)
 
-CVAR(Int, hud_scale, 0, CVAR_ARCHIVE);
-CVAR(Bool, log_vgafont, false, CVAR_ARCHIVE)
-CVAR(Bool, hud_oldscale, true, CVAR_ARCHIVE)
+CVAR(Int, hud_scale, -1, CVAR_ARCHIVE);
+CVAR(Bool, log_vgafont, false, CVAR_ARCHIVE);
+CVAR(Bool, hud_oldscale, true, CVAR_ARCHIVE);
+CVAR(Float, crosshair_offset_x, 0., CVAR_ARCHIVE);
+CVAR(Float, crosshair_offset_y, 0., CVAR_ARCHIVE);
 
 DBaseStatusBar *StatusBar;
 
@@ -105,7 +90,7 @@ CVAR (Flag, pf_hazard,		paletteflash, PF_HAZARD)
 
 
 // Stretch status bar to full screen width?
-CUSTOM_CVAR (Int, st_scale, 0, CVAR_ARCHIVE)
+CUSTOM_CVAR (Int, st_scale, -1, CVAR_ARCHIVE)
 {
 	if (self < -1)
 	{
@@ -123,7 +108,7 @@ EXTERN_CVAR(Float, hud_scalefactor)
 EXTERN_CVAR(Bool, hud_aspectscale)
 
 CVAR (Bool, crosshairon, true, CVAR_ARCHIVE);
-CVAR (Int, crosshair, 0, CVAR_ARCHIVE)
+CVAR (Int, crosshair, 1, CVAR_ARCHIVE)
 CVAR (Bool, crosshairforce, false, CVAR_ARCHIVE)
 CUSTOM_CVAR(Int, am_showmaplabel, 2, CVAR_ARCHIVE)
 {
@@ -448,8 +433,8 @@ void DBaseStatusBar::SetScale ()
 		int sby = VerticalResolution - RelTop;
 		float aspect = ActiveRatio(w, h);
 		if (!AspectTallerThanWide(aspect))
-		{ 
-			// Wider or equal than 4:3 
+		{
+			// Wider or equal than 4:3
 			SBarTop = Scale(sby, h, VerticalResolution);
 			double width4_3 = w * 1.333 / aspect;
 			ST_X = int((w - width4_3) / 2);
@@ -538,7 +523,7 @@ void DBaseStatusBar::DoDrawAutomapHUD(int crdefault, int highlight)
 	auto scalev = GetHUDScale();
 	int vwidth = int(twod->GetWidth() / scalev.X);
 	int vheight = int(twod->GetHeight() / scalev.Y);
-	
+
 	auto font = generic_ui ? NewSmallFont : SmallFont;
 	auto font2 = font;
 	auto fheight = font->GetHeight();
@@ -916,7 +901,7 @@ void DBaseStatusBar::RefreshViewBorder ()
 		DrawBorder(twod, tex, 0, viewwindowy, viewwindowx, viewheight + viewwindowy);
 		DrawBorder(twod, tex, viewwindowx + viewwidth, viewwindowy, Width, viewheight + viewwindowy);
 		DrawBorder(twod, tex, 0, viewwindowy + viewheight, Width, StatusBar->GetTopOfStatusbar());
-		
+
 		V_DrawFrame(twod, viewwindowx, viewwindowy, viewwidth, viewheight, ui_screenborder_classic_scaling);
 	}
 }
@@ -934,7 +919,7 @@ void DBaseStatusBar::RefreshBackground () const
 	float ratio = ActiveRatio (twod->GetWidth(), twod->GetHeight());
 	x = ST_X;
 	y = SBarTop;
-	
+
 	if (x == 0 && y == twod->GetHeight()) return;
 
 	auto tex = GetBorderTexture(primaryLevel);
@@ -1031,7 +1016,9 @@ void DBaseStatusBar::DrawCrosshair (double ticFrac)
 	int health = Scale(CPlayer->health, 100, CPlayer->mo->GetDefault()->health);
 
 	const double size = PrevCrosshairSize * (1.0 - ticFrac) + CrosshairSize * ticFrac;
-	ST_DrawCrosshair(health, viewwidth / 2 + viewwindowx, viewheight / 2 + viewwindowy, size);
+	const double x = viewwindowx + (0.5+crosshair_offset_x/2)*viewwidth;
+	const double y = viewwindowy + (0.5-crosshair_offset_y/2)*viewheight;
+	ST_DrawCrosshair(health, x, y, size);
 }
 
 static void DrawCrosshair(DBaseStatusBar* self, double ticFrac)
@@ -1136,7 +1123,7 @@ void DBaseStatusBar::DrawLog ()
 			if (y<0) y=0;
 			w=600;
 		}
-		Dim(twod, 0, 0.5f, Scale(x, twod->GetWidth(), hudwidth), Scale(y, twod->GetHeight(), hudheight), 
+		Dim(twod, 0, 0.5f, Scale(x, twod->GetWidth(), hudwidth), Scale(y, twod->GetHeight(), hudheight),
 							 Scale(w, twod->GetWidth(), hudwidth), Scale(height, twod->GetHeight(), hudheight));
 		x+=20;
 		y+=10;
@@ -1239,7 +1226,7 @@ double DBaseStatusBar::DrawConsistancy(double yOfs) const
 		{
 			desync = true;
 			// Fell out of sync with the host in packet server mode. Which specific user it is doesn't really matter.
-			if (NetMode == NET_PacketServer && consoleplayer != Net_Arbitrator)
+			if (consoleplayer != Net_Arbitrator)
 			{
 				text = "Out of sync with host";
 				break;
@@ -1280,7 +1267,7 @@ double DBaseStatusBar::DrawWaiting(double yOfs) const
 		if (players[client].waiting)
 		{
 			isWaiting = true;
-			if (NetMode == NET_PacketServer && consoleplayer != Net_Arbitrator)
+			if (consoleplayer != Net_Arbitrator)
 			{
 				text = "Waiting for host";
 				break;
@@ -1484,4 +1471,3 @@ int GetInventoryIcon(AActor *item, uint32_t flags, int *applyscale)
 	}
 	return picnum.GetIndex();
 }
-

@@ -1,3 +1,25 @@
+/*
+** struct_extensions.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2025 nikitalita
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: MIT
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 #include <dap/typeof.h>
@@ -15,7 +37,7 @@ struct PDSAttachRequest : public AttachRequest
 	string name;
 	string type;
 	string request;
-	optional<array<Source>> projectSources;
+	optional<array<any>> projects;
 };
 
 struct PDSLaunchRequest : public LaunchRequest
@@ -24,7 +46,7 @@ struct PDSLaunchRequest : public LaunchRequest
 	string name;
 	string type;
 	string request;
-	optional<array<Source>> projectSources;
+	optional<array<any>> projects;
 };
 
 DAP_DECLARE_STRUCT_TYPEINFO(PDSAttachRequest);

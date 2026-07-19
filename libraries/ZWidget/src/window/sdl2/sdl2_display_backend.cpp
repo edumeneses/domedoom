@@ -1,6 +1,6 @@
-
 #include "sdl2_display_backend.h"
 #include "sdl2_display_window.h"
+#include "window/window.h"
 #include <stdexcept>
 #include <SDL2/SDL_video.h>
 #ifndef WIN32
@@ -17,7 +17,7 @@ namespace X11DPI
 
 SDL2DisplayBackend::SDL2DisplayBackend()
 {
-	int result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+	int result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER);
 	if (result != 0)
 		throw std::runtime_error(std::string("Unable to initialize SDL:") + SDL_GetError());
 
@@ -55,11 +55,16 @@ SDL2DisplayBackend::SDL2DisplayBackend()
 		}
 	}
 #endif
+
+	for (auto i = 0; i < SDL_NumJoysticks(); i++)
+	{
+		SDL_GameControllerOpen(i);
+	}
 }
 
-std::unique_ptr<DisplayWindow> SDL2DisplayBackend::Create(DisplayWindowHost* windowHost, bool popupWindow, DisplayWindow* owner, RenderAPI renderAPI)
+std::unique_ptr<DisplayWindow> SDL2DisplayBackend::Create(DisplayWindowHost* windowHost, DisplayWindow* owner, RenderAPI renderAPI, struct WindowParams params)
 {
-	return std::make_unique<SDL2DisplayWindow>(windowHost, popupWindow, static_cast<SDL2DisplayWindow*>(owner), renderAPI, UIScale);
+	return std::make_unique<SDL2DisplayWindow>(windowHost, static_cast<SDL2DisplayWindow*>(owner), renderAPI, UIScale, params);
 }
 
 void SDL2DisplayBackend::ProcessEvents()

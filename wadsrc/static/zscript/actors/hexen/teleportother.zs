@@ -1,3 +1,22 @@
+/*
+** teleportother.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Teleport Other Artifact --------------------------------------------------
 
@@ -23,7 +42,7 @@ class ArtiTeleportOther : Inventory
 		TELO ABCD 5;
 		Loop;
 	}
-	
+
 	//===========================================================================
 	//
 	// Activate Teleport Other
@@ -36,7 +55,7 @@ class ArtiTeleportOther : Inventory
 		return true;
 	}
 
-	
+
 }
 
 
@@ -75,7 +94,7 @@ class TelOtherFX1 : Actor
 		TRNG E 3 Bright;
 		Stop;
 	}
-		
+
 	private void TeloSpawn (class<Actor> type)
 	{
 		Actor fx = Spawn (type, pos, ALLOW_REPLACE);
@@ -184,7 +203,7 @@ class TelOtherFX1 : Actor
 		if (destAngle < 65536) victim.Teleport((dest.xy, ONFLOORZ), destangle, TELF_SOURCEFOG | TELF_DESTFOG);
 		else P_TeleportToPlayerStarts(victim);
 	}
-	
+
 }
 
 
@@ -248,5 +267,3 @@ class TelOtherFX5 : TelOtherFX1
 		Loop;
 	}
 }
-
-

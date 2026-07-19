@@ -1,3 +1,22 @@
+/*
+** inv_misc.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 //===========================================================================
 //
 //
@@ -13,7 +32,7 @@ class ScoreItem : Inventory
 		Inventory.Amount 1;
 		+Inventory.ALWAYSPICKUP
 	}
-	
+
 	override bool TryPickup (in out Actor toucher)
 	{
 		toucher.Score += Amount;
@@ -48,7 +67,7 @@ class Key : Inventory
 	{
 		return sv_coopsharekeys;
 	}
-	
+
 	override bool HandlePickup (Inventory item)
 	{
 		// In single player, you can pick up an infinite number of keys
@@ -102,7 +121,7 @@ class PuzzleItem : Inventory
 	meta int PuzzleItemNumber;
 	meta String PuzzFailMessage;
 	meta Sound PuzzFailSound;
-	
+
 	property Number: PuzzleItemNumber;
 	property FailMessage: PuzzFailMessage;
 	property FailSound: PuzzFailSound;
@@ -123,7 +142,7 @@ class PuzzleItem : Inventory
 	{
 		return sv_coopsharekeys;
 	}
-	
+
 	override bool HandlePickup (Inventory item)
 	{
 		// Can't carry more than 1 of each puzzle item in coop netplay
@@ -153,11 +172,10 @@ class PuzzleItem : Inventory
 	override void UseAll(Actor user)
 	{
 	}
-	
+
 	override bool ShouldStay ()
 	{
 		return !!multiplayer;
 	}
 
 }
-

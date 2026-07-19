@@ -1,33 +1,22 @@
 /*
-** playerdisplay.cpp
+** playerdisplay.zs
+**
 ** The player display for the player setup and class selection screen
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2010-2017 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -89,7 +78,7 @@ class ListMenuItemPlayerDisplay : ListMenuItem
 		mRandomTimer = 0;
 		mClassNum = -1;
 	}
-	
+
 	private void UpdatePlayer(int classnum)
 	{
 		mPlayerClass = PlayerClasses[classnum];
@@ -275,7 +264,7 @@ class ListMenuItemPlayerDisplay : ListMenuItem
 			g = g * 255 / m;
 			b = b * 255 / m;
 			Color c = Color(255, r, g, b);
-			
+
 			screen.DrawTexture(mBackdrop, false, x, y - 1,
 				DTA_DestWidthF, 72. * sx,
 				DTA_DestHeightF, 80. * sy,
@@ -289,16 +278,16 @@ class ListMenuItemPlayerDisplay : ListMenuItem
 				Vector2 Scale;
 				TextureID sprite;
 				bool flip;
-				
+
 				[sprite, flip, Scale] = mPlayerState.GetSpriteTexture(mRotation, mSkin, playdef.Scale);
-			
+
 				if (sprite.IsValid())
 				{
-					let trans = mTranslate? Translation.MakeID(TRANSLATION_Players, MAXPLAYERS) : 0;
+					let trans = (!playdef.bDONTTRANSLATE && mTranslate) ? Translation.MakeID(TRANSLATION_Players, MAXPLAYERS) : 0;
 					let tscale = TexMan.GetScaledSize(sprite);
 					Scale.X *= sx * tscale.X;
 					Scale.Y *= sy * tscale.Y;
-					
+
 					screen.DrawTexture (sprite, false,
 						x + 36*sx, y + 71*sy,
 						DTA_DestWidthF, Scale.X, DTA_DestHeightF, Scale.Y,
@@ -322,7 +311,7 @@ class PlayerMenuPlayerDisplay : ListMenuItemPlayerDisplay
 	{
 		Super.Init(null, 0, 0, c1, c2, true, 'none');
 	}
-	
+
 	override void Drawer(bool selected)
 	{
 		int x = screen.GetWidth()/2 + NewPlayerMenu.PLAYERDISPLAY_X * CleanXfac_1;
@@ -336,7 +325,7 @@ class PlayerMenuPlayerDisplay : ListMenuItemPlayerDisplay
 		g = g * 255 / m;
 		b = b * 255 / m;
 		Color c = Color(255, r, g, b);
-		
+
 		screen.DrawTexture(mBackdrop, false, x, y - 1,
 			DTA_DestWidth, NewPlayerMenu.PLAYERDISPLAY_W * CleanXfac_1,
 			DTA_DestHeight, NewPlayerMenu.PLAYERDISPLAY_H * CleanYfac_1,
@@ -351,17 +340,17 @@ class PlayerMenuPlayerDisplay : ListMenuItemPlayerDisplay
 			Vector2 Scale;
 			TextureID sprite;
 			bool flip;
-			
+
 			let playdef = GetDefaultByType((class<PlayerPawn>)(mPlayerClass.Type));
 			[sprite, flip, Scale] = mPlayerState.GetSpriteTexture(mRotation, mSkin, playdef.Scale);
-		
+
 			if (sprite.IsValid())
 			{
-				let trans = mTranslate? Translation.MakeID(TRANSLATION_Players, MAXPLAYERS) : 0;
+				let trans = (!playdef.bDONTTRANSLATE && mTranslate) ? Translation.MakeID(TRANSLATION_Players, MAXPLAYERS) : 0;
 				let tscale = TexMan.GetScaledSize(sprite);
 				Scale.X *= CleanXfac_1 * tscale.X * 2;
 				Scale.Y *= CleanYfac_1 * tscale.Y * 2;
-				
+
 				screen.DrawTexture (sprite, false,
 					x + (NewPlayerMenu.PLAYERDISPLAY_W/2) * CleanXfac_1, y + (NewPlayerMenu.PLAYERDISPLAY_H-16) * CleanYfac_1,
 					DTA_DestWidthF, Scale.X, DTA_DestHeightF, Scale.Y,

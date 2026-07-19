@@ -1,3 +1,27 @@
+/*
+** oalsound.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2008-2010 Chris Robinson
+** Copyright 2010-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #ifndef OALSOUND_H
 #define OALSOUND_H
 
@@ -26,7 +50,7 @@
 
 class OpenALSoundStream;
 
-class OpenALSoundRenderer : public SoundRenderer
+class OpenALSoundRenderer final : public SoundRenderer
 {
 public:
 	OpenALSoundRenderer();
@@ -34,6 +58,7 @@ public:
 
 	virtual void SetSfxVolume(float volume);
 	virtual void SetMusicVolume(float volume);
+	virtual void UpdateMusicParams();
 	virtual SoundHandle LoadSound(uint8_t *sfxdata, int length, int def_loop_start, int def_loop_end);
 	virtual SoundHandle LoadSoundRaw(uint8_t *sfxdata, int length, int frequency, int channels, int bits, int loopstart, int loopend = -1);
 	virtual void UnloadSound(SoundHandle sfx);
@@ -85,22 +110,24 @@ public:
 	virtual FString GatherStats();
 
 private:
-    struct {
-        bool EXT_EFX;
-        bool EXT_disconnect;
-        bool SOFT_HRTF;
-        bool SOFT_pause_device;
-		bool SOFT_output_limiter;
-    } ALC;
-    struct {
-        bool EXT_source_distance_model;
-        bool EXT_SOURCE_RADIUS;
-        bool SOFT_deferred_updates;
-        bool SOFT_loop_points;
-        bool SOFT_source_latency;
-        bool SOFT_source_resampler;
-        bool SOFT_source_spatialize;
-    } AL;
+	struct {
+		bool EXT_EFX : 1;
+		bool EXT_disconnect : 1;
+		bool SOFT_HRTF : 1;
+		bool SOFT_pause_device : 1;
+		bool SOFT_output_limiter : 1;
+	} ALC;
+	struct {
+		bool EXT_source_distance_model : 1;
+		bool EXT_SOURCE_RADIUS : 1;
+		bool SOFT_deferred_updates : 1;
+		bool SOFT_direct_channels_remix : 1;
+		bool SOFT_loop_points : 1;
+		bool SOFT_source_latency : 1;
+		bool SOFT_source_resampler : 1;
+		bool SOFT_source_spatialize : 1;
+		bool SOFT_UHJ : 1;
+	} AL;
 
 	// EFX Extension function pointer variables. Loaded after context creation
 	// if EFX is supported. These pointers may be context- or device-dependant,
@@ -142,28 +169,28 @@ private:
 	LPALGETAUXILIARYEFFECTSLOTF alGetAuxiliaryEffectSlotf;
 	LPALGETAUXILIARYEFFECTSLOTFV alGetAuxiliaryEffectSlotfv;
 
-    ALvoid (AL_APIENTRY*alDeferUpdatesSOFT)(void);
-    ALvoid (AL_APIENTRY*alProcessUpdatesSOFT)(void);
+	ALvoid (AL_APIENTRY*alDeferUpdatesSOFT)(void);
+	ALvoid (AL_APIENTRY*alProcessUpdatesSOFT)(void);
 
-    LPALGETSTRINGISOFT alGetStringiSOFT;
+	LPALGETSTRINGISOFT alGetStringiSOFT;
 
-    LPALGETSOURCEI64VSOFT alGetSourcei64vSOFT;
+	LPALGETSOURCEI64VSOFT alGetSourcei64vSOFT;
 
-    void (ALC_APIENTRY*alcDevicePauseSOFT)(ALCdevice *device);
-    void (ALC_APIENTRY*alcDeviceResumeSOFT)(ALCdevice *device);
+	void (ALC_APIENTRY*alcDevicePauseSOFT)(ALCdevice *device);
+	void (ALC_APIENTRY*alcDeviceResumeSOFT)(ALCdevice *device);
 
-    void BackgroundProc();
-    void AddStream(OpenALSoundStream *stream);
-    void RemoveStream(OpenALSoundStream *stream);
+	void BackgroundProc();
+	void AddStream(OpenALSoundStream *stream);
+	void RemoveStream(OpenALSoundStream *stream);
 
 	void LoadReverb(const ReverbContainer *env);
 	void PurgeStoppedSources();
 	static FSoundChan *FindLowestChannel();
 
-    std::thread StreamThread;
-    std::mutex StreamLock;
-    std::condition_variable StreamWake;
-    std::atomic<bool> QuitThread;
+	std::thread StreamThread;
+	std::mutex StreamLock;
+	std::condition_variable StreamWake;
+	std::atomic<bool> QuitThread;
 
 	ALCdevice *Device;
 	ALCcontext *Context;
@@ -181,16 +208,16 @@ private:
 
 	const ReverbContainer *PrevEnvironment;
 
-    typedef TMap<uint16_t,ALuint> EffectMap;
-    typedef TMapIterator<uint16_t,ALuint> EffectMapIter;
-    ALuint EnvSlot;
-    ALuint EnvFilters[2];
-    EffectMap EnvEffects;
+	typedef TMap<uint16_t,ALuint> EffectMap;
+	typedef TMapIterator<uint16_t,ALuint> EffectMapIter;
+	ALuint EnvSlot;
+	ALuint EnvFilters[2];
+	EffectMap EnvEffects;
 
-    bool WasInWater;
+	bool WasInWater;
 
-    TArray<OpenALSoundStream*> Streams;
-    friend class OpenALSoundStream;
+	TArray<OpenALSoundStream*> Streams;
+	friend class OpenALSoundStream;
 
 	ALCdevice *InitDevice();
 };

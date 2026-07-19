@@ -1,35 +1,23 @@
 /*
 ** md5check.cpp
+**
 ** Checksums for textures that need special treatment
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2018 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
-**
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **---------------------------------------------------------------------------
 **
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
 **
 */
 
@@ -50,7 +38,7 @@ struct MD5Check
 // The first list is alpha textures in patch format.
 // Patches are normally paletted but for these it needs to be treated
 // as a grayscale ramp.
-static const MD5Check alphapatches[] = 
+static const MD5Check alphapatches[] =
 {
 {   18, "fb1472adb34ce1de7a40156d484dd3fc"}, // xhair5.gfx
 {   59, "7149115092f5e8f01f84dacc120aae94"}, // xhairs9.gfx
@@ -184,7 +172,7 @@ static const MD5Check alphapatches[] =
 
 // These are IMGZ images that use the game palette.
 // Normally IMGZ is only used for crosshairs, i.e grayscale images.
-static const MD5Check palimgzs[] = 
+static const MD5Check palimgzs[] =
 {
 { 1728, "9ffdd749b414a1d34c74650828ad6504"}, // scodef.imgz
 {64024, "bee2a3ddec08bf975353b3dc139bb956"}, // interpic.imgz

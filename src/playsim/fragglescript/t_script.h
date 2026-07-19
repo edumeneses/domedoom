@@ -1,25 +1,20 @@
-// Emacs style mode select -*- C++ -*-
-//----------------------------------------------------------------------------
-//
-// Copyright(C) 2000 Simon Howard
-// Copyright(C) 2002-2008 Christoph Oelckers
-//
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation; either version 2 of the License, or
-// (at your option) any later version.
-// 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-// 
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//
-//---------------------------------------------------------------------------
-//
+/*
+** t_script.h
+**
+** scripting
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2000 Simon Howard
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #ifndef __T_SCRIPT_H__
 #define __T_SCRIPT_H__
@@ -52,7 +47,7 @@ class DRunningScript;
 
 inline bool isop(int c)
 {
-	return !( ( (c)<='Z' && (c)>='A') || ( (c)<='z' && (c)>='a') || 
+	return !( ( (c)<='Z' && (c)>='A') || ( (c)<='z' && (c)>='a') ||
 		( (c)<='9' && (c)>='0') || ( (c)=='_') );
 }
 
@@ -168,7 +163,7 @@ public:
 	{
 		int32_t i;
 		fsfix fixed;          // haleyjd: fixed-point
-		
+
 		// the following are only used in the global script so we don't need to bother with them
 		// when serializing variables.
 		int *pI;                // pointer to game int
@@ -194,9 +189,9 @@ public:
 
 inline int variable_hash(const char *n)
 {
-	return 
-              (n[0]? (   ( n[0] + n[1] +   
-                   (n[1] ? n[2] +   
+	return
+			  (n[0]? (   ( n[0] + n[1] +
+				   (n[1] ? n[2] +
 				   (n[2] ? n[3]  : 0) : 0) ) % VARIABLESLOTS ) :0);
 }
 
@@ -326,7 +321,7 @@ public:
 
 	TObjPtr<AActor*> trigger;        // object which triggered this script
 
-	bool lastiftrue;     // haleyjd: whether last "if" statement was 
+	bool lastiftrue;     // haleyjd: whether last "if" statement was
 	// true or false
 
 	DFsScript();
@@ -642,7 +637,7 @@ struct FParser
 
 enum waittype_e
 {
-    wt_none,        // not waiting
+	wt_none,        // not waiting
 	wt_delay,       // wait for a set amount of time
 	wt_tagwait,     // wait for sector to stop moving
 	wt_scriptwait,  // wait for script to finish
@@ -660,16 +655,16 @@ public:
 	void Serialize(FSerializer &arc);
 
 	TObjPtr<DFsScript*> script;
-	
+
 	// where we are
 	int save_point;
-	
+
 	int wait_type;
 	int wait_data;  // data for wait: tagnum, counter, script number etc
-	
+
 	// saved variables
 	TObjPtr<DFsVariable*> variables[VARIABLESLOTS];
-	
+
 	TObjPtr<DRunningScript*> prev, next;  // for chain
 	TObjPtr<AActor*> trigger;
 };
@@ -720,4 +715,3 @@ void script_error(const char *s, ...) GCCPRINTF(1,2);
 void FS_EmulateCmd(FLevelLocals *l, char * string);
 
 #endif
-

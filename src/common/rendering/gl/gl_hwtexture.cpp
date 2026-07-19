@@ -1,35 +1,23 @@
 /*
 ** gl_hwtexture.cpp
+**
 ** GL texture abstraction
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2019 Christoph Oelckers
-** All rights reserved.
+** Copyright 2019-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
-**
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **---------------------------------------------------------------------------
 **
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
 **
 */
 
@@ -61,14 +49,14 @@ TexFilter_s TexFilter[] = {
 };
 
 //===========================================================================
-// 
+//
 //	Static texture data
 //
 //===========================================================================
 unsigned int FHardwareTexture::lastbound[FHardwareTexture::MAX_TEXTURES];
 
 //===========================================================================
-// 
+//
 //	Loads the texture image into the hardware
 //
 // NOTE: For some strange reason I was unable to find the source buffer
@@ -116,7 +104,7 @@ unsigned int FHardwareTexture::CreateTexture(unsigned char * buffer, int w, int 
 		mipmapped = false;
 		buffer=(unsigned char *)calloc(4,rw * (rh+1));
 		deletebuffer=true;
-		//texheight=-h;	
+		//texheight=-h;
 	}
 	else
 	{
@@ -174,7 +162,7 @@ unsigned int FHardwareTexture::CreateTexture(unsigned char * buffer, int w, int 
 
 
 //===========================================================================
-// 
+//
 //
 //
 //===========================================================================
@@ -202,19 +190,19 @@ uint8_t *FHardwareTexture::MapBuffer()
 }
 
 //===========================================================================
-// 
+//
 //	Destroys the texture
 //
 //===========================================================================
-FHardwareTexture::~FHardwareTexture() 
-{ 
+FHardwareTexture::~FHardwareTexture()
+{
 	if (glTexID != 0) glDeleteTextures(1, &glTexID);
 	if (glBufferID != 0) glDeleteBuffers(1, &glBufferID);
 }
 
 
 //===========================================================================
-// 
+//
 //	Binds this patch
 //
 //===========================================================================
@@ -258,7 +246,7 @@ void FHardwareTexture::UnbindAll()
 }
 
 //===========================================================================
-// 
+//
 //	Creates a depth buffer for this texture
 //
 //===========================================================================
@@ -269,7 +257,7 @@ int FHardwareTexture::GetDepthBuffer(int width, int height)
 	{
 		glGenRenderbuffers(1, &glDepthID);
 		glBindRenderbuffer(GL_RENDERBUFFER, glDepthID);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8,
 			GetTexDimension(width), GetTexDimension(height));
 		glBindRenderbuffer(GL_RENDERBUFFER, 0);
 	}
@@ -278,7 +266,7 @@ int FHardwareTexture::GetDepthBuffer(int width, int height)
 
 
 //===========================================================================
-// 
+//
 //	Binds this texture's surfaces to the current framrbuffer
 //
 //===========================================================================
@@ -294,7 +282,7 @@ void FHardwareTexture::BindToFrameBuffer(int width, int height)
 
 
 //===========================================================================
-// 
+//
 //	Binds a texture to the renderer
 //
 //===========================================================================

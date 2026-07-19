@@ -1,6 +1,5 @@
 #pragma once
 
-#include <list>
 #include <unordered_map>
 #include <zwidget/window/window.h>
 #include <zwidget/window/sdl2nativehandle.h>
@@ -9,7 +8,7 @@
 class SDL2DisplayWindow : public DisplayWindow
 {
 public:
-	SDL2DisplayWindow(DisplayWindowHost* windowHost, bool popupWindow, SDL2DisplayWindow* owner, RenderAPI renderAPI, double uiscale);
+	SDL2DisplayWindow(DisplayWindowHost* windowHost, SDL2DisplayWindow* owner, RenderAPI renderAPI, double uiscale, struct WindowParams);
 	~SDL2DisplayWindow();
 
 	void SetWindowTitle(const std::string& text) override;
@@ -17,6 +16,7 @@ public:
 	void SetWindowFrame(const Rect& box) override;
 	void SetClientFrame(const Rect& box) override;
 	void Show() override;
+	void Restore() override;
 	void ShowFullscreen() override;
 	void ShowMaximized() override;
 	void ShowMinimized() override;
@@ -55,6 +55,8 @@ public:
 
 	std::vector<std::string> GetVulkanInstanceExtensions() override;
 	VkSurfaceKHR CreateVulkanSurface(VkInstance instance) override;
+	
+	virtual void NotifyWindow() override;
 
 	static void DispatchEvent(const SDL_Event& event);
 	static SDL2DisplayWindow* FindEventWindow(const SDL_Event& event);
@@ -67,12 +69,16 @@ public:
 	void OnMouseButtonDown(const SDL_MouseButtonEvent& event);
 	void OnMouseWheel(const SDL_MouseWheelEvent& event);
 	void OnMouseMotion(const SDL_MouseMotionEvent& event);
+	void OnJoyButtonUp(const SDL_ControllerButtonEvent& event);
+	void OnJoyButtonDown(const SDL_ControllerButtonEvent& event);
+	void OnFileDrop(const SDL_DropEvent& event);
 	void OnPaintEvent();
 	static void OnTimerEvent(const SDL_UserEvent& event);
 
 	InputKey GetMouseButtonKey(const SDL_MouseButtonEvent& event);
 
 	static InputKey ScancodeToInputKey(SDL_Scancode keycode);
+	static InputKey GameControllerButtonToInputKey(SDL_GameControllerButton button);
 	static SDL_Scancode InputKeyToScancode(InputKey inputkey);
 
 	template<typename T>
@@ -91,6 +97,7 @@ public:
 	static Uint32 ExecTimer(Uint32 interval, void* id);
 
 	DisplayWindowHost* WindowHost = nullptr;
+	SDL2DisplayWindow* Owner = nullptr;
 	SDL2NativeHandle Handle;
 	SDL_Renderer* RendererHandle = nullptr;
 	SDL_Texture* BackBufferTexture = nullptr;

@@ -1,3 +1,22 @@
+/*
+** cyberdemon.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 
 //===========================================================================
 //
@@ -17,7 +36,7 @@ class Cyberdemon : Actor
 		Monster;
 		MinMissileChance 160;
 		MissileChanceMult 0.5;
-		+BOSS 
+		+BOSS
 		+FLOORCLIP
 		+NORADIUSDMG
 		+DONTMORPH
@@ -82,11 +101,11 @@ extend class Actor
 			SpawnMissile (target, "Rocket");
 		}
 	}
-	
+
 	void A_Hoof()
 	{
 		A_StartSound("cyber/hoof", CHAN_BODY, CHANF_DEFAULT, 1, ATTN_IDLE);
 		A_Chase();
 	}
-	
+
 }

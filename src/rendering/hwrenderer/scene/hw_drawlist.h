@@ -1,3 +1,20 @@
+/*
+** hw_drawlist.h
+**
+** The main container type for draw items.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 #include "memarena.h"
@@ -30,7 +47,7 @@ struct HWDrawItem
 {
 	HWDrawItemType rendertype;
 	int index;
-	
+
 	HWDrawItem() = default; // we need this for dynamic arrays.
 	HWDrawItem(HWDrawItemType _rendertype,int _index) : rendertype(_rendertype),index(_index) {}
 };
@@ -43,8 +60,8 @@ struct SortNode
 	SortNode * left;		// left side of this node
 	SortNode * equal;		// equal to this node
 	SortNode * right;		// right side of this node
-	
-	
+
+
 	void UnlinkFromChain();
 	void Link(SortNode * hook);
 	void AddToEqual(SortNode * newnode);
@@ -66,10 +83,10 @@ struct HWDrawList
 	TArray<HWSprite*> sprites;
 	TArray<HWDrawItem> drawitems;
 	int SortNodeStart;
-    float SortZ;
+	float SortZ;
 	SortNode * sorted;
 	bool reverseSort;
-	
+
 public:
 	HWDrawList()
 	{
@@ -77,25 +94,25 @@ public:
 		SortNodeStart=-1;
 		sorted=NULL;
 	}
-	
+
 	~HWDrawList()
 	{
 		Reset();
 	}
-	
+
 	unsigned int Size()
 	{
 		return drawitems.Size();
 	}
-	
+
 	HWWall *NewWall();
 	HWFlat *NewFlat();
 	HWSprite *NewSprite();
 	void Reset();
 	void SortWalls();
 	void SortFlats();
-	
-	
+
+
 	void MakeSortList();
 	SortNode * FindSortPlane(SortNode * head);
 	SortNode * FindSortWall(SortNode * head);
@@ -119,5 +136,3 @@ public:
 
 	HWDrawList * next;
 } ;
-
-

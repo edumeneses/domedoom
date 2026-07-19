@@ -1,3 +1,21 @@
+/*
+** sectoraction.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 class SectorAction : Actor
 {
@@ -31,7 +49,7 @@ class SectorAction : Actor
 		+DONTSPLASH
 		+NOTONAUTOMAP
 	}
-	
+
 	override void OnDestroy ()
 	{
 		if (CurSector != null)
@@ -299,7 +317,7 @@ class MusicChanger : SectorAction
 		}
 		return false;
 	}
-	 
+
 	override void PostBeginPlay()
 	{
 		// The music changer should consider itself activated if the player
@@ -314,5 +332,3 @@ class MusicChanger : SectorAction
 		}
 	}
 }
-
-

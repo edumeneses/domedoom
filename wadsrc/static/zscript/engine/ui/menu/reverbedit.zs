@@ -1,3 +1,27 @@
+/*
+** reverbedit.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 class ReverbEdit : OptionMenu
 {
@@ -23,7 +47,7 @@ class ReverbEdit : OptionMenu
 
 		[env, id] = GetSelectedEnvironment();
 
-		let li = GetItem('EvironmentName');
+		let li = GetItem('EnvironmentName');
 		if (li != NULL)
 		{
 			if (id != -1)
@@ -36,7 +60,7 @@ class ReverbEdit : OptionMenu
 				li.SetValue(0, 0);
 			}
 		}
-		li = GetItem('EvironmentID');
+		li = GetItem('EnvironmentID');
 		if (li != NULL)
 		{
 			if (id != -1)
@@ -180,17 +204,13 @@ class OptionMenuItemReverbOption : OptionMenuItemOptionBase
 class OptionMenuItemSliderReverbEditOption : OptionMenuSliderBase
 {
 	int mValIndex;
-	String mEditValue;
-	TextEnterMenu mEnter;
 
-	OptionMenuItemSliderReverbEditOption Init(String label, double min, double max, double step, int showval, int valindex)
+	OptionMenuItemSliderReverbEditOption Init(String label, double min, double max, double step, int showval, int valindex, double displayScale = 1.0, String valueFormat = "")
 	{
-		Super.Init(label, min, max, step, showval);
+		Super.Init(label, min, max, step, showval, displayScale: displayScale, valueFormat: valueFormat);
 		mValIndex = valindex;
-		mEnter = null;
 		return self;
 	}
-
 
 	override double GetSliderValue()
 	{
@@ -202,57 +222,8 @@ class OptionMenuItemSliderReverbEditOption : OptionMenuSliderBase
 		ReverbEdit.SetValue(mValIndex, val);
 	}
 
-	override bool Selectable()
+	override bool IsGrayed(void)
 	{
-		return !ReverbEdit.GrayCheck();
+		return ReverbEdit.GrayCheck();
 	}
-
-	virtual String Represent()
-	{
-		return mEnter.GetText() .. Menu.OptionFont().GetCursor();
-	}
-
-	//=============================================================================
-	override int Draw(OptionMenuDescriptor desc, int y, int indent, bool selected)
-	{
-		drawLabel(indent, y, selected ? OptionMenuSettings.mFontColorSelection : OptionMenuSettings.mFontColor, ReverbEdit.GrayCheck());
-
-		mDrawX = indent + CursorSpace();
-		if (mEnter)
-		{
-			drawText(mDrawX, y, OptionMenuSettings.mFontColorValue, Represent());
-		}
-		else
-		{
-			DrawSlider (mDrawX, y, mMin, mMax, GetSliderValue(), mShowValue, indent);
-		}
-		return indent;
-	}
-
-	override bool MenuEvent (int mkey, bool fromcontroller)
-	{
-		if (mkey == Menu.MKEY_Enter)
-		{
-			Menu.MenuSound("menu/choose");
-			mEnter = TextEnterMenu.OpenTextEnter(Menu.GetCurrentMenu(), Menu.OptionFont(), String.Format("%.3f", GetSliderValue()), -1, fromcontroller);
-			mEnter.ActivateMenu();
-			return true;
-		}
-		else if (mkey == Menu.MKEY_Input)
-		{
-			String val = mEnter.GetText();
-			SetSliderValue(val.toDouble());
-			mEnter = null;
-			return true;
-		}
-		else if (mkey == Menu.MKEY_Abort)
-		{
-			mEnter = null;
-			return true;
-		}
-
-		return Super.MenuEvent(mkey, fromcontroller);
-	}
-
 }
-

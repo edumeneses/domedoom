@@ -1,33 +1,22 @@
 /*
 ** p_trace.cpp
+**
 ** Generalized trace function, like most 3D games have
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2006 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -69,10 +58,10 @@ struct FTraceInfo
 	int ptflags;
 
 	// These are required for 3D-floor checking
-	// to create a fake sector with a floor 
+	// to create a fake sector with a floor
 	// or ceiling plane coming from a 3D-floor
-	sector_t DummySector[2];	
-	int sectorsel;		
+	sector_t DummySector[2];
+	int sectorsel;
 
 	void Setup3DFloors();
 	bool LineCheck(intercept_t *in, double dist, DVector3 hit, bool special3dpass);
@@ -198,7 +187,7 @@ bool Trace(const DVector3 &start, sector_t *sector, const DVector3 &direction, d
 	}
 
 	if (reslt)
-	{ 
+	{
 		return flags ? EditTraceResult(flags, res) : true;
 	}
 	else
@@ -522,7 +511,7 @@ bool FTraceInfo::LineCheck(intercept_t *in, double dist, DVector3 hit, bool spec
 								bf = ff_top - EQUAL_EPSILON;
 							}
 						}
-						
+
 						// above
 						if (bf < ff_top)
 						{
@@ -669,7 +658,7 @@ cont:
 	}
 }
 
-	
+
 //==========================================================================
 //
 //
@@ -820,7 +809,7 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 		double dist = MaxDist * in->frac;
 		DVector3 hit = Start + Vec * dist;
 
-		// Crossed a floor portal? 
+		// Crossed a floor portal?
 		if (Vec.Z < 0 && !CurSector->PortalBlocksMovement(sector_t::floor))
 		{
 			// calculate position where the portal is crossed

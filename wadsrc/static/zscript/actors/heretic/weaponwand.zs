@@ -1,3 +1,23 @@
+/*
+** weaponwand.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // Gold wand ----------------------------------------------------------------
 
 class GoldWand : HereticWeapon
@@ -37,7 +57,7 @@ class GoldWand : HereticWeapon
 		GWND D 0 A_ReFire;
 		Goto Ready;
 	}
-	
+
 
 	//----------------------------------------------------------------------------
 	//
@@ -73,7 +93,7 @@ class GoldWand : HereticWeapon
 		LineAttack(ang, PLAYERMISSILERANGE, pitch, damage, 'Hitscan', "GoldWandPuff1");
 		A_StartSound("weapons/wandhit", CHAN_WEAPON);
 	}
-	
+
 }
 
 class GoldWandPowered : GoldWand
@@ -96,7 +116,7 @@ class GoldWandPowered : GoldWand
 		GWND D 0 A_ReFire;
 		Goto Ready;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_FireGoldWandPL2
@@ -131,9 +151,9 @@ class GoldWandPowered : GoldWand
 		A_StartSound("weapons/wandhit", CHAN_WEAPON);
 	}
 
-	
+
 }
-	
+
 
 // Gold wand FX1 ------------------------------------------------------------
 
@@ -221,4 +241,3 @@ class GoldWandPuff2 : GoldWandFX1
 		Goto Super::Death;
 	}
 }
-

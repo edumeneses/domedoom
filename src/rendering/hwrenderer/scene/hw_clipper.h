@@ -1,15 +1,37 @@
+/*
+** hw_clipper.h
+**
+** Handles visibility checks. Loosely based on the JDoom clipper.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2003 Tim Stump
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #ifndef __GL_CLIPPER
 #define __GL_CLIPPER
 
 #include "doomtype.h"
-#include "xs_Float.h"
 #include "r_utility.h"
 #include "memarena.h"
 
 class ClipNode
 {
 	friend class Clipper;
-	
+
 	ClipNode *prev, *next;
 	angle_t start, end;
 
@@ -73,11 +95,11 @@ public:
 		c->next = c->prev = NULL;
 		return c;
 	}
-    
-    void SetViewpoint(FRenderViewpoint &vp)
-    {
-        viewpoint = &vp;
-    }
+
+	void SetViewpoint(FRenderViewpoint &vp)
+	{
+		viewpoint = &vp;
+	}
 
 	void SetSilhouette();
 
@@ -87,7 +109,7 @@ public:
 		{
 			return (IsRangeVisible(startAngle, ANGLE_MAX) || IsRangeVisible(0, endAngle));
 		}
-		
+
 		return IsRangeVisible(startAngle, endAngle);
 	}
 
@@ -105,13 +127,13 @@ public:
 			AddClipRange(startangle, endangle);
 		}
 	}
-    
-    void SafeAddClipRange(const vertex_t *v1, const vertex_t *v2)
-    {
-        angle_t a2 = PointToPseudoAngle(v1->p.X, v1->p.Y);
-        angle_t a1 = PointToPseudoAngle(v2->p.X, v2->p.Y);
-        SafeAddClipRange(a1,a2);
-    }
+
+	void SafeAddClipRange(const vertex_t *v1, const vertex_t *v2)
+	{
+		angle_t a2 = PointToPseudoAngle(v1->p.X, v1->p.Y);
+		angle_t a1 = PointToPseudoAngle(v2->p.X, v2->p.Y);
+		SafeAddClipRange(a1,a2);
+	}
 
 	void SafeAddClipRangeRealAngles(angle_t startangle, angle_t endangle)
 	{

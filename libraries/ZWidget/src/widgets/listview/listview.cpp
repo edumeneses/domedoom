@@ -1,6 +1,8 @@
 #include "widgets/listview/listview.h"
 #include "widgets/scrollbar/scrollbar.h"
 
+#include <cmath>
+
 ListView::ListView(Widget* parent) : Widget(parent)
 {
 	SetStyleClass("listview");
@@ -152,6 +154,8 @@ void ListView::OnPaint(Canvas* canvas)
 
 	Colorf textColor = GetStyleColor("color");
 	Colorf selectionColor = GetStyleColor("selection-color");
+	Colorf selectionTextColor = GetStyleColor("selection-text");
+	Colorf currentTextColor;
 
 	// Make sure the text doesn't enter the scrollbar's area.
 	canvas->pushClip({ 0.0, 0.0, w, GetHeight() });
@@ -165,11 +169,16 @@ void ListView::OnPaint(Canvas* canvas)
 			if (index == selectedItem)
 			{
 				canvas->fillRect(Rect::xywh(x - 2.0, itemY, w, h), selectionColor);
+				currentTextColor = selectionTextColor;
+			}
+			else
+			{
+				currentTextColor = textColor;
 			}
 			double cx = x;
 			for (size_t entry = 0u; entry < item.size(); ++entry)
 			{
-				canvas->drawText(Point(cx, y + 15.0), textColor, item[entry]);
+				canvas->drawText(Point(cx, y + 15.0), currentTextColor, item[entry]);
 				cx += columnwidths[entry];
 			}
 		}

@@ -1,10 +1,26 @@
-//created by Evil Space Tomato
+/*
+** fuzz_noise.fp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2013 Evil Space Tomato
+** Copyright 2013-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 vec4 ProcessTexel()
 {
 	vec2 texCoord = vTexCoord.st;
 	vec4 basicColor = getTexel(texCoord);
-	
+
 	texCoord.x = float( int(texCoord.x * 128.0) ) / 128.0;
 	texCoord.y = float( int(texCoord.y * 128.0) ) / 128.0;
 

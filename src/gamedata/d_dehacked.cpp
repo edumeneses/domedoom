@@ -1,33 +1,22 @@
 /*
 ** d_dehacked.cpp
+**
 ** Parses dehacked/bex patches and changes game structures accordingly
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2006 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 ** Much of this file is fudging code to compensate for the fact that most of
@@ -63,6 +52,7 @@
 #include "thingdef.h"
 #include "types.h"
 #include "vmbuilder.h"
+#include "r_vanillatrans.h"
 
 extern TArray<PalEntry> TranslationColors;
 
@@ -71,6 +61,10 @@ void JitDumpLog(FILE *file, VMScriptFunction *func);
 // [SO] Just the way Randy said to do it :)
 // [RH] Made this CVAR_SERVERINFO
 CVAR (Int, infighting, 0, CVAR_SERVERINFO)
+
+#ifdef HAVE_VM_JIT
+EXTERN_FARG(dumpjit);
+#endif // HAVE_VM_JIT
 
 static bool LoadDehSupp ();
 static void UnloadDehSupp ();
@@ -130,7 +124,7 @@ static PClassActor* FindInfoName(int index, bool mustexist = false)
 	{
 		FStringf name("~Dsdhacked~%d", index);
 		auto cls = PClass::FindActor(name);
-		if (!mustexist)
+		if (!cls && !mustexist)
 		{
 			cls = static_cast<PClassActor*>(RUNTIME_CLASS(AActor)->CreateDerivedClass(name.GetChars(), (unsigned)sizeof(AActor)));
 			NewClassType(cls, -1);	// This needs a VM type to work as intended.
@@ -178,14 +172,14 @@ void RemapAllSprites()
 {
 	TMap<FState*, int>::Iterator it(stateSprites);
 	TMap<FState*, int>::Pair *pair;
-	
+
 	while (it.NextPair(pair))
 	{
 		int frameNum = 0; // Hmmm...
 		auto info = pair->Key;
 		int val = pair->Value;
 		unsigned int i;
-		
+
 		if (val >= 0 && val < (int)OrgSprNames.Size())
 		{
 			for (i = 0; i < sprites.Size(); i++)
@@ -584,7 +578,7 @@ static FState *FindState (int statenum, bool mustexist)
 			state->Tics = -1;
 			state->NextState = state;
 			state->DehIndex = statenum;
-			state->UseFlags = SUF_ACTOR | SUF_OVERLAY | SUF_WEAPON | SUF_ITEM; 
+			state->UseFlags = SUF_ACTOR | SUF_OVERLAY | SUF_WEAPON | SUF_ITEM;
 			return state;
 		}
 
@@ -1072,9 +1066,9 @@ static void SetDehParams(FState *state, int codepointer, VMDisassemblyDumper &di
 	static const uint8_t regts[] = { REGT_POINTER, REGT_POINTER, REGT_POINTER };
 	int value1 = state->GetMisc1();
 	int value2 = state->GetMisc2();
-	
+
 	bool returnsState = codepointer == 6;
-	
+
 	// Let's identify the codepointer we're dealing with.
 	PFunction *sym;
 	sym = dyn_cast<PFunction>(PClass::FindActor(NAME_Weapon)->FindSymbol(FName(MBFCodePointers[codepointer].name), true));
@@ -1143,7 +1137,7 @@ static void SetDehParams(FState *state, int codepointer, VMDisassemblyDumper &di
 		disasmdump.Write(sfunc, sfunc->PrintableName);
 
 #ifdef HAVE_VM_JIT
-		if (Args->CheckParm("-dumpjit"))
+		if (Args->CheckParm(FArg_dumpjit))
 		{
 			FILE *dump = fopen("dumpjit.txt", "a");
 			if (dump != nullptr)
@@ -1315,7 +1309,7 @@ static int PatchThing (int thingy, int flags)
 			}
 			else if (stricmp (Line1, "Scale") == 0)
 			{
-				info->Scale.Y = info->Scale.X = clamp((float)atof (Line2), 1.f/65536, 256.f);
+				info->Scale.Y = info->Scale.X = clamp((float)atof (Line2), EQUAL_EPSILON, 256.f);
 			}
 			else if (stricmp (Line1, "Decal") == 0)
 			{
@@ -1571,7 +1565,7 @@ static int PatchThing (int thingy, int flags)
 			else if (stricmp (Line1 + linelen - 6, " sound") == 0)
 			{
 				FSoundID snd = DehFindSound(val - 1, false);
-				
+
 				if (snd == NO_SOUND) // This won't trigger for dsdhacked patches!
 				{
 					if (endptr == Line2)
@@ -1707,7 +1701,7 @@ static int PatchThing (int thingy, int flags)
 					{
 						// STEALTH FRIEND HACK!
 					}
-					else if (value[0] & MF_FRIEND) 
+					else if (value[0] & MF_FRIEND)
 					{
 						// FRIEND (which occupies in MBF the MF_STEALTH slot)
 						value[0] &= ~MF_FRIEND; // clean the slot
@@ -1729,9 +1723,9 @@ static int PatchThing (int thingy, int flags)
 					if ((info->flags & MF_MISSILE) && (info->flags2 & MF2_NOTELEPORT)
 						&& !(value[0] & MF_MISSILE))
 					{
-						// ZDoom gives missiles flags that did not exist in Doom: MF2_NOTELEPORT, 
-						// MF2_IMPACT, and MF2_PCROSS. The NOTELEPORT one can be a problem since 
-						// some projectile actors (those new to Doom II) were not excluded from 
+						// ZDoom gives missiles flags that did not exist in Doom: MF2_NOTELEPORT,
+						// MF2_IMPACT, and MF2_PCROSS. The NOTELEPORT one can be a problem since
+						// some projectile actors (those new to Doom II) were not excluded from
 						// triggering line effects and can teleport when the missile flag is removed.
 						info->flags2 &= ~MF2_NOTELEPORT;
 					}
@@ -1744,7 +1738,7 @@ static int PatchThing (int thingy, int flags)
 				if (vchanged[1])
 				{
 					if (value[1] & 0x00000004)	// old BOUNCE1
-					{ 	
+					{
 						value[1] &= ~0x00000004;
 						info->BounceFlags = BOUNCE_DoomCompat;
 					}
@@ -1809,6 +1803,8 @@ static int PatchThing (int thingy, int flags)
 
 	if (info != (AActor *)&dummy)
 	{
+		if (hadTranslucency)
+			AutoTrans.Remove(type->TypeName);
 		// Reset heights for things hanging from the ceiling that
 		// don't specify a new height.
 		if (info->flags & MF_SPAWNCEILING &&
@@ -1834,6 +1830,10 @@ static int PatchThing (int thingy, int flags)
 					info->RenderStyle = STYLE_Normal;
 			}
 		}
+		// If the thing being replaced had ZDoom's transparency, let the auto handling know
+		// it should disable it if desired.
+		if ((info->renderflags & RF_ZDOOMTRANS) && type->ActorInfo()->Replacement == nullptr)
+			bDehackedTransPresent = true;
 		// Speed could be either an int of fixed value, depending on its use
 		// If this value is very large it needs to be rescaled.
 		if (fabs(info->Speed) >= 256)
@@ -2111,7 +2111,7 @@ static int PatchSprite (int sprNum, int flags)
 	{
 		// Calculate offset from beginning of sprite names.
 		offset = (offset - toff[dversion] - 22044) / 8;
-	
+
 		if ((unsigned)offset < OrgSprOrgSize)
 		{
 			sprNum = FindSprite (OrgSprNames[sprNum].c);
@@ -2477,7 +2477,7 @@ static int PatchPointer (int ptrNum, int flags)
 				{
 					SetPointer(state, Actions[index], CodePConv[ptrNum]);
 				}
-				DPrintf(DMSG_SPAMMY, "%s has a hacked state for pointer num %i with index %i\nLine1=%s, Line2=%s\n", 
+				DPrintf(DMSG_SPAMMY, "%s has a hacked state for pointer num %i with index %i\nLine1=%s, Line2=%s\n",
 					state->StaticFindStateOwner(state)->TypeName.GetChars(), ptrNum, index, Line1, Line2);
 			}
 			else
@@ -2647,7 +2647,7 @@ static int PatchMisc (int dummy, int flags)
 	}
 
 	auto health = GetDefaultByName ("HealthBonus");
-	if (health!=NULL) 
+	if (health!=NULL)
 	{
 		health->IntVar(NAME_MaxAmount) = -1;	// needs to be evaluated at run time due to the compat flag.
 	}
@@ -2761,7 +2761,7 @@ static int PatchPars (int dummy, int flags)
 	return result;
 }
 
-								
+
 static int PatchCodePtrs (int dummy, int flags)
 {
 	int result;
@@ -2847,7 +2847,7 @@ static int PatchMusic (int dummy, int flags)
 	{
 		FString newname = skipwhite (Line2);
 		FString keystring;
-		
+
 		keystring << "MUSIC_" << Line1;
 
 		TableElement te = { LumpFileNum, { newname, newname, newname, newname } };
@@ -2857,7 +2857,7 @@ static int PatchMusic (int dummy, int flags)
 
 	return result;
 }
-			
+
 // This repplaces a sprite name in the current working data
 static void ReplaceSpriteInData(const char* oldStr, const char* newStr)
 	{
@@ -2873,7 +2873,7 @@ static void ReplaceSpriteInData(const char* oldStr, const char* newStr)
 			{
 				// Found a match, so change it.
 				strncpy (DehSpriteMappings[i].Sprite, newStr, 4);
-				
+
 				// Now shift the map's entries around so that it stays sorted.
 				// This must be done because the map is scanned using a binary search.
 				while (i > 0 && strncmp (DehSpriteMappings[i-1].Sprite, newStr, 4) > 0)
@@ -2919,13 +2919,13 @@ static int PatchText (int oldSize, int flags)
 	FString oldStrData, newStrData;
 	oldStr = oldStrData.LockNewBuffer(oldSize + 1);
 	newStr = newStrData.LockNewBuffer(newSize + 1);
-	
+
 	good = ReadChars (&oldStr, oldSize);
 	good += ReadChars (&newStr, newSize);
 
 	oldStrData.UnlockBuffer();
 	newStrData.UnlockBuffer();
-	
+
 	if (!good)
 	{
 		Printf ("Unexpected end-of-file.\n");
@@ -2962,7 +2962,7 @@ static int PatchText (int oldSize, int flags)
 
 	// Search through most other texts
 	const char *str;
-	
+
 	// hackhack: If the given string is "Doom", only replace "MUSIC_DOOM".
 	// This is the only music or texture name clashing with common words in the string table.
 	if (!stricmp(oldStr, "Doom"))
@@ -2983,14 +2983,14 @@ static int PatchText (int oldSize, int flags)
 			EnglishStrings.Remove(str);	// remove entry so that it won't get found again by the next iteration or  by another replacement later
 			good = true;
 		}
-	} 
+	}
 	while (str != NULL);	// repeat search until the text can no longer be found
 
 	if (!good)
 	{
 		DPrintf (DMSG_SPAMMY, "   (Unmatched)\n");
 	}
-		
+
 donewithtext:
 	// Fetch next identifier for main loop
 	while ((result = GetLine ()) == 1)
@@ -3059,9 +3059,9 @@ static int PatchSoundNames (int dummy, int flags)
 static int PatchSpriteNames (int dummy, int flags)
 {
 		int result;
-		
+
 		DPrintf (DMSG_SPAMMY, "[Sprites]\n");
-		
+
 		while ((result = GetLine()) == 1)
 		{
 			stripwhite(Line2);
@@ -3087,10 +3087,10 @@ static int PatchSpriteNames (int dummy, int flags)
 
 			DPrintf (DMSG_SPAMMY, "Sprite %p set to:\n%s\n", Line1, newname.GetChars()); // should %p be %s ?
 		}
-		
+
 		return result;
 	}
-								  
+
 
 static int DoInclude (int dummy, int flags)
 {
@@ -3194,7 +3194,7 @@ int D_LoadDehLumps(DehLumpSource source, int flags)
 	while ((lumpnum = fileSystem.FindLump("DEHACKED", &lastlump)) >= 0)
 	{
 		const int filenum = fileSystem.GetFileContainer(lumpnum);
-		
+
 		if (FromIWAD == source && filenum > fileSystem.GetMaxIwadNum())
 		{
 			// No more DEHACKED lumps in IWAD
@@ -3326,7 +3326,7 @@ static bool DoDehPatch(int flags)
 		// fix for broken WolfenDoom patches which contain \0 characters in some places.
 		for (int i = 0; i < PatchSize; i++)
 		{
-			if (PatchFile[i] == 0) PatchFile[i] = ' ';	
+			if (PatchFile[i] == 0) PatchFile[i] = ' ';
 		}
 
 		PatchPt = strchr (PatchFile, '\n');
@@ -3600,7 +3600,7 @@ bool LoadDehSupp ()
 						sc.ScriptError("Invalid state range in '%s'", type->TypeName.GetChars());
 					}
 					AActor *def = GetDefaultByType(type);
-					
+
 					s.StateSpan = sc.Number;
 					s.Owner = actortype;
 					s.OwnerIsPickup = def != NULL && (def->flags & MF_SPECIAL) != 0;
@@ -3757,7 +3757,7 @@ bool LoadDehSupp ()
 	}
 	catch(CRecoverableError &err)
 	{
-		// Don't abort if DEHSUPP loading fails. 
+		// Don't abort if DEHSUPP loading fails.
 		// Just print the message and continue.
 		Printf("%s\n", err.GetMessage());
 		return false;
@@ -3776,7 +3776,7 @@ void FinishDehPatch ()
 		GetDefaultByType(cls)->flags8 |= MF8_RETARGETAFTERSLAM;
 	}
 	RemapAllSprites();
-	
+
 	for (touchedIndex = 0; touchedIndex < TouchedActors.Size(); ++touchedIndex)
 	{
 		PClassActor *subclass;
@@ -3789,7 +3789,7 @@ void FinishDehPatch ()
 
 		// Create a new class that will serve as the actual pickup
 		char typeNameBuilder[32];
-		// 
+		//
 		auto dehtype = PClass::FindActor(NAME_DehackedPickup);
 		do
 		{
@@ -3802,14 +3802,14 @@ void FinishDehPatch ()
 				subclass->InitializeDefaults();
 				PClassActor::AllActorClasses.Push(subclass);
 			}
-		} 
+		}
 		while (subclass == nullptr);
 		NewClassType(subclass, 0);	// This needs a VM type to work as intended.
 
 		AActor *defaults2 = GetDefaultByType (subclass);
 		memcpy ((void *)defaults2, (void *)defaults1, sizeof(AActor));
 
-		// Make a copy of the replaced class's state labels 
+		// Make a copy of the replaced class's state labels
 		FStateDefinitions statedef;
 		statedef.MakeStateDefines(type);
 
@@ -3972,11 +3972,11 @@ struct FlagHandler
 #define F8(flag) { [](AActor* a) { a->flags8 |= flag; }, [](AActor* a) { a->flags8 &= ~flag; }, [](AActor* a)->bool { return a->flags8 & flag; } }
 #define DEPF(flag) { [](AActor* a) { HandleDeprecatedFlags(a, true, flag); }, [](AActor* a) { HandleDeprecatedFlags(a, false, flag); }, [](AActor* a)->bool { return !!CheckDeprecatedFlags(a, flag); } }
 
-void SetNoSector(AActor* a) 
-{ 
-	a->UnlinkFromWorld(nullptr); 
-	a->flags |= MF_NOSECTOR; 
-	a->LinkToWorld(nullptr); 
+void SetNoSector(AActor* a)
+{
+	a->UnlinkFromWorld(nullptr);
+	a->flags |= MF_NOSECTOR;
+	a->LinkToWorld(nullptr);
 }
 
 void ClearNoSector(AActor* a)
@@ -4062,7 +4062,7 @@ void ClearFriendly(AActor* a)
 
 void SetFullVol(AActor* a)
 {
-	a->flags8 |= MF8_FULLVOLSEE; 
+	a->flags8 |= MF8_FULLVOLSEE;
 	a->flags3 |= MF3_FULLVOLDEATH;
 }
 

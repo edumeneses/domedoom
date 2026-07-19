@@ -1,58 +1,46 @@
 /*
 ** texturemanager.cpp
+**
 ** The texture manager class
 **
 **---------------------------------------------------------------------------
-** Copyright 2004-2008 Randy Heit
-** Copyright 2006-2008 Christoph Oelckers
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 2004-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **---------------------------------------------------------------------------
 **
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
 **
 */
 
-#include "filesystem.h"
-#include "printf.h"
-#include "c_cvars.h"
-
-#include "gstrings.h"
-#include "textures.h"
-#include "texturemanager.h"
-#include "c_dispatch.h"
-#include "sc_man.h"
-#include "image.h"
-#include "vectors.h"
 #include "animtexture.h"
-#include "formats/multipatchtexture.h"
 #include "basics.h"
+#include "c_cvars.h"
+#include "c_dispatch.h"
 #include "cmdlib.h"
+#include "filesystem.h"
+#include "formats/multipatchtexture.h"
+#include "gstrings.h"
+#include "image.h"
+#include "printf.h"
+#include "sc_man.h"
+#include "stringtable.h"
+#include "texturemanager.h"
+#include "textures.h"
+#include "vectors.h"
+#include "m_round.h"
 
 using namespace FileSys;
 FTextureManager TexMan;
-
 
 //==========================================================================
 //
@@ -99,6 +87,7 @@ void FTextureManager::DeleteAll()
 	FirstTextureForFile.Clear();
 	memset (HashFirst, -1, sizeof(HashFirst));
 	DefaultTexture.SetInvalid();
+	WhiteTexture.SetInvalid();
 
 	BuildTileData.Clear();
 	tmanips.Clear();
@@ -310,7 +299,7 @@ int FTextureManager::ListTextures (const char *name, TArray<FTextureID> &list, b
 		{
 			auto texUseType = tex->GetUseType();
 			// NULL textures must be ignored.
-			if (texUseType!=ETextureType::Null) 
+			if (texUseType!=ETextureType::Null)
 			{
 				unsigned int j = list.Size();
 				if (!listall)
@@ -390,7 +379,7 @@ bool FTextureManager::OkForLocalization(FTextureID texnum, const char *substitut
 	if (locmode == 4) return false;
 
 	// Mode 2 and 3 must reject any text replacement from the default language tables.
-	if ((langtable & MAKE_ID(255,0,0,0)) == MAKE_ID('*', 0, 0, 0)) return true;	// Do not substitute if the string comes from the default table.
+	if (langtable == FStringTable::default_table) return true;	// Do not substitute if the string comes from the default table.
 	if (locmode == 2) return false;
 
 	// Mode 3 must also reject substitutions for non-IWAD content.
@@ -662,8 +651,8 @@ void FTextureManager::AddHiresTextures (int wadnum)
 							double xscale2 = oldtex->GetTexelLeftOffset(1) * gtex->GetScaleX() / oldtex->GetScaleX();
 							double yscale1 = oldtex->GetTexelTopOffset(0) * gtex->GetScaleY() / oldtex->GetScaleY();
 							double yscale2 = oldtex->GetTexelTopOffset(1) * gtex->GetScaleY() / oldtex->GetScaleY();
-							gtex->SetOffsets(0, xs_RoundToInt(xscale1), xs_RoundToInt(yscale1));
-							gtex->SetOffsets(1, xs_RoundToInt(xscale2), xs_RoundToInt(yscale2));
+							gtex->SetOffsets(0, RoundHalfUp(xscale1), RoundHalfUp(yscale1));
+							gtex->SetOffsets(1, RoundHalfUp(xscale2), RoundHalfUp(yscale2));
 							ReplaceTexture(tlist[i], gtex, true);
 						}
 					}
@@ -762,8 +751,8 @@ void FTextureManager::ParseTextureDef(int lump, FMultipatchTextureBuilder &build
 							double xscale2 = oldtex->GetTexelLeftOffset(1) * gtex->GetScaleX() / oldtex->GetScaleX();
 							double yscale1 = oldtex->GetTexelTopOffset(0) * gtex->GetScaleY() / oldtex->GetScaleY();
 							double yscale2 = oldtex->GetTexelTopOffset(1) * gtex->GetScaleY() / oldtex->GetScaleY();
-							gtex->SetOffsets(0, xs_RoundToInt(xscale1), xs_RoundToInt(yscale1));
-							gtex->SetOffsets(1, xs_RoundToInt(xscale2), xs_RoundToInt(yscale2));
+							gtex->SetOffsets(0, RoundHalfUp(xscale1), RoundHalfUp(yscale1));
+							gtex->SetOffsets(1, RoundHalfUp(xscale2), RoundHalfUp(yscale2));
 							ReplaceTexture(tlist[i], gtex, true);
 						}
 					}
@@ -802,7 +791,7 @@ void FTextureManager::ParseTextureDef(int lump, FMultipatchTextureBuilder &build
 						newtex->SetDisplaySize((float)width, (float)height);
 
 						FTextureID oldtex = TexMan.CheckForTexture(src.GetChars(), ETextureType::MiscPatch);
-						if (oldtex.isValid()) 
+						if (oldtex.isValid())
 						{
 							ReplaceTexture(oldtex, newtex, true);
 							newtex->SetUseType(ETextureType::Override);
@@ -810,7 +799,7 @@ void FTextureManager::ParseTextureDef(int lump, FMultipatchTextureBuilder &build
 						else AddGameTexture(newtex);
 					}
 				}
-			}				
+			}
 			//else Printf("Unable to define hires texture '%s'\n", tex->Name);
 		}
 		else if (sc.Compare("notrim"))
@@ -994,7 +983,7 @@ void FTextureManager::AddTexturesForWad(int wadnum, FMultipatchTextureBuilder &b
 			if (fileSystem.CheckNumForName(Name, ns_graphics) != i)
 			{
 				if (iwad)
-				{ 
+				{
 					// We need to make an exception for font characters of the SmallFont coming from the IWAD to be able to construct the original font.
 					if (strncmp(Name, "STCFN", 5) != 0 && strncmp(Name, "FONTA", 5) != 0) continue;
 					force = true;
@@ -1029,7 +1018,7 @@ void FTextureManager::AddTexturesForWad(int wadnum, FMultipatchTextureBuilder &b
 		// Unfortunately we have to look at everything that comes through here...
 		auto out = MakeGameTexture(CreateTextureFromLump(i), Name, skin ? ETextureType::SkinGraphic : ETextureType::MiscPatch);
 
-		if (out != NULL) 
+		if (out != NULL)
 		{
 			AddGameTexture (out);
 		}
@@ -1074,8 +1063,8 @@ void FTextureManager::SortTexturesByType(int start, int end)
 	Translation.Resize(start);
 
 	static ETextureType texturetypes[] = {
-		ETextureType::Sprite, ETextureType::Null, ETextureType::FirstDefined, 
-		ETextureType::WallPatch, ETextureType::Wall, ETextureType::Flat, 
+		ETextureType::Sprite, ETextureType::Null, ETextureType::FirstDefined,
+		ETextureType::WallPatch, ETextureType::Wall, ETextureType::Flat,
 		ETextureType::Override, ETextureType::MiscPatch, ETextureType::SkinGraphic
 	};
 
@@ -1115,66 +1104,55 @@ void FTextureManager::AddLocalizedVariants()
 	{
 		FString name = entry.name;
 		auto tokens = name.Split(".", FString::TOK_SKIPEMPTY);
-		if (tokens.Size() == 2)
+		if (tokens.Size() <= 2)
 		{
-			auto ext = tokens[1];
 			// Do not interpret common extensions for images as language IDs.
-			if (ext.CompareNoCase("png") == 0 || ext.CompareNoCase("jpg") == 0 || ext.CompareNoCase("gfx") == 0 || ext.CompareNoCase("tga") == 0 || ext.CompareNoCase("lmp") == 0)
+			if (tokens.Size() < 2 ||
+				tokens[1].CompareNoCase("png") == 0 ||
+				tokens[1].CompareNoCase("jpg") == 0 ||
+				tokens[1].CompareNoCase("gfx") == 0 ||
+				tokens[1].CompareNoCase("tga") == 0 ||
+				tokens[1].CompareNoCase("lmp") == 0)
 			{
 				Printf("%s contains no language IDs and will be ignored\n", entry.name);
 				continue;
 			}
 		}
-		if (tokens.Size() >= 2)
+
+		FString base = ExtractFileBase(tokens[0].GetChars());
+		FTextureID origTex = CheckForTexture(base.GetChars(), ETextureType::MiscPatch);
+		if (!origTex.isValid())
 		{
-			FString base = ExtractFileBase(tokens[0].GetChars());
-			FTextureID origTex = CheckForTexture(base.GetChars(), ETextureType::MiscPatch);
-			if (origTex.isValid())
-			{
-				FTextureID tex = CheckForTexture(entry.name, ETextureType::MiscPatch);
-				if (tex.isValid())
-				{
-					auto otex = GetGameTexture(origTex);
-					auto ntex = GetGameTexture(tex);
-					if (otex->GetDisplayWidth() != ntex->GetDisplayWidth() || otex->GetDisplayHeight() != ntex->GetDisplayHeight())
-					{
-						Printf("Localized texture %s must be the same size as the one it replaces\n", entry.name);
-					}
-					else
-					{
-						tokens[1].ToLower();
-						auto langids = tokens[1].Split("-", FString::TOK_SKIPEMPTY);
-						for (auto &lang : langids)
-						{
-							if (lang.Len() == 2 || lang.Len() == 3)
-							{
-								uint32_t langid = MAKE_ID(lang[0], lang[1], lang[2], 0);
-								uint64_t comboid = (uint64_t(langid) << 32) | origTex.GetIndex();
-								LocalizedTextures.Insert(comboid, tex.GetIndex());
-								Textures[origTex.GetIndex()].Flags |= TEXFLAG_HASLOCALIZATION;
-							}
-							else
-							{
-								Printf("Invalid language ID in texture %s\n", entry.name);
-							}
-						}
-					}
-				}
-				else
-				{
-					Printf("%s is not a texture\n", entry.name);
-				}
-			}
-			else
-			{
-				Printf("Unknown texture %s for localized variant %s\n", tokens[0].GetChars(), entry.name);
-			}
-		}
-		else
-		{
-			Printf("%s contains no language IDs and will be ignored\n", entry.name);
+			Printf("Unknown texture %s for localized variant %s\n", tokens[0].GetChars(), entry.name);
+			continue;
 		}
 
+		FTextureID tex = CheckForTexture(entry.name, ETextureType::MiscPatch);
+		if (!tex.isValid())
+		{
+			Printf("%s is not a texture\n", entry.name);
+			continue;
+		}
+
+		auto otex = GetGameTexture(origTex);
+		auto ntex = GetGameTexture(tex);
+		if (otex->GetDisplayWidth() != ntex->GetDisplayWidth() || otex->GetDisplayHeight() != ntex->GetDisplayHeight())
+		{
+			Printf("Localized texture %s must be the same size as the one it replaces\n", entry.name);
+			continue;
+		}
+
+		auto langids = tokens[1].Split("-", FString::TOK_SKIPEMPTY);
+		for (auto &lang : langids)
+		{
+			auto t1 = tex.GetIndex(), t2 = origTex.GetIndex();
+
+			GStrings.ForEachLangID([this, t1, t2](FName name, uint32_t lang, char set) {
+				if (set == 'O' || set == 'G' || set == 'D') return;
+				LocalizedTextures.Insert((uint64_t(lang) << 32) | t1, t2);
+				Textures[t2].Flags |= TEXFLAG_HASLOCALIZATION;
+			}, lang.GetChars());
+		}
 	}
 }
 
@@ -1190,7 +1168,7 @@ void FTextureManager::Init()
 {
 	DeleteAll();
 
-	// Add all the static content 
+	// Add all the static content
 	auto nulltex = MakeGameTexture(new FImageTexture(CreateEmptyTexture()), nullptr, ETextureType::Null);
 	AddGameTexture(nulltex);
 
@@ -1235,6 +1213,7 @@ void FTextureManager::AddTextures(void (*progressFunc_)(), void (*checkForHacks)
 	FirstTextureForFile.Push(Textures.Size());
 
 	DefaultTexture = CheckForTexture ("-NOFLAT-", ETextureType::Override, 0);
+	WhiteTexture = CheckForTexture ("-WHITE-", ETextureType::Override, 0);
 
 	InitPalettedVersions();
 	AdjustSpriteOffsets();
@@ -1297,7 +1276,7 @@ void FTextureManager::InitPalettedVersions()
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -1384,17 +1363,13 @@ EXTERN_CVAR(String, language)
 
 int FTextureManager::ResolveLocalizedTexture(int tex)
 {
-	size_t langlen = strlen(language);
-	int lang = (langlen < 2 || langlen > 3) ?
-		MAKE_ID('e', 'n', 'u', '\0') :
-		MAKE_ID(language[0], language[1], language[2], '\0');
-
-	uint64_t index = (uint64_t(lang) << 32) + tex;
-	if (auto pTex = LocalizedTextures.CheckKey(index)) return *pTex;
-	index = (uint64_t(lang & MAKE_ID(255, 255, 0, 0)) << 32) + tex;
-	if (auto pTex = LocalizedTextures.CheckKey(index)) return *pTex;
-
-	return tex;
+	int *pTex = nullptr;
+	GStrings.ForEachLangID([this, tex, &pTex](FName name, uint32_t lang, char set) {
+		if (pTex) return;
+		if (set == 'O' || set == 'G' || set == 'D') return;
+		pTex = LocalizedTextures.CheckKey((uint64_t(lang) << 32) | tex);
+	}, *language);
+	return pTex? *pTex: tex;
 }
 
 //===========================================================================
@@ -1459,7 +1434,7 @@ int FTextureManager::CountTexturesX ()
 
 		// Only count the patches if the PNAMES come from the current file
 		// Otherwise they have already been counted.
-		if (fileSystem.GetFileContainer(pnames) == wadnum) 
+		if (fileSystem.GetFileContainer(pnames) == wadnum)
 		{
 			count += CountLumpTextures (pnames);
 		}
@@ -1485,7 +1460,7 @@ int FTextureManager::CountLumpTextures (int lumpnum)
 {
 	if (lumpnum >= 0)
 	{
-		auto file = fileSystem.OpenFileReader (lumpnum); 
+		auto file = fileSystem.OpenFileReader (lumpnum);
 		uint32_t numtex = file.ReadUInt32();
 
 		return int(numtex) >= 0 ? numtex : 0;

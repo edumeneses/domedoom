@@ -1,9 +1,26 @@
+/*
+** model_kvx.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2011-2016 Marisa Heit
+** Copyright 2013-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
-#include "model.h"
 #include "i_modelvertexbuffer.h"
+#include "model.h"
 #include "tarray.h"
-#include "xs_Float.h"
 
 struct FVoxel;
 struct kvxslab_t;
@@ -13,8 +30,8 @@ class FGameTexture;
 struct FVoxelVertexHash
 {
 	// Returns the hash value for a key.
-	hash_t Hash(const FModelVertex &key) 
-	{ 
+	hash_t Hash(const FModelVertex &key)
+	{
 		int ix = int(key.x);
 		int iy = int(key.y);
 		int iz = int(key.z);
@@ -22,8 +39,8 @@ struct FVoxelVertexHash
 	}
 
 	// Compares two keys, returning zero if they are the same.
-	int Compare(const FModelVertex &left, const FModelVertex &right) 
-	{ 
+	int Compare(const FModelVertex &left, const FModelVertex &right)
+	{
 		return left.x != right.x || left.y != right.y || left.z != right.z || left.u != right.u || left.v != right.v;
 	}
 };
@@ -65,5 +82,3 @@ public:
 	void BuildVertexBuffer(FModelRenderer *renderer) override;
 	float getAspectFactor(float vscale) override;
 };
-
-

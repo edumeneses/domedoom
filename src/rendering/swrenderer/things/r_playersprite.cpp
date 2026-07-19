@@ -1,23 +1,21 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2016 Magnus Norddahl
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
+/*
+** r_playersprite.cpp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2016 Magnus Norddahl
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,6 +65,7 @@
 #include "swrenderer/r_renderthread.h"
 #include "g_levellocals.h"
 #include "v_draw.h"
+#include "m_round.h"
 
 EXTERN_CVAR(Bool, r_drawplayersprites)
 EXTERN_CVAR(Bool, r_deathcamera)
@@ -96,7 +95,7 @@ namespace swrenderer
 			(players[consoleplayer].cheats & CF_CHASECAM) ||
 			(r_deathcamera && Thread->Viewport->viewpoint.camera->health <= 0))
 			return;
-		
+
 		FDynamicColormap *basecolormap;
 		CameraLight *cameraLight = CameraLight::Instance();
 		auto nc = !!(Thread->Viewport->Level()->flags3 & LEVEL3_NOCOLOREDSPRITELIGHTING);
@@ -147,14 +146,17 @@ namespace swrenderer
 		if (Thread->Viewport->viewpoint.camera->player != NULL)
 		{
 			auto viewport = Thread->Viewport.get();
-			
+
 			double centerhack = viewport->CenterY;
 			double wx, wy;
 			float bobx, boby;
 
 			viewport->CenterY = viewheight / 2;
 
-			P_BobWeapon(viewport->viewpoint.camera->player, &bobx, &boby, Net_ModifyFrac(viewport->viewpoint.TicFrac));
+			BobType = PSPB_2D;
+			FVector2 interp = PlayerBob[Thread->Viewport->viewpoint.camera->player - players].Interpolate2D(Net_ModifyFrac(viewport->viewpoint.TicFrac));
+			bobx = interp.X;
+			boby = interp.Y;
 
 			// Interpolate the main weapon layer once so as to be able to add it to other layers.
 			if ((weapon = viewport->viewpoint.camera->player->FindPSprite(PSP_WEAPON)) != nullptr)
@@ -210,7 +212,7 @@ namespace swrenderer
 		uint16_t				flip;
 		FGameTexture*			tex;
 		bool				noaccel;
-		double				alpha = owner->Alpha;
+		double				alpha = owner->InterpolatedAlpha(ticfrac);
 
 		// decide which patch to use
 		if ((unsigned)pspr->GetSprite() >= (unsigned)sprites.Size())
@@ -254,7 +256,7 @@ namespace swrenderer
 			sx += wx;
 			sy += wy;
 		}
-		
+
 		auto viewport = Thread->Viewport.get();
 
 		double pspritexscale = viewport->viewwindow.centerxwide / 160.0;
@@ -267,14 +269,14 @@ namespace swrenderer
 
 		// calculate edges of the shape
 		tx = (pspr->Flags & PSPF_MIRROR) ? ((BASEXCENTER - twidth) - (sx - tleft)) : ((sx - BASEXCENTER) - tleft);
-		x1 = xs_RoundToInt(viewport->CenterX + tx * pspritexscale);
+		x1 = RoundHalfUp(viewport->CenterX + tx * pspritexscale);
 
 		// off the right side
 		if (x1 > viewwidth)
 			return;
 
 		tx += twidth;
-		x2 = xs_RoundToInt(viewport->CenterX + tx * pspritexscale);
+		x2 = RoundHalfUp(viewport->CenterX + tx * pspritexscale);
 
 		// off the left side
 		if (x2 <= 0)
@@ -332,8 +334,8 @@ namespace swrenderer
 		FDynamicColormap *colormap_to_use = nullptr;
 		if (pspr->GetID() < PSP_TARGETCENTER)
 		{
-			// [MC] Set the render style 
-			auto rs = pspr->GetRenderStyle(owner->RenderStyle, owner->Alpha);
+			// [MC] Set the render style
+			auto rs = pspr->GetRenderStyle(owner->RenderStyle, alpha);
 			vis.RenderStyle = rs.first;
 			vis.Alpha = rs.second;
 
@@ -366,9 +368,9 @@ namespace swrenderer
 				visstyle.Alpha = vis.Alpha;
 				visstyle.RenderStyle = STYLE_Count;
 				visstyle.Invert = false;
-				
+
 				Thread->Viewport->viewpoint.camera->Inventory->AlterWeaponSprite(&visstyle);
-				
+
 				if (!(pspr->Flags & PSPF_FORCEALPHA)) vis.Alpha = visstyle.Alpha;
 
 				if (visstyle.RenderStyle != STYLE_Count && !(pspr->Flags & PSPF_FORCESTYLE))
@@ -444,7 +446,7 @@ namespace swrenderer
 				{
 					accelSprite.special = CameraLight::Instance()->ShaderColormap();
 				}
-				else 
+				else
 				{
 					accelSprite.overlay = colormap_to_use->Fade;
 					accelSprite.overlay.a = uint8_t(vis.Light.ColormapNum * 255 / NUMCOLORMAPS);

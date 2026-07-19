@@ -1,31 +1,24 @@
-//-----------------------------------------------------------------------------
-//
-// Copyright 1993-1996 id Software
-// Copyright 1994-1996 Raven Software
-// Copyright 1999-2016 Randy Heit
-// Copyright 2002-2016 Christoph Oelckers
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//-----------------------------------------------------------------------------
-//
-// DESCRIPTION:
-//	all external data is defined here
-//	most of the data is loaded into different structures at run time
-//	some internal structures shared by many modules are here
-//
-//-----------------------------------------------------------------------------
+/*
+** doomdata.h
+**
+** all external data is defined here
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2002-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** most of the data is loaded into different structures at run time
+** some internal structures shared by many modules are here
+*/
 
 #ifndef __DOOMDATA__
 #define __DOOMDATA__
@@ -178,7 +171,8 @@ enum ELineFlags : uint32_t
 	ML_DRAWFULLHEIGHT			= 0x40000000,	// Draw the full height of the upper/lower sections
 	ML_PORTALCONNECT			= 0x80000000,	// for internal use only: This line connects to a sector with a linked portal (used to speed up sight checks.)
 	// Flag words may not exceed 32 bit due to VM limitations.
-	ML2_BLOCKLANDMONSTERS		= 0x1,	// MBF21
+	ML2_BLOCKLANDMONSTERS		= 0x00000001,	// MBF21
+	ML2_RESERVEDLINEFLAG		= 0x00000002,	// MBF21
 };
 
 
@@ -189,7 +183,7 @@ enum SPAC
 	SPAC_Use = 1<<1,		// when player uses line
 	SPAC_MCross = 1<<2,		// when monster crosses line
 	SPAC_Impact = 1<<3,		// when projectile hits line
-	SPAC_Push = 1<<4,		// when player pushes line	
+	SPAC_Push = 1<<4,		// when player pushes line
 	SPAC_PCross = 1<<5,		// when projectile crosses line
 	SPAC_UseThrough = 1<<6,	// when player uses line (doesn't block)
 	// SPAC_PTOUCH is mapped to SPAC_PCross|SPAC_Impact
@@ -276,7 +270,7 @@ struct mapseg_t
 	int V2() { return LittleShort(v2); }
 };
 
-struct mapseg4_t 
+struct mapseg4_t
 {
 	int32_t v1;
 	int32_t v2;

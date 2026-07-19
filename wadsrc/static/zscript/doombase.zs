@@ -1,3 +1,21 @@
+/*
+** doombase.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 extend struct _
 {
@@ -17,7 +35,7 @@ extend struct _
 	native readonly Weapon WP_NOCHANGE;
 	deprecated("3.8", "Use Actor.isFrozen() or Level.isFrozen() instead") native readonly bool globalfreeze;
 	native int LocalViewPitch;
-	
+
 	// sandbox state in multi-level setups:
 	native play @PlayerInfo players[MAXPLAYERS];
 	native readonly bool playeringame[MAXPLAYERS];
@@ -202,7 +220,7 @@ class Thinker : Object native play
 {
 	enum EStatnums
 	{
- 		// Thinkers that don't actually think
+		// Thinkers that don't actually think
 		STAT_INFO,								// An info queue
 		STAT_DECAL,								// A decal
 		STAT_AUTODECAL,							// A decal that can be automatically deleted
@@ -237,14 +255,14 @@ class Thinker : Object native play
 
 
 	native LevelLocals Level;
-	
+
 	virtual native void Tick();
 	virtual native void PostBeginPlay();
 	virtual void OnLoad() {}
 	native void AddToTravellingList();
 	native void ChangeStatNum(int stat);
 	native clearscope int GetStatNum() const;
-	
+
 	static clearscope int Tics2Seconds(int tics)
 	{
 		return int(tics / TICRATE);
@@ -292,7 +310,7 @@ class BlockThingsIterator : Object native
 	native Actor thing;
 	native Vector3 position;
 	native int portalflags;
-	
+
 	native static BlockThingsIterator Create(Actor origin, double checkradius = -1, bool ignorerestricted = false);
 	native static BlockThingsIterator CreateFromPos(double checkx, double checky, double checkz, double checkh, double checkradius, bool ignorerestricted);
 	native bool Next();
@@ -303,7 +321,7 @@ class BlockLinesIterator : Object native
 	native Line CurLine;
 	native Vector3 position;
 	native int portalflags;
-	
+
 	native static BlockLinesIterator Create(Actor origin, double checkradius = -1);
 	native static BlockLinesIterator CreateFromPos(Vector3 pos, double checkh, double checkradius, Sector sec = null);
 	native bool Next();
@@ -427,6 +445,7 @@ struct LevelInfo native
 	native readonly float skyspeed1;
 	native readonly float skyspeed2;
 	native readonly float skymistspeed;
+	native readonly float skymistyscale;
 	native readonly int cdtrack;
 	native readonly double gravity;
 	native readonly double aircontrol;
@@ -469,7 +488,7 @@ struct FSpawnParticleParams
 	native Vector3 pos;
 	native Vector3 vel;
 	native Vector3 accel;
-	
+
 	native double startalpha;
 	native double fadestep;
 	native double fadeoutstep; // unlike fadestep, this is always expected to be a positive value.
@@ -488,7 +507,7 @@ struct LevelLocals native
 		UDMF_Sector,
 		//UDMF_Thing // not implemented
 	};
-	
+
 	const CLUSTER_HUB = 0x00000001;	// Cluster uses hub behavior
 
 
@@ -498,7 +517,7 @@ struct LevelLocals native
 	native readonly Array<@Vertex> Vertexes;
 	native readonly Array<@LinePortal> LinePortals;
 	native internal readonly Array<@SectorPortal> SectorPortals;
-	
+
 	native readonly int time;
 	native readonly int maptime;
 	native readonly int totaltime;
@@ -524,6 +543,7 @@ struct LevelLocals native
 	native float skyspeed1;
 	native float skyspeed2;
 	native float skymistspeed;
+	native float skymistyscale;
 	native int total_secrets;
 	native int found_secrets;
 	native int total_items;
@@ -582,10 +602,10 @@ struct LevelLocals native
 	native bool IsFreelookAllowed() const;
 	native void StartIntermission(Name type, int state) const;
 	native play SpotState GetSpotState(bool create = true);
-	native int FindUniqueTid(int start = 0, int limit = 0, bool clientSide = false);
+	native clearscope int FindUniqueTid(int start = 0, int limit = 0, bool clientSide = false);
 	native uint GetSkyboxPortal(Actor actor);
 	native void ReplaceTextures(String from, String to, int flags);
-    clearscope native HealthGroup FindHealthGroup(int id);
+	clearscope native HealthGroup FindHealthGroup(int id);
 	native vector3, int PickDeathmatchStart();
 	native vector3, int PickPlayerStart(int pnum, int flags = 0);
 	native int isFrozen() const;
@@ -603,7 +623,7 @@ struct LevelLocals native
 	native clearscope vector2 Vec2Diff(vector2 v1, vector2 v2) const;
 	native clearscope vector3 Vec3Diff(vector3 v1, vector3 v2) const;
 	native clearscope vector3 SphericalCoords(vector3 viewpoint, vector3 targetPos, vector2 viewAngles = (0, 0), bool absolute = false) const;
-	
+
 	native clearscope vector2 Vec2Offset(vector2 pos, vector2 dir, bool absolute = false) const;
 	native clearscope vector3 Vec2OffsetZ(vector2 pos, vector2 dir, double atz, bool absolute = false) const;
 	native clearscope vector3 Vec3Offset(vector3 pos, vector3 dir, bool absolute = false) const;
@@ -618,19 +638,20 @@ struct LevelLocals native
 	native String GetChecksum() const;
 
 	native void ChangeSky(TextureID sky1, TextureID sky2 );
-	native void ChangeSkyMist(TextureID skymist, bool usemist = true);
+	native void ChangeSkyMist(TextureID skymist, bool usemist = true, float skymistyscale = 1.0);
 	native void SetSkyFog(int fogdensity);
 	native void SetThickFog(float distance, float multiplier);
 	native void ForceLightning(int mode = 0, sound tempSound = "");
 
-	native clearscope Thinker CreateThinker(class<Thinker> type, int statnum = Thinker.STAT_DEFAULT, bool clientSide = false);
-	native SectorTagIterator CreateSectorTagIterator(int tag, line defline = null);
-	native LineIdIterator CreateLineIdIterator(int tag);
-	native ActorIterator CreateActorIterator(int tid, class<Actor> type = "Actor", bool clientSide = false);
+	native play Thinker CreateThinker(class<Thinker> type, int statnum = Thinker.STAT_DEFAULT);
+	native clearscope Thinker CreateClientSideThinker(class<Thinker> type, int statnum = Thinker.STAT_DEFAULT);
+	native clearscope SectorTagIterator CreateSectorTagIterator(int tag, line defline = null);
+	native clearscope LineIdIterator CreateLineIdIterator(int tag);
+	native clearscope ActorIterator CreateActorIterator(int tid, class<Actor> type = "Actor", bool clientSide = false);
 
 	String TimeFormatted(bool totals = false)
 	{
-		int sec = Thinker.Tics2Seconds(totals? totaltime : time); 
+		int sec = Thinker.Tics2Seconds(totals? totaltime : time);
 		return String.Format("%02d:%02d:%02d", sec / 3600, (sec % 3600) / 60, sec % 60);
 	}
 
@@ -644,10 +665,11 @@ struct LevelLocals native
 	native String GetClusterName();
 	native String GetEpisodeName();
 
-	native void SpawnParticle(FSpawnParticleParams p);
-	native VisualThinker SpawnVisualThinker(Class<VisualThinker> type, bool clientSide = false);
+	native clearscope void SpawnParticle(FSpawnParticleParams p);
+	native play VisualThinker SpawnVisualThinker(Class<VisualThinker> type);
+	native clearscope VisualThinker SpawnClientSideVisualThinker(Class<VisualThinker> type);
 
-	clearscope native static bool WorldPaused(bool checkLag = true);
+	clearscope native static bool WorldPaused(bool checkLag = false);
 }
 
 // a few values of this need to be readable by the play code.
@@ -669,8 +691,8 @@ struct State native
 	native readonly int sprite;
 	native readonly int16 Tics;
 	native readonly uint16 TicRange;
-	native readonly uint8 Frame;		
-	native readonly uint8 UseFlags;	
+	native readonly uint8 Frame;
+	native readonly uint8 UseFlags;
 	native readonly int Misc1;
 	native readonly int Misc2;
 	native readonly uint16 bSlow;
@@ -680,7 +702,7 @@ struct State native
 	native readonly bool bSameFrame;
 	native readonly bool bCanRaise;
 	native readonly bool bDehacked;
-	
+
 	native int DistanceTo(state other) const;
 	native bool ValidateSpriteFrame() const;
 	native TextureID, bool, Vector2 GetSpriteTexture(int rotation, int skin = 0, Vector2 scale = (0,0), int spritenum = -1, int framenum = -1) const;
@@ -734,11 +756,107 @@ class SectorEffect : Thinker native
 class Mover : SectorEffect native
 {}
 
+class Elevator : Mover native
+{
+	enum EElevator
+	{
+		elevateUp,
+		elevateDown,
+		elevateCurrent,
+		// [RH] For FloorAndCeiling_Raise/Lower
+		elevateRaise,
+		elevateLower
+	};
+
+	native readonly EElevator	m_Type;
+	native readonly int			m_Direction;
+	native readonly double		m_FloorDestDist;
+	native readonly double		m_CeilingDestDist;
+	native readonly double		m_Speed;
+}
+
 class MovingFloor : Mover native
 {}
 
+class Plat : MovingFloor native
+{
+	enum EPlatState
+	{
+		up,
+		down,
+		waiting,
+		in_stasis
+	};
+
+	enum EPlatType
+	{
+		platPerpetualRaise,
+		platDownWaitUpStay,
+		platDownWaitUpStayStone,
+		platUpWaitDownStay,
+		platUpNearestWaitDownStay,
+		platDownByValue,
+		platUpByValue,
+		platUpByValueStay,
+		platRaiseAndStay,
+		platToggle,
+		platDownToNearestFloor,
+		platDownToLowestCeiling,
+		platRaiseAndStayLockout,
+	};
+
+	bool IsLift() const { return m_Type == platDownWaitUpStay || m_Type == platDownWaitUpStayStone; }
+
+	native readonly double m_Speed;
+	native readonly double m_Low;
+	native readonly double m_High;
+	native readonly int m_Wait;
+	native readonly int m_Count;
+	native readonly EPlatState m_Status;
+	native readonly EPlatState m_OldStatus;
+	native readonly int m_Crush;
+	native readonly int m_Tag;
+	native readonly EPlatType m_Type;
+}
+
 class MovingCeiling : Mover native
 {}
+
+class Door : MovingCeiling native
+{
+	enum EVlDoor
+	{
+		doorClose,
+		doorOpen,
+		doorRaise,
+		doorWaitRaise,
+		doorCloseWaitOpen,
+		doorWaitClose,
+	};
+
+	native readonly EVlDoor	m_Type;
+	native readonly double	m_TopDist;
+	native readonly double	m_BotDist, m_OldFloorDist;
+	native readonly Vertex	m_BotSpot;
+	native readonly double	m_Speed;
+
+	// 1 = up, 0 = waiting at top, -1 = down
+	enum EDirection
+	{
+		dirDown = -1,
+		dirWait,
+		dirUp,
+	}
+	native readonly int		m_Direction;
+
+	// tics to wait at the top
+	native readonly int		m_TopWait;
+	// (keep in case a door going down is reset)
+	// when it reaches 0, start going down
+	native readonly int		m_TopCountdown;
+
+	native readonly int		m_LightTag;
+}
 
 class Floor : MovingFloor native
 {
@@ -781,6 +899,37 @@ class Floor : MovingFloor native
 		genFloorChgT,
 		genFloorChg
 	};
+
+	enum EStair
+	{
+		buildUp,
+		buildDown
+	};
+
+	enum EStairType
+	{
+		stairUseSpecials = 1,
+		stairSync = 2,
+		stairCrush = 4,
+	};
+
+	native readonly EFloor			m_Type;
+	native readonly int				m_Crush;
+	native readonly bool			m_Hexencrush;
+	native readonly bool			m_Instant;
+	native readonly int				m_Direction;
+	native readonly SecSpecial		m_NewSpecial;
+	native readonly TextureID		m_Texture;
+	native readonly double			m_FloorDestDist;
+	native readonly double			m_Speed;
+
+	// [RH] New parameters used to reset and delay stairs
+	native readonly double			m_OrgDist;
+	native readonly int				m_ResetCount;
+	native readonly int				m_Delay;
+	native readonly int				m_PauseTime;
+	native readonly int				m_StepTime;
+	native readonly int				m_PerStepTime;
 
 	deprecated("3.8", "Use Level.CreateFloor() instead") static bool CreateFloor(sector sec, int floortype, line ln, double speed, double height = 0, int crush = -1, int change = 0, bool crushmode = false, bool hereticlower = false)
 	{
@@ -827,12 +976,34 @@ class Ceiling : MovingCeiling native
 		crushHexen = 1,
 		crushSlowdown = 2
 	}
-	
+
+	// 1 = up, 0 = waiting, -1 = down
+	enum EDirection
+	{
+		dirDown = -1,
+		dirWait,
+		dirUp,
+	}
+
+	native readonly ECeiling	m_Type;
+	native readonly double	 	m_BottomHeight;
+	native readonly double	 	m_TopHeight;
+	native readonly double	 	m_Speed;
+	native readonly double		m_Speed1;		// [RH] dnspeed of crushers
+	native readonly double		m_Speed2;		// [RH] upspeed of crushers
+	native readonly ECrushMode	m_CrushMode;
+	native readonly int			m_Silent;
+
+	bool IsCrusher() const { return m_Type == ceilCrushAndRaise || m_Type == ceilLowerAndCrush || m_Type == ceilCrushRaiseAndStay; }
+	native int getCrush() const;
+	native int getDirection() const;
+	native int getOldDirection() const;
+
 	deprecated("3.8", "Use Level.CreateCeiling() instead") static bool CreateCeiling(sector sec, int type, line ln, double speed, double speed2, double height = 0, int crush = -1, int silent = 0, int change = 0, int crushmode = crushDoom)
 	{
 		return level.CreateCeiling(sec, type, ln, speed, speed2, height, crush, silent, change, crushmode);
 	}
-	
+
 }
 
 struct LookExParams
@@ -851,7 +1022,7 @@ class Lighting : SectorEffect native
 
 struct Shader native
 {
-	// This interface was deprecated for the pointless player dependency 
+	// This interface was deprecated for the pointless player dependency
 	private static bool IsConsolePlayer(PlayerInfo player)
 	{
 		return player && player.mo && player == players[consoleplayer];

@@ -1,3 +1,22 @@
+/*
+** chicken.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1994-1996 Raven Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Beak puff ----------------------------------------------------------------
 
@@ -25,7 +44,7 @@ class Beak : Weapon
 		Weapon.YAdjust 15;
 		Weapon.SisterWeapon "BeakPowered";
 	}
-	
+
 
 	States
 	{
@@ -42,7 +61,7 @@ class Beak : Weapon
 		BEAK A 18 A_BeakAttackPL1;
 		Goto Ready;
 	}
-	
+
 	//---------------------------------------------------------------------------
 	//
 	// PROC A_BeakRaise
@@ -116,7 +135,7 @@ class BeakPowered : Beak
 		BEAK A 12 A_BeakAttackPL2;
 		Goto Ready;
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// PROC A_BeakAttackPL2
@@ -148,7 +167,7 @@ class BeakPowered : Beak
 			psp.Tics -= random[BeakAtk](0,3);
 		}
 	}
-	
+
 }
 
 // Chicken player -----------------------------------------------------------
@@ -204,7 +223,7 @@ class ChickenPlayer : PlayerPawn
 		CHKN L -1;
 		Stop;
 	}
-	
+
 	//---------------------------------------------------------------------------
 	//
 	// PROC P_UpdateBeak
@@ -296,7 +315,7 @@ class Chicken : MorphedMonster
 		CHKN L -1;
 		Stop;
 	}
-}		
+}
 
 
 // Feather ------------------------------------------------------------------

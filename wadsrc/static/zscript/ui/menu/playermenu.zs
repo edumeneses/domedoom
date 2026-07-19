@@ -1,34 +1,23 @@
 /*
-** playermenu.cpp
+** playermenu.zs
+**
 ** The player setup menu
 **
 **---------------------------------------------------------------------------
-** Copyright 2001-2010 Randy Heit
+**
+** Copyright 2001-2016 Marisa Heit
 ** Copyright 2010-2017 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -45,7 +34,7 @@ class PlayerMenu : ListMenu
 	PlayerClass mPlayerClass;
 	Array<int> PlayerColorSets;
 	Array<int> mPlayerSkins;
-	
+
 	// All write function for the player config are native to prevent abuse.
 	static native void AutoaimChanged(float val);
 	static native void TeamChanged(int val);
@@ -57,7 +46,7 @@ class PlayerMenu : ListMenu
 	static native void PlayerNameChanged(String name);
 	static native void SkinChanged (int val);
 	static native void ClassChanged(int sel, PlayerClass cls);
-	
+
 	//=============================================================================
 	//
 	//
@@ -68,13 +57,13 @@ class PlayerMenu : ListMenu
 	{
 		Translation.SetPlayerTranslation(TRANSLATION_Players, MAXPLAYERS, consoleplayer, mPlayerClass);
 	}
-	
+
 	protected void SendNewColor (int red, int green, int blue)
 	{
 		ColorChanged(red, green, blue);
 		UpdateTranslation();
 	}
-	
+
 	//=============================================================================
 	//
 	//
@@ -201,7 +190,7 @@ class PlayerMenu : ListMenu
 
 	}
 
-	
+
 	//=============================================================================
 	//
 	//
@@ -370,7 +359,7 @@ class PlayerMenu : ListMenu
 		}
 	}
 
-	
+
 	//=============================================================================
 	//
 	//
@@ -429,7 +418,7 @@ class PlayerMenu : ListMenu
 
 				case 'Color':
 					[res, v] = li.GetValue(0);
-					if (res) 
+					if (res)
 					{
 						int mycolorset = -1;
 
@@ -443,7 +432,7 @@ class PlayerMenu : ListMenu
 						if (red != NULL) red.Enable(mycolorset == -1);
 						if (green != NULL) green.Enable(mycolorset == -1);
 						if (blue != NULL) blue.Enable(mycolorset == -1);
-						
+
 						ColorSetChanged(v - 1);
 						UpdateTranslation();
 					}
@@ -451,7 +440,7 @@ class PlayerMenu : ListMenu
 
 				case 'Red':
 					[res, v] = li.GetValue(0);
-					if (res) 
+					if (res)
 					{
 						Color colr = players[consoleplayer].GetColor();
 						SendNewColor (v, colr.g, colr.b);
@@ -460,7 +449,7 @@ class PlayerMenu : ListMenu
 
 				case 'Green':
 					[res, v] = li.GetValue(0);
-					if (res) 
+					if (res)
 					{
 						Color colr = players[consoleplayer].GetColor();
 						SendNewColor (colr.r, v, colr.b);
@@ -469,16 +458,16 @@ class PlayerMenu : ListMenu
 
 				case 'Blue':
 					[res, v] = li.GetValue(0);
-					if (res) 
+					if (res)
 					{
 						Color colr = players[consoleplayer].GetColor();
 						SendNewColor (colr.r, colr.g, v);
 					}
 					break;
-					
+
 				case 'Class':
 					[res, v] = li.GetValue(0);
-					if (res) 
+					if (res)
 					{
 						ChangeClass(li);
 					}
@@ -490,7 +479,7 @@ class PlayerMenu : ListMenu
 
 				case 'Gender':
 					[res, v] = li.GetValue(0);
-					if (res) 
+					if (res)
 					{
 						GenderChanged(v);
 					}
@@ -498,7 +487,7 @@ class PlayerMenu : ListMenu
 
 				case 'Autoaim':
 					[res, v] = li.GetValue(0);
-					if (res) 
+					if (res)
 					{
 						AutoaimChanged(v);
 					}
@@ -506,7 +495,7 @@ class PlayerMenu : ListMenu
 
 				case 'Switch':
 					[res, v] = li.GetValue(0);
-					if (res) 
+					if (res)
 					{
 						SwitchOnPickupChanged(v);
 					}
@@ -514,7 +503,7 @@ class PlayerMenu : ListMenu
 
 				case 'AlwaysRun':
 					[res, v] = li.GetValue(0);
-					if (res) 
+					if (res)
 					{
 						AlwaysRunChanged(v);
 					}
@@ -528,7 +517,7 @@ class PlayerMenu : ListMenu
 		}
 		return Super.MenuEvent(mkey, fromcontroller);
 	}
-	
+
 	//=============================================================================
 	//
 	//
@@ -580,7 +569,7 @@ class PlayerMenu : ListMenu
 		return res;
 	}
 
-	
+
 	//=============================================================================
 	//
 	//
@@ -596,5 +585,5 @@ class PlayerMenu : ListMenu
 		screen.DrawText (SmallFont, Font.CR_GOLD, 320 - 32 - 32 - SmallFont.StringWidth (str)/2, 130 + SmallFont.GetHeight (), str, DTA_Clean, true);
 
 	}
-	
+
 }

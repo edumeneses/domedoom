@@ -1,3 +1,21 @@
+/*
+** scriptedmarine.zs
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1993-1996 id Software
+** Copyright 1999-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 // Scriptable marine -------------------------------------------------------
 
@@ -20,7 +38,7 @@ class ScriptedMarine : Actor
 		WEAPON_Railgun,
 		WEAPON_BFG
 	};
-	
+
 	struct WeaponStates
 	{
 		state melee;
@@ -29,7 +47,7 @@ class ScriptedMarine : Actor
 
 	int CurrentWeapon;
 	SpriteID SpriteOverride;
-	
+
 	Default
 	{
 		Health 100;
@@ -45,7 +63,7 @@ class ScriptedMarine : Actor
 		DeathSound "*death";
 		PainSound "*pain50";
 	}
-	
+
 	States
 	{
 	Spawn:
@@ -64,7 +82,7 @@ class ScriptedMarine : Actor
 		PLAY ABCD 4 A_MarineChase;
 		Loop;
 
-	Melee.Fist:		
+	Melee.Fist:
 		PLAY E 4 A_FaceTarget;
 		PLAY E 4 A_M_Punch(1);
 		PLAY A 9;
@@ -168,27 +186,27 @@ class ScriptedMarine : Actor
 		PLAY MLKJIH 5;
 		Goto See;
 	}
-	
+
 	//============================================================================
 	//
-	// 
+	//
 	//
 	//============================================================================
 
 	private bool GetWeaponStates(int weap, out WeaponStates wstates)
 	{
-		static const statelabel MeleeNames[] = 
+		static const statelabel MeleeNames[] =
 		{
-			"Melee.None", "Melee.Fist", "Melee.Berserk", "Melee.Chainsaw", "Melee.Pistol", "Melee.Shotgun", 
+			"Melee.None", "Melee.Fist", "Melee.Berserk", "Melee.Chainsaw", "Melee.Pistol", "Melee.Shotgun",
 			"Melee.SSG", "Melee.Chaingun", "Melee.Rocket", "Melee.Plasma", "Melee.Railgun", "Melee.BFG"
 		};
 
-		static const statelabel MissileNames[] = 
+		static const statelabel MissileNames[] =
 		{
-			"Missile.None", "Missile.Fist", "Missile.Berserk", "Missile.Chainsaw", "Missile.Pistol", "Missile.Shotgun", 
+			"Missile.None", "Missile.Fist", "Missile.Berserk", "Missile.Chainsaw", "Missile.Pistol", "Missile.Shotgun",
 			"Missile.SSG", "Missile.Chaingun", "Missile.Rocket", "Missile.Plasma", "Missile.Railgun", "Missile.BFG"
 		};
-		
+
 		if (weap < WEAPON_Dummy || weap > WEAPON_BFG) weap = WEAPON_Dummy;
 
 		wstates.melee = FindState(MeleeNames[weap], true);
@@ -199,7 +217,7 @@ class ScriptedMarine : Actor
 
 	//============================================================================
 	//
-	// 
+	//
 	//
 	//============================================================================
 
@@ -223,10 +241,10 @@ class ScriptedMarine : Actor
 
 	//============================================================================
 	//
-	// 
+	//
 	//
 	//============================================================================
-	
+
 	override void Tick ()
 	{
 		Super.Tick ();
@@ -248,11 +266,11 @@ class ScriptedMarine : Actor
 					{
 					case 14:
 						A_StartSound ("weapons/sshoto", CHAN_WEAPON);
-						break; 
-					case 28:   
+						break;
+					case 28:
 						A_StartSound ("weapons/sshotl", CHAN_WEAPON);
 						break;
-					case 41:  
+					case 41:
 						A_StartSound ("weapons/sshotc", CHAN_WEAPON);
 						break;
 					}
@@ -596,7 +614,7 @@ class ScriptedMarine : Actor
 		special1 = level.maptime + 30;
 		PainChance = MARINE_PAIN_CHANCE;
 	}
-		
+
 	//---------------------------------------------------------------------------
 
 	final void SetWeapon (int type)
@@ -618,7 +636,7 @@ class ScriptedMarine : Actor
 				"MarineRailgun",
 				"MarineBFG"
 			};
-			
+
 			MeleeState = wstates.melee;
 			MissileState = wstates.missile;
 			DecalGenerator = GetDefaultByType(classes[type]).DecalGenerator;
@@ -665,7 +683,7 @@ extend class Actor
 
 			damage *= random[SMarineSaw](1, 10);
 			double ang = angle + Random2[SMarineSaw]() * (5.625 / 256);
-			
+
 			LineAttack (angle, SAWRANGE, AimLineAttack (angle, SAWRANGE), damage, 'Melee', pufftype, false, t);
 
 			if (!t.linetarget)
@@ -674,7 +692,7 @@ extend class Actor
 				return;
 			}
 			A_StartSound (hitsound, CHAN_WEAPON);
-				
+
 			// turn to face target
 			ang = t.angleFromSource;
 			double anglediff = deltaangle(angle, ang);
@@ -707,7 +725,7 @@ class MarineFist : ScriptedMarine
 {
 	States
 	{
-	Melee:		
+	Melee:
 		Goto Super::Melee.Fist;
 	Missile:
 		Stop;
@@ -721,7 +739,7 @@ class MarineBerserk : MarineFist
 {
 	States
 	{
-	Melee:		
+	Melee:
 		Goto Super::Melee.Berserk;
 	Missile:
 		Stop;

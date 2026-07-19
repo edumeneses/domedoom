@@ -1,3 +1,19 @@
+/*
+** i_interface.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2020-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 
 #include "zstring.h"
@@ -53,6 +69,7 @@ struct SystemCallbacks
 	bool (*WantEscape)();
 	FTranslationID(*RemapTranslation)(FTranslationID trans);
 	void (*Rumble)(const char* id);
+	bool (*DisableAnisotropicFiltering)();
 };
 
 extern SystemCallbacks sysCallbacks;
@@ -68,10 +85,18 @@ struct FStartupSelectionInfo
 	const TArray<WadStuff>* Wads = nullptr;
 	FArgs* Args = nullptr;
 
+	// Launcher settings
+	bool notifyNewRelease = true;
+	FName prideColors = {};
+	float prideMix = 0;
+	unsigned LauncherWidth = 0;
+	unsigned LauncherHeight = 0;
+
 	// Local game info
 	int DefaultIWAD = 0;
 	FString DefaultArgs = {};
 	bool bSaveArgs = true;
+	bool isNewRelease = true;
 
 	// Settings
 	int DefaultStartFlags = 0;
@@ -79,6 +104,10 @@ struct FStartupSelectionInfo
 	FString DefaultLanguage = "auto";
 	int DefaultBackend = 1;
 	bool DefaultFullscreen = true;
+	bool DefaultVsync = false;
+	int DefaultFileLoadBehaviour = 0;
+	bool DefaultDynLights = true;
+	bool DefaultShadowmaps = false;
 
 	// Net game info
 	int DefaultNetIWAD = 0;
@@ -95,13 +124,18 @@ struct FStartupSelectionInfo
 	int DefaultNetHostPort = 0;
 	int DefaultNetTicDup = 0;
 	bool DefaultNetExtraTic = false;
-	int DefaultNetMode = 0;
 	int DefaultNetGameMode = 0;
 	bool DefaultNetAltDM = false;
 
 	FString DefaultNetAddress = {};
 	int DefaultNetJoinPort = 0;
 	int DefaultNetJoinTeam = 255;
+
+#ifdef HAS_UPDATER
+	int DefaultUpdateInterval = 7;
+	bool bAutoUpdate = false;
+	bool bCheckUpdate = false;
+#endif
 
 	FStartupSelectionInfo() = delete;
 	FStartupSelectionInfo(const TArray<WadStuff>& wads, FArgs& args, int startFlags);

@@ -1,15 +1,30 @@
+/*
+** p_visualthinker.h
+**
+** VisualThinkers
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2023-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** by Major Cooke
+** Credit to phantombeta, Jay & RaveYard for aid
+*/
+
 #pragma once
 
 #include "palettecontainer.h"
 #include "hwrenderer/scene/hw_drawstructs.h"
 
-
 //===========================================================================
-// 
-// VisualThinkers
-// by Major Cooke
-// Credit to phantombeta, RicardoLuis0 & RaveYard for aid
-// 
+//
+//
+//
 //===========================================================================
 
 enum EVisualThinkerFlags
@@ -21,9 +36,9 @@ enum EVisualThinkerFlags
 	VTF_DontInterpolate	= 1 << 4, // disable all interpolation
 	VTF_AddLightLevel	= 1 << 5, // adds sector light level to 'LightLevel'
 
-	VTF_ParticleDefault = 0x40, 
-	VTF_ParticleSquare = 0x80, 
-	VTF_ParticleRound = 0xC0, 
+	VTF_ParticleDefault = 0x40,
+	VTF_ParticleSquare = 0x80,
+	VTF_ParticleRound = 0xC0,
 	VTF_ParticleSmooth = 0x100,
 	VTF_IsParticle = 0x1C0,			// Renders as a particle instead
 };

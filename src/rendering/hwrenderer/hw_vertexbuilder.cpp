@@ -1,38 +1,25 @@
-// 
-//---------------------------------------------------------------------------
-//
-// Copyright(C) 2015-2018 Christoph Oelckers
-// All rights reserved.
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
-//
-//--------------------------------------------------------------------------
-//
-
-
+/*
+** hw_vertexbuilder.cpp
+**
+** Creates vertex meshes for sector planes
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2015-2018 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 
 #include "g_levellocals.h"
 #include "hw_vertexbuilder.h"
 #include "flatvertices.h"
 #include "earcut.hpp"
 #include "v_video.h"
-
-//=============================================================================
-//
-// Creates vertex meshes for sector planes
-//
-//=============================================================================
 
 //=============================================================================
 //
@@ -43,14 +30,14 @@
 static void CreateVerticesForSubsector(subsector_t *sub, VertexContainer &gen, int qualifier)
 {
 	if (sub->numlines < 3) return;
-	
+
 	uint32_t startindex = gen.indices.Size();
-	
+
 	if ((sub->flags & SSECF_HOLE) && sub->numlines > 3)
 	{
 		// Hole filling "subsectors" are not necessarily convex so they require real triangulation.
 		// These things are extremely rare so performance is secondary here.
-		
+
 		using Point = std::pair<double, double>;
 		std::vector<std::vector<Point>> polygon;
 		std::vector<Point> *curPoly;
@@ -93,7 +80,7 @@ static void CreateVerticesForSubsector(subsector_t *sub, VertexContainer &gen, i
 static void TriangulateSection(FSection &sect, VertexContainer &gen, int qualifier)
 {
 	if (sect.segments.Size() < 3) return;
-	
+
 	// todo
 }
 
@@ -429,7 +416,7 @@ static void UpdatePlaneVertices(FFlatVertexBuffer *fvb, sector_t* sec, int plane
 		if (plane == sector_t::floor && sec->transdoor) vt->z -= 1;
 		mapvt->z = vt->z;
 	}
-	
+
 	fvb->mVertexBuffer->Upload(startvt * sizeof(FFlatVertex), countvt * sizeof(FFlatVertex));
 }
 
