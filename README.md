@@ -1,11 +1,18 @@
 # DomeDoom — Fulldome Edition
 
-DomeDoom is a GZDoom fork that renders the scene as a 6-face cubemap and either
-streams the raw cubemap strip or warps it into a square fisheye **domemaster**
-or a 2:1 **equirectangular** panorama, feeding a fulldome planetarium pipeline
-(PipeWire, Sh4lt, NDI) for the Satosphère dome at the Société des Arts
-Technologiques (SAT). It also sends per-source 3D positions to SpatGRIS over OSC
-for object-based dome audio.
+DomeDoom is a ZDoom-family fork that renders the scene as a 6-face cubemap and
+either streams the raw cubemap strip or warps it into a square fisheye
+**domemaster** or a 2:1 **equirectangular** panorama, feeding a fulldome
+planetarium pipeline (PipeWire, Sh4lt, NDI) for the Satosphère dome at the
+Société des Arts Technologiques (SAT). It also sends per-source 3D positions to
+SpatGRIS over OSC for object-based dome audio.
+
+**Lineage:** DomeDoom started as a fork of [GZDoom](https://github.com/ZDoom/gzdoom)
+(master, late 2025). In July 2026 the project switched its upstream to
+[UZDoom](https://github.com/UZDoom/UZDoom) — the community continuation of
+GZDoom by its long-time development team — and now tracks UZDoom trunk.
+Mod/WAD compatibility is unchanged (UZDoom is a direct continuation of the
+same engine).
 
 Both render backends are supported: the cubemap compositing, readback, and
 domemaster warp run on **OpenGL** and **Vulkan** (Vulkan uses `vkCmdBlitImage`
@@ -241,31 +248,24 @@ OSC (SpatGRIS positions) uses raw UDP with no external library.
 
 ---
 
-# Welcome to GZDoom!
+# About the engine (UZDoom)
 
-[![Continuous Integration](https://github.com/ZDoom/gzdoom/actions/workflows/continuous_integration.yml/badge.svg)](https://github.com/ZDoom/gzdoom/actions/workflows/continuous_integration.yml)
-
-## GZDoom is a modder-friendly OpenGL and Vulkan source port based on the DOOM engine
+DomeDoom's engine is [UZDoom](https://github.com/UZDoom/UZDoom), a
+modder-friendly OpenGL and Vulkan source port based on the DOOM engine and the
+community continuation of GZDoom.
 
 Copyright (c) 1998-2025 ZDoom + GZDoom teams, and contributors
+Copyright (c) 2025-2026 UZDoom maintainers and contributors
 
 Doom Source (c) 1997 id Software, Raven Software, and contributors
 
 Please see license files for individual contributor licenses
 
-Special thanks to Coraline of the EDGE team for allowing us to use her [README.md](https://github.com/3dfxdev/EDGE/blob/master/README.md) as a template for this one.
-
 ### Source code licensed under the GPL v3
 ##### https://www.gnu.org/licenses/quick-guide-gplv3.en.html
----
-
-## How to build GZDoom
-
-To build GZDoom, please see the [wiki](https://zdoom.org/wiki/) and see the "Programmer's Corner" on the bottom-right corner of the page to build for your platform.
 
 # Resources
-- https://zdoom.org/ - Home Page
+- https://github.com/UZDoom/UZDoom - UZDoom (engine upstream)
+- https://zdoom.org/ - ZDoom home page
+- https://zdoom.org/wiki/ - Wiki (applies to UZDoom/GZDoom alike)
 - https://forum.zdoom.org/ - Forum
-- https://zdoom.org/wiki/ - Wiki
-- https://dsc.gg/zdoom - Discord Server
-- https://docs.google.com/spreadsheets/d/1pvwXEgytkor9SClCiDn4j5AH7FedyXS-ocCbsuQIXDU/edit?usp=sharing - Translation sheet (Google Docs)
