@@ -190,7 +190,9 @@ IF( NOT CMAKE_BUILD_TYPE )
 ENDIF()
 
 set( ZDOOM_OUTPUT_DIR ${CMAKE_BINARY_DIR} CACHE PATH "Directory where zdoom.pk3 and the executable will be created." )
-set( ZDOOM_EXE_NAME "domedoom" CACHE FILEPATH "Name of the executable to create" )
+# STRING, not FILEPATH: FILEPATH normalizes the value to an absolute path,
+# which mangles the install destinations derived from the exe name.
+set( ZDOOM_EXE_NAME "domedoom" CACHE STRING "Name of the executable to create" )
 
 if(DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
 	set(ZDOOM_RESOURCE_DIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")

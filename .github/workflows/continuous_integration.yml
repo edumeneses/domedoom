@@ -101,7 +101,8 @@ jobs:
             ./appimage-builder --skip-tests --recipe ../tools/AppImageBuilder.yml
             cp *.AppImage package
           else
-            cp domedoom *.pk3 libzmusic.so* package
+            # ZMusic is linked statically since the UZDoom merge — no .so to ship.
+            cp domedoom *.pk3 package
           fi
         fi
 
