@@ -27,9 +27,10 @@ if(NOT FORCE_NO_LTO)
 	endif()
 endif()
 
-if(WIN32)
-	option( USE_UPDATER "enable auto-updater" OFF )
-endif()
+# DomeDoom: the auto-updater is hard-disabled — it would download stock
+# UZDoom builds and replace the fulldome binary. Revert this commit to
+# restore the (Windows-only, default-off) option.
+set( USE_UPDATER OFF CACHE INTERNAL "auto-updater disabled in DomeDoom" FORCE )
 
 if(USE_UPDATER)
 	set( CURL_REQUIRED TRUE )

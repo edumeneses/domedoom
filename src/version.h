@@ -100,17 +100,20 @@
 #define QUERYIWADDEFAULT true
 #define BUGS_URL "https://github.com/edumeneses/domedoom/issues"
 
-#define UPDATER_URL_STABLE "https://zdoom.org/uzdoom-latest.php"
-#define UPDATER_URL_STABLE_BACKUP "https://api.github.com/repos/UZDoom/UZDoom/releases/latest"
+// DomeDoom: the updater is compiled out (USE_UPDATER forced OFF). These
+// URLs are retargeted at the DomeDoom releases so a future re-enable can
+// never fetch stock UZDoom builds over the fulldome binary.
+#define UPDATER_URL_STABLE "https://api.github.com/repos/edumeneses/domedoom/releases/latest"
+#define UPDATER_URL_STABLE_BACKUP "https://api.github.com/repos/edumeneses/domedoom/releases/latest"
 
-#define UPDATER_URL_PREVIEW "https://zdoom.org/uzdoom-preview.php"
-#define UPDATER_URL_PREVIEW_BACKUP "https://api.github.com/repos/UZDoom/UZDoom/releases/tags/x-preview"
+#define UPDATER_URL_PREVIEW "https://api.github.com/repos/edumeneses/domedoom/releases/latest"
+#define UPDATER_URL_PREVIEW_BACKUP "https://api.github.com/repos/edumeneses/domedoom/releases/latest"
 
-#define UPDATER_URL_TESTING "https://zdoom.org/uzdoom-testing.php"
-#define UPDATER_URL_TESTING_BACKUP "https://api.github.com/repos/UZDoom/UZDoom/releases/tags/x-testing"
+#define UPDATER_URL_TESTING "https://api.github.com/repos/edumeneses/domedoom/releases/latest"
+#define UPDATER_URL_TESTING_BACKUP "https://api.github.com/repos/edumeneses/domedoom/releases/latest"
 
-#define UPDATER_URL_ALL "https://zdoom.org/uzdoom-all.php"
-#define UPDATER_URL_ALL_BACKUP "https://api.github.com/repos/UZDoom/UZDoom/releases"
+#define UPDATER_URL_ALL "https://api.github.com/repos/edumeneses/domedoom/releases"
+#define UPDATER_URL_ALL_BACKUP "https://api.github.com/repos/edumeneses/domedoom/releases"
 
 // For QUERYIWADDEFAULT: Set to 'true' to always show dialog box on startup by default, 'false' to disable.
 // Should set to 'false' for standalone games, and set to 'true' for regular source port forks that are meant to run any game.
