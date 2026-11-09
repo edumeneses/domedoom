@@ -5,6 +5,9 @@
 #include <Processing.NDI.Lib.h>
 
 #include <dlfcn.h>
+#include <algorithm>
+#include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -133,6 +136,45 @@ struct NdiVideoOutput::Impl {
     // tear the frame being transmitted.
     std::vector<uint8_t>   flipped[2];
     int                    flipIndex = 0;
+
+    // Frame rate announced to receivers, measured from the PushFrame cadence.
+    // The sender is not clocked (see Init), so this is the only timing hint a
+    // receiver gets; declaring a fixed 60 while the 4096 dome renders at
+    // ~20-30 fps would misstate the stream.
+    std::chrono::steady_clock::time_point lastPush{};
+    bool                   havePush    = false;
+    double                 avgInterval = 0.0;   // EMA of seconds between pushes
+    int                    declaredFps = 0;     // 0 = not measured yet
+
+    // Returns the frame rate to declare for this push, updating the cadence
+    // estimate. Re-announces only when the measured rate drifts more than 10%
+    // so receivers don't see a format change on every frame-time wobble.
+    int UpdateFrameRate()
+    {
+        const auto now = std::chrono::steady_clock::now();
+        if (havePush)
+        {
+            const double dt = std::chrono::duration<double>(now - lastPush).count();
+            // Skip hitches (level loads, console, window drags) so one long
+            // frame doesn't drag the average down.
+            if (dt > 0.0 && dt < 0.5)
+                avgInterval = avgInterval > 0.0 ? avgInterval * 0.9 + dt * 0.1 : dt;
+        }
+        lastPush = now;
+        havePush = true;
+
+        if (avgInterval > 0.0)
+        {
+            const double fps = 1.0 / avgInterval;
+            if (declaredFps == 0 || std::fabs(fps - declaredFps) > declaredFps * 0.1)
+            {
+                declaredFps = std::clamp((int)std::lround(fps), 1, 240);
+                fprintf(stderr, "[domedoom/ndi] declared frame rate: %d fps\n",
+                        declaredFps);
+            }
+        }
+        return declaredFps > 0 ? declaredFps : 30;
+    }
 };
 
 bool NdiVideoOutput::Init(const std::string& label, int width, int height)
@@ -149,7 +191,10 @@ bool NdiVideoOutput::Init(const std::string& label, int width, int height)
     NDIlib_send_create_t desc;
     desc.p_ndi_name  = label.c_str();
     desc.p_groups    = nullptr;
-    desc.clock_video = true;
+    // Unclocked: the game loop already paces frames. With clock_video=true NDI
+    // rate-limits sends against the declared frame rate, adding wait time on
+    // top of the render/readback latency the dome already carries.
+    desc.clock_video = false;
     desc.clock_audio = false;
 
     impl->sender = gNdiLib->send_create(&desc);
@@ -191,7 +236,7 @@ void NdiVideoOutput::PushFrame(const uint8_t* pixels, int srcStride)
     // alpha channel for RGBA frames — receivers would show black. RGBX tells
     // NDI to ignore alpha and treat every pixel as opaque.
     frame.FourCC               = NDIlib_FourCC_type_RGBX;
-    frame.frame_rate_N         = 60000;
+    frame.frame_rate_N         = mImpl->UpdateFrameRate() * 1000;
     frame.frame_rate_D         = 1000;
     frame.picture_aspect_ratio = 0.0f;
     frame.frame_format_type    = NDIlib_frame_format_type_progressive;
