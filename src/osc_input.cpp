@@ -41,9 +41,25 @@ static int           g_sock     = -1;
 static int           g_boundPort = -1;
 static OSCInputState g_state;
 
-// Per-control last-refresh timestamps for the watchdog.
+// Each direction of a bipolar axis (front vs back, strafeleft vs straferight,
+// ...) is held and expired on its own, and the axis is their difference.
+// Senders commonly stream both halves every frame ("front 0.8" then "back 0");
+// with one shared value per axis, the trailing zero cancelled the first half,
+// so whichever address came first in the stream never moved the player.
+struct HalfAxis {
+    float    mag   = 0.f;   // [0, 1]
+    uint64_t stamp = 0;     // last refresh, 0 = released
+};
+struct Axis {
+    HalfAxis pos, neg;
+    float Value() const { return pos.mag - neg.mag; }
+};
+static struct Axes {
+    Axis forward, side, turn, pitch, fly;
+} g_axes;
+
+// Per-button last-refresh timestamps for the watchdog.
 struct Stamps {
-    uint64_t forward = 0, side = 0, turn = 0, pitch = 0, fly = 0;
     uint64_t attack = 0, altattack = 0, use = 0, jump = 0, crouch = 0,
              reload = 0, zoom = 0, run = 0;
 } static g_ts;
@@ -58,6 +74,7 @@ static void CloseSocket()
     if (g_sock >= 0) { close(g_sock); g_sock = -1; }
     g_boundPort = -1;
     g_state = OSCInputState();
+    g_axes = Axes();
     g_ts = Stamps();
 }
 
@@ -155,17 +172,22 @@ static void ApplyMessage(const char* addr, float mag, uint64_t now)
         else         { g_state.buttons &= ~bit; stamp = 0;   }
     };
 
+    auto setHalf = [&](HalfAxis& h) {
+        h.mag   = m;
+        h.stamp = (m > 0.f) ? now : 0;
+    };
+
     // --- movement / look axes ------------------------------------------
-    if      (!strcmp(addr, "/domedoom/front"))       { g_state.forward =  m; g_ts.forward = pressed ? now : 0; }
-    else if (!strcmp(addr, "/domedoom/back"))        { g_state.forward = -m; g_ts.forward = pressed ? now : 0; }
-    else if (!strcmp(addr, "/domedoom/straferight")) { g_state.side    =  m; g_ts.side    = pressed ? now : 0; }
-    else if (!strcmp(addr, "/domedoom/strafeleft"))  { g_state.side    = -m; g_ts.side    = pressed ? now : 0; }
-    else if (!strcmp(addr, "/domedoom/left"))        { g_state.turn    =  m; g_ts.turn    = pressed ? now : 0; }
-    else if (!strcmp(addr, "/domedoom/right"))       { g_state.turn    = -m; g_ts.turn    = pressed ? now : 0; }
-    else if (!strcmp(addr, "/domedoom/lookup"))      { g_state.pitch   =  m; g_ts.pitch   = pressed ? now : 0; }
-    else if (!strcmp(addr, "/domedoom/lookdown"))    { g_state.pitch   = -m; g_ts.pitch   = pressed ? now : 0; }
-    else if (!strcmp(addr, "/domedoom/moveup"))      { g_state.fly     =  m; g_ts.fly     = pressed ? now : 0; }
-    else if (!strcmp(addr, "/domedoom/movedown"))    { g_state.fly     = -m; g_ts.fly     = pressed ? now : 0; }
+    if      (!strcmp(addr, "/domedoom/front"))       setHalf(g_axes.forward.pos);
+    else if (!strcmp(addr, "/domedoom/back"))        setHalf(g_axes.forward.neg);
+    else if (!strcmp(addr, "/domedoom/straferight")) setHalf(g_axes.side.pos);
+    else if (!strcmp(addr, "/domedoom/strafeleft"))  setHalf(g_axes.side.neg);
+    else if (!strcmp(addr, "/domedoom/left"))        setHalf(g_axes.turn.pos);
+    else if (!strcmp(addr, "/domedoom/right"))       setHalf(g_axes.turn.neg);
+    else if (!strcmp(addr, "/domedoom/lookup"))      setHalf(g_axes.pitch.pos);
+    else if (!strcmp(addr, "/domedoom/lookdown"))    setHalf(g_axes.pitch.neg);
+    else if (!strcmp(addr, "/domedoom/moveup"))      setHalf(g_axes.fly.pos);
+    else if (!strcmp(addr, "/domedoom/movedown"))    setHalf(g_axes.fly.neg);
     // --- action buttons -------------------------------------------------
     else if (!strcmp(addr, "/domedoom/attack"))      setBtn(BT_ATTACK,    g_ts.attack);
     else if (!strcmp(addr, "/domedoom/altattack"))   setBtn(BT_ALTATTACK, g_ts.altattack);
@@ -194,11 +216,15 @@ static void ExpireStale(uint64_t now)
 {
     auto dead = [&](uint64_t stamp) { return stamp != 0 && now - stamp > OSC_HOLD_MS; };
 
-    if (dead(g_ts.forward)) { g_state.forward = 0.f; g_ts.forward = 0; }
-    if (dead(g_ts.side))    { g_state.side    = 0.f; g_ts.side    = 0; }
-    if (dead(g_ts.turn))    { g_state.turn    = 0.f; g_ts.turn    = 0; }
-    if (dead(g_ts.pitch))   { g_state.pitch   = 0.f; g_ts.pitch   = 0; }
-    if (dead(g_ts.fly))     { g_state.fly     = 0.f; g_ts.fly     = 0; }
+    auto expAxis = [&](Axis& a) {
+        if (dead(a.pos.stamp)) a.pos = HalfAxis();
+        if (dead(a.neg.stamp)) a.neg = HalfAxis();
+    };
+    expAxis(g_axes.forward);
+    expAxis(g_axes.side);
+    expAxis(g_axes.turn);
+    expAxis(g_axes.pitch);
+    expAxis(g_axes.fly);
 
     auto expBtn = [&](uint32_t bit, uint64_t& stamp) {
         if (dead(stamp)) { g_state.buttons &= ~bit; stamp = 0; }
@@ -261,6 +287,12 @@ void OSC_Input_Tick()
     }
 
     ExpireStale(now);
+
+    g_state.forward = g_axes.forward.Value();
+    g_state.side    = g_axes.side.Value();
+    g_state.turn    = g_axes.turn.Value();
+    g_state.pitch   = g_axes.pitch.Value();
+    g_state.fly     = g_axes.fly.Value();
 }
 
 const OSCInputState& OSC_Input_State()
