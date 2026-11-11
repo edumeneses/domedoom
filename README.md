@@ -22,6 +22,114 @@ OpenGL-only optimization). Local builds produce a `domedoom` binary
 
 ---
 
+## Download (Linux AppImage)
+
+**Linux users don't need to build anything.** CI publishes a ready-to-run
+x86_64 AppImage:
+
+- **Rolling build** — newest `master` commit, replaced on every push:
+  [`domedoom-continuous-x86_64.AppImage`](https://github.com/edumeneses/domedoom/releases/download/continuous/domedoom-continuous-x86_64.AppImage)
+  ([release page](https://github.com/edumeneses/domedoom/releases/tag/continuous))
+- **Tagged releases** — [GitHub Releases](https://github.com/edumeneses/domedoom/releases)
+  (published from `v*` tags)
+- **Per-commit builds** — every push and PR also uploads the AppImage as an
+  artifact of the *Release AppImage* workflow run under
+  [Actions](https://github.com/edumeneses/domedoom/actions) (GitHub login
+  required)
+
+```
+chmod +x domedoom-continuous-x86_64.AppImage
+./domedoom-continuous-x86_64.AppImage -iwad /path/to/DOOM2.WAD
+```
+
+Requirements on the machine running it:
+
+- Linux x86_64
+- A Doom IWAD (`DOOM.WAD`, `DOOM2.WAD`, Freedoom, ...)
+- PipeWire, for the PipeWire output (Ubuntu 24.04+ ships it by default; the
+  AppImage uses the host's libpipewire rather than bundling it)
+- The NDI 6 runtime (`libndi.so.6`), only for NDI output — see
+  [NDI](#optional-features). Without it everything else still works.
+
+If the AppImage fails to mount (no FUSE on the host), run it with
+`--appimage-extract-and-run`.
+
+---
+
+## Building from source
+
+CI builds on Ubuntu 24.04 with GCC and Clang; local builds also run on
+Ubuntu 26.04. Other Debian-based distributions should work with the same
+steps.
+
+### Dependencies
+
+```
+sudo apt install build-essential git cmake ninja-build python3 nasm \
+    libsdl2-dev libopenal-dev zlib1g-dev libbz2-dev libjpeg-dev \
+    libgl-dev libvulkan-dev libpipewire-0.3-dev libwebp-dev libvpx-dev
+```
+
+On Ubuntu 26.04 pick `libsdl2-dev` (classic SDL2, what CI uses).
+`libsdl2-compat-dev` (the SDL2 API on top of SDL3) conflicts with it and is
+untested here. A build that stops with `SDL2/SDL.h: No such file or
+directory` means `libsdl2-dev` is not installed.
+ZMusic is built in-tree and linked statically, so it needs no separate
+package.
+
+### Build
+
+```
+git clone --recursive https://github.com/edumeneses/domedoom.git
+cd domedoom
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+```
+
+In an existing clone without submodules, run
+`git submodule update --init --recursive` first (needed for Sh4lt).
+
+Run from inside `build/`, where the `.pk3` files sit next to the binary:
+
+```
+cd build
+./domedoom -iwad /path/to/DOOM2.WAD
+```
+
+Use `-DCMAKE_BUILD_TYPE=Release` for dome work: a Debug build is much slower
+at the 4096x4096 domemaster output.
+
+### Optional features
+
+Each fulldome transport is detected at configure time. If its dependency is
+missing, CMake prints a warning and the build carries on without it.
+
+| Feature | Needed at build time | Needed at run time |
+|---------|----------------------|--------------------|
+| PipeWire output | `libpipewire-0.3-dev` | PipeWire |
+| Sh4lt output | `3rdparty/sh4lt` submodule (built in-tree) | — |
+| NDI output | NDI 6 SDK **headers** | NDI 6 runtime (`libndi.so.6`) |
+| SpatGRIS audio, OSC control | — (raw UDP) | — |
+
+**NDI:** download the NDI 6 SDK for Linux from
+https://ndi.video/download-ndi-sdk/ and run its installer from your home
+directory; it extracts to `~/NDI SDK for Linux`, which CMake finds on its own.
+For another location, set `NDI_SDK_DIR` to the SDK root before configuring.
+CMake caches the header path, so if the SDK later moves (or the build dir was
+configured by another user), re-run configure with
+`-DNDI_INCLUDE_DIR="$HOME/NDI SDK for Linux/include"`. The runtime is not
+linked: `libndi.so.6` is loaded with `dlopen` on first use, from
+`NDI_RUNTIME_DIR_V6`, `/usr/local/lib`, `/usr/lib` or the loader path.
+
+### Building the AppImage
+
+The AppImage is produced by CI with linuxdeploy; the full recipe (install into
+an `AppDir`, custom `AppRun`, excluded host libraries) is
+[`.github/workflows/release.yml`](.github/workflows/release.yml). Push to
+`master` or open a PR to get one built.
+
+---
+
 ## Fulldome Configuration
 
 All options live in the `r_cubemap_*` namespace and can be set in the console
@@ -33,7 +141,7 @@ or in a startup config file. Most are also exposed in-game under
 | CVar | Default | Description |
 |------|---------|-------------|
 | `r_cubemap` | `false` | Enable cubemap rendering pipeline |
-| `r_cubemap_mode` | `1` | Output projection: `0` = 6-face strip (6144x1024), `1` = square fisheye domemaster (2048x2048), `2` = equirectangular panorama (4096x2048). Needs restart — re-inits PipeWire + readback buffers. Replaces the old `r_cubemap_domemaster` bool. |
+| `r_cubemap_mode` | `1` | Output projection: `0` = 6-face strip (12288x2048), `1` = square fisheye domemaster (4096x4096), `2` = equirectangular panorama (4096x2048). Needs restart — re-inits PipeWire + readback buffers. Replaces the old `r_cubemap_domemaster` bool. |
 | `r_cubemap_pipewire` | `true` | PipeWire DMA-BUF output |
 | `r_cubemap_sh4lt` | `false` | Sh4lt video output |
 | `r_cubemap_sh4lt_label` | `"domedoom"` | Sh4lt video stream label |
@@ -191,6 +299,9 @@ Enable it in-game under **Options → OSC Control**, or via CVars:
 Send OSC messages to the host's IP on that port. Every address lives under the
 `/domedoom/*` namespace. The single argument is the magnitude in `[0, 1]`
 (`f` or `i`); if omitted it defaults to `1.0`. Send `0` to release.
+Opposite directions (`front`/`back`, `strafeleft`/`straferight`, ...) are
+tracked separately and combined, so a controller may stream both halves of an
+axis every frame; holding both cancels out.
 
 | Address | Action |
 |---------|--------|
